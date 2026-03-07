@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Painel Admin - Avisos - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap / Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <style>
+    :root{
+      --royal-blue:#2747d9;
+      --royal-dark:#16258a;
+      --hover-blue:#3b61e3;
+      --sidebar-w:260px;
+      --text-muted:#8f9bb8;
+    }
+
+    *{box-sizing:border-box;}
+
+    body{
+      margin:0;
+      font-family:'Roboto',sans-serif;
+      background:#f3f5fb;
+      color:#1f2430;
+      overflow-x:hidden;
+    }
+
+    .layout{
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* SIDEBAR ----------------------------------------------------------------*/
+
+    .sidebar{
+      position:fixed;
+      top:0;
+      left:0;
+      height:100vh;
+      width:var(--sidebar-w);
+      background:linear-gradient(180deg,var(--royal-blue),var(--royal-dark));
+      color:#fff;
+      padding:18px 14px;
+      display:flex;
+      flex-direction:column;
+      box-shadow:0 0 22px rgba(0,0,0,.25);
+      z-index:1020;
+      overflow-y:auto;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      margin-bottom:12px;
+      padding:0 4px;
+    }
+    .brand-title{
+      font-family:'Orbitron',sans-serif;
+      font-size:1.25rem;
+      letter-spacing:2px;
+      text-transform:uppercase;
+      margin:0;
+    }
+    .brand-sub{
+      font-size:.75rem;
+      opacity:.8;
+    }
+
+    .sidebar-nav{
+      margin-top:8px;
+      padding:0;
+    }
+
+    .nav-section-label{
+      font-size:.7rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.60);
+      margin:12px 6px 6px;
+    }
+
+    .sidebar-divider{
+      border-color:rgba(255,255,255,.08);
+      margin:10px 0 6px;
+    }
+
+    .nav-link-main,
+    .nav-link-group-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      border:0;
+      border-radius:10px;
+      padding:8px 10px;
+      margin:2px 0;
+      background:transparent;
+      color:#fff;
+      font-size:.9rem;
+      text-align:left;
+      text-decoration:none;
+      cursor:pointer;
+      transition:background .15s,transform .05s;
+    }
+    .nav-link-main:hover,
+    .nav-link-group-toggle:hover{
+      background:rgba(255,255,255,.08);
+    }
+    .nav-link-main.active{
+      background:rgba(0,0,0,.20);
+      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+    }
+    .nav-link-main:active,
+    .nav-link-group-toggle:active{
+      transform:scale(.98);
+    }
+
+    .nav-link-left{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .nav-link-icon{
+      width:18px;
+      display:flex;
+      justify-content:center;
+    }
+    .nav-link-label{
+      white-space:nowrap;
+    }
+
+    .nav-caret{
+      font-size:.8rem;
+      opacity:.7;
+    }
+
+    .nav-sublinks{
+      padding-left:30px;
+      margin-bottom:4px;
+    }
+
+    .nav-sublink{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 8px;
+      margin:2px 0;
+      border-radius:8px;
+      font-size:.85rem;
+      color:rgba(255,255,255,.85);
+      text-decoration:none;
+      transition:background .15s,color .15s,transform .05s;
+    }
+    .nav-sublink:hover{
+      background:rgba(255,255,255,.08);
+      color:#fff;
+    }
+    .nav-sublink.active{
+      background:rgba(0,0,0,.20);
+      color:#fff;
+      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+    }
+
+    .sidebar-footer{
+      margin-top:auto;
+      padding-top:10px;
+    }
+
+    /* MAIN -------------------------------------------------------------------*/
+
+    .main{
+      flex:1;
+      margin-left:var(--sidebar-w);
+      padding:18px 22px;
+    }
+
+    .content-shell{
+      max-width:1320px;
+      margin:0 auto 32px;
+    }
+
+    .page-header{
+      margin-bottom:16px;
+    }
+    .page-header h3{
+      margin:0;
+      font-size:1.35rem;
+      font-weight:600;
+    }
+    .page-header small{
+      color:var(--text-muted);
+      font-size:.85rem;
+    }
+
+    .card{
+      border-radius:12px;
+      border:0;
+      box-shadow:0 2px 8px rgba(15,23,42,.09);
+      background:#fff;
+    }
+
+    .btn-royal{
+      background:var(--royal-blue);
+      color:#fff;
+      border-color:var(--royal-blue);
+    }
+    .btn-royal:hover{
+      background:var(--hover-blue);
+      border-color:var(--hover-blue);
+      color:#fff;
+    }
+
+    .badge-soft{
+      background:#eef2ff;
+      color:#223;
+      border-radius:999px;
+      padding:.15rem .55rem;
+      font-size:.75rem;
+    }
+
+    /* ====== Avisos específicos ============================================= */
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:.35rem;
+      padding:.25rem .75rem;
+      border-radius:999px;
+      background:#eef2ff;
+      font-size:.8rem;
+      color:#384152;
+    }
+
+    .form-help{
+      color:#6c757d;
+      font-size:.8rem;
+    }
+
+    .listbox{
+      max-height:260px;
+      overflow:auto;
+      border:1px solid rgba(15,23,42,.06);
+      border-radius:12px;
+      padding:.25rem;
+      background:#fff;
+    }
+    .listbox .item{
+      display:flex;
+      align-items:center;
+      gap:.5rem;
+      padding:.35rem .5rem;
+      border-radius:10px;
+      font-size:.9rem;
+    }
+    .listbox .item:hover{
+      background:#f4f6ff;
+    }
+    .avatar{
+      width:28px;
+      height:28px;
+      border-radius:50%;
+      object-fit:cover;
+      border:1px solid rgba(15,23,42,.08);
+    }
+
+    .section-title{
+      font-weight:600;
+      font-size:.95rem;
+    }
+    .muted{color:#6c757d;}
+    .count{font-variant-numeric:tabular-nums;}
+
+    .aviso-card .title{
+      font-weight:600;
+      font-size:1rem;
+    }
+    .aviso-card .meta{
+      color:#6c757d;
+      font-size:.85rem;
+    }
+    .aviso-card .meta i{
+      font-size:.9rem;
+    }
+
+    .search-wrap{
+      max-width:520px;
+    }
+
+    .empty{
+      color:#6c757d;
+    }
+
+    .kpi-card-icon{
+      font-size:2rem;
+      opacity:.85;
+    }
+
+    .sticky-actions{
+      position:sticky;
+      bottom:0;
+      background:#fff;
+      padding-top:12px;
+      margin-top:8px;
+      border-top:1px solid rgba(15,23,42,.06);
+    }
+
+    @media (max-width: 991.98px){
+      :root{ --sidebar-w:72px; }
+
+      .sidebar{
+        padding:18px 8px;
+      }
+      .brand-sub,
+      .brand-title,
+      .nav-section-label,
+      .nav-link-label{
+        display:none;
+      }
+      .nav-sublinks{
+        padding-left:12px;
+      }
+      .main{
+        margin-left:var(--sidebar-w);
+        padding:16px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -------------------------------------------------------------->
+  <aside class="sidebar">
+
+    <div class="brand">
+      <h1 class="brand-title">PAINEL COOPEX</h1>
+      <span class="brand-sub">Administração Central</span>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <div class="nav-section-label">Visão Geral</div>
+
+      <!-- Resumo -->
+      <a class="nav-sublink"
+         href="{{ url_for('admin_dashboard', tab='resumo') }}">
+        <i class="bi bi-graph-up"></i> <span class="nav-link-label">Resumo</span>
+      </a>
+
+      <!-- Avaliações -->
+      <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
+         href="{{ url_for('admin_avaliacoes') }}">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
+          <span class="nav-link-label">Avaliações</span>
+        </div>
+      </a>
+
+      <hr class="sidebar-divider">
+
+      <!-- FINANCEIRO ------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuFinanceiro"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span>
+          <span class="nav-link-label">Financeiro</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuFinanceiro" class="collapse show nav-sublinks">
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='lancamentos') }}">
+          <i class="bi bi-journal-text"></i> <span class="nav-link-label">Lançamentos</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='receitas') }}">
+          <i class="bi bi-cash"></i> <span class="nav-link-label">Receitas Coop</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='despesas') }}">
+          <i class="bi bi-cart-dash"></i> <span class="nav-link-label">Despesas Coop</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='coop_receitas') }}">
+          <i class="bi bi-cash-coin"></i> <span class="nav-link-label">Receitas Cooperados</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='coop_despesas') }}">
+          <i class="bi bi-people"></i> <span class="nav-link-label">Despesas Cooperados</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='beneficios') }}">
+          <i class="bi bi-heart-pulse"></i> <span class="nav-link-label">Benefícios</span>
+        </a>
+      </div>
+
+      <!-- CADASTROS -------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuCadastros"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-people"></i></span>
+          <span class="nav-link-label">Cadastros</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuCadastros" class="collapse show nav-sublinks">
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='cooperados') }}">
+          <i class="bi bi-person-badge"></i> <span class="nav-link-label">Cooperados</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='restaurantes') }}">
+          <i class="bi bi-shop"></i> <span class="nav-link-label">Estabelecimentos</span>
+        </a>
+
+        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
+           href="{{ url_for('admin_documentos') }}">
+          <i class="bi bi-folder2"></i> <span class="nav-link-label">Documentos</span>
+        </a>
+
+        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
+           href="{{ url_for('admin_tabelas') }}">
+          <i class="bi bi-table"></i> <span class="nav-link-label">Tabelas</span>
+        </a>
+      </div>
+
+      <!-- OPERAÇÃO --------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuOperacao"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span>
+          <span class="nav-link-label">Operação</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuOperacao" class="collapse show nav-sublinks">
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='escalas') }}">
+          <i class="bi bi-calendar2-week"></i> <span class="nav-link-label">Escalas</span>
+        </a>
+
+        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
+           href="{{ url_for('admin_avisos') }}">
+          <i class="bi bi-megaphone"></i> <span class="nav-link-label">Avisos</span>
+        </a>
+      </div>
+
+      <hr class="sidebar-divider">
+
+      <!-- Config + Sair ------------------------------------------------------>
+      <div class="sidebar-footer">
+        <a class="nav-link-main {% if request.endpoint == 'admin_dashboard' and request.args.get('tab') == 'config' %}active{% endif %}"
+           href="{{ url_for('admin_dashboard', tab='config') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-gear"></i></span>
+            <span class="nav-link-label">Configurações</span>
+          </div>
+        </a>
+
+        <a class="nav-link-main"
+           href="{{ url_for('logout') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-box-arrow-right"></i></span>
+            <span class="nav-link-label">Sair</span>
+          </div>
+        </a>
+      </div>
+
+    </nav>
+  </aside>
+
+  <!-- MAIN ------------------------------------------------------------------>
+  <main class="main">
+    <div class="content-shell">
+
+      <!-- Cabeçalho da página -->
+      <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h3 class="mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-megaphone-fill text-warning"></i>
+            Avisos
+          </h3>
+          <small>Central de comunicados para cooperados e estabelecimentos</small>
+        </div>
+        <span class="chip">
+          <i class="bi bi-info-circle"></i>
+          Selecione o público, escreva e publique.
+        </span>
+      </div>
+
+      <!-- ====== PUBLICAR NOVO AVISO ====================================== -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div class="d-flex flex-column">
+              <span class="section-title"><i class="bi bi-plus-circle"></i> Novo aviso</span>
+              <span class="muted small">Envie comunicados segmentados por cooperados, restaurantes ou ambos.</span>
+            </div>
+          </div>
+
+          <form id="formNovoAviso" method="POST" action="{{ url_for('admin_avisos') }}">
+            <!-- Conteúdo do aviso -->
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Título</label>
+                <input id="novoTitulo" name="titulo" type="text" class="form-control" maxlength="120" placeholder="Ex.: Manutenção no sistema na sexta-feira" required>
+                <div class="form-help">Máx. 120 caracteres</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Mensagem</label>
+                <textarea id="novoMensagem" name="mensagem" class="form-control" rows="4" placeholder="Escreva o conteúdo do aviso..." required></textarea>
+                <div class="form-help">Quebras de linha serão preservadas na leitura.</div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Prioridade</label>
+                <select id="novoPrioridade" name="prioridade" class="form-select">
+                  <option value="">Normal</option>
+                  <option value="baixa">Baixa</option>
+                  <option value="media">Média</option>
+                  <option value="alta">Alta</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="form-check form-switch mt-4">
+                  <input class="form-check-input" type="checkbox" role="switch" id="novoAtivo" name="ativo" checked>
+                  <label class="form-check-label" for="novoAtivo">Publicar imediatamente</label>
+                </div>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="form-check form-switch mt-4">
+                  <input class="form-check-input" type="checkbox" role="switch" id="novoConfirmacao" name="exigir_confirmacao" checked>
+                  <label class="form-check-label" for="novoConfirmacao">
+                    <i class="bi bi-check2-square"></i> Exigir confirmação de leitura
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+
+            <!-- Destino do aviso -->
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="section-title mb-1">Destino do aviso</div>
+                <div class="text-muted small mb-2">Escolha para quem este aviso será enviado.</div>
+
+                <div class="d-flex flex-wrap gap-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="destino_tipo" id="destCoops" value="cooperados" checked>
+                    <label class="form-check-label" for="destCoops">Cooperados</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="destino_tipo" id="destRests" value="restaurantes">
+                    <label class="form-check-label" for="destRests">Restaurantes</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="destino_tipo" id="destAmbos" value="ambos">
+                    <label class="form-check-label" for="destAmbos">Ambos</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BLOCO COOPERADOS -->
+              <div class="col-12" id="blocoCoops">
+                <div class="card p-3">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="section-title"><i class="bi bi-people"></i> Cooperados</div>
+                    <span class="chip"><span class="count" id="coopSelCount">0</span> selecionado(s)</span>
+                  </div>
+                  <div class="mt-2 d-flex align-items-center gap-3 flex-wrap">
+                    <div class="form-check">
+                      <input class="form-check-input alcance-coop" type="radio" name="coop_alcance" id="coopTodos" value="todos">
+                      <label class="form-check-label" for="coopTodos">Todos os cooperados</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input alcance-coop" type="radio" name="coop_alcance" id="coopSelecionar" value="selecionados" checked>
+                      <label class="form-check-label" for="coopSelecionar">Selecionar cooperados</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnCoopMarcarTodos">
+                      <i class="bi bi-check2-all"></i> Marcar todos desta lista
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnCoopLimpar">
+                      <i class="bi bi-x-circle"></i> Limpar seleção
+                    </button>
+                  </div>
+
+                  <div class="row g-2 mt-2">
+                    <div class="col-12 col-md-6">
+                      <input type="text" id="buscaCoop" class="form-control form-control-sm" placeholder="Buscar cooperado por nome...">
+                    </div>
+                  </div>
+
+                  <div class="listbox mt-2" id="listaCoops">
+                    {% for c in cooperados %}
+                    <label class="item">
+                      <input class="form-check-input chk-coop" type="checkbox" name="dest_cooperados[]" value="{{ c.id }}">
+                      <img class="avatar" src="{{ c.foto_url or url_for('static', filename='img/default.png') }}" alt="">
+                      <span class="flex-fill">{{ c.nome }}</span>
+                    </label>
+                    {% else %}
+                    <div class="text-muted p-2">Nenhum cooperado cadastrado.</div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- BLOCO RESTAURANTES -->
+              <div class="col-12 d-none" id="blocoRests">
+                <div class="card p-3">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="section-title"><i class="bi bi-shop"></i> Restaurantes</div>
+                    <span class="chip"><span class="count" id="restSelCount">0</span> selecionado(s)</span>
+                  </div>
+                  <div class="mt-2 d-flex align-items-center gap-3 flex-wrap">
+                    <div class="form-check">
+                      <input class="form-check-input alcance-rest" type="radio" name="rest_alcance" id="restTodos" value="todos">
+                      <label class="form-check-label" for="restTodos">Todos os restaurantes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input alcance-rest" type="radio" name="rest_alcance" id="restSelecionar" value="selecionados" checked>
+                      <label class="form-check-label" for="restSelecionar">Selecionar restaurantes</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnRestMarcarTodos">
+                      <i class="bi bi-check2-all"></i> Marcar todos desta lista
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnRestLimpar">
+                      <i class="bi bi-x-circle"></i> Limpar seleção
+                    </button>
+                  </div>
+
+                  <div class="row g-2 mt-2">
+                    <div class="col-12 col-md-6">
+                      <input type="text" id="buscaRest" class="form-control form-control-sm" placeholder="Buscar restaurante por nome...">
+                    </div>
+                  </div>
+
+                  <div class="listbox mt-2" id="listaRests">
+                    {% for r in restaurantes %}
+                    <label class="item">
+                      <input class="form-check-input chk-rest" type="checkbox" name="dest_restaurantes[]" value="{{ r.id }}">
+                      <i class="bi bi-shop"></i>
+                      <span class="flex-fill">{{ r.nome }}</span>
+                    </label>
+                    {% else %}
+                    <div class="text-muted p-2">Nenhum restaurante cadastrado.</div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- BLOCO AMBOS -->
+              <div class="col-12 d-none" id="blocoAmbos">
+                <div class="row g-3">
+                  <div class="col-12 col-lg-6">
+                    <div class="card p-3">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <div class="section-title"><i class="bi bi-people"></i> Cooperados</div>
+                        <span class="chip"><span class="count" id="ambCoopSelCount">0</span> selecionado(s)</span>
+                      </div>
+                      <div class="mt-2 d-flex align-items-center gap-3 flex-wrap">
+                        <div class="form-check">
+                          <input class="form-check-input alcance-coop ambos" type="radio" name="coop_alcance_ambos" id="ambCoopTodos" value="todos">
+                          <label class="form-check-label" for="ambCoopTodos">Todos os cooperados</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input alcance-coop ambos" type="radio" name="coop_alcance_ambos" id="ambCoopSel" value="selecionados" checked>
+                          <label class="form-check-label" for="ambCoopSel">Selecionar cooperados</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAmbCoopMarcarTodos">
+                          <i class="bi bi-check2-all"></i> Marcar todos
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAmbCoopLimpar">
+                          <i class="bi bi-x-circle"></i> Limpar
+                        </button>
+                      </div>
+                      <div class="row g-2 mt-2">
+                        <div class="col-12">
+                          <input type="text" id="buscaAmbCoop" class="form-control form-control-sm" placeholder="Buscar cooperado...">
+                        </div>
+                      </div>
+                      <div class="listbox mt-2" id="listaAmbCoops">
+                        {% for c in cooperados %}
+                        <label class="item">
+                          <input class="form-check-input chk-amb-coop" type="checkbox" name="dest_cooperados_ambos[]" value="{{ c.id }}">
+                          <img class="avatar" src="{{ c.foto_url or url_for('static', filename='img/default.png') }}" alt="">
+                          <span class="flex-fill">{{ c.nome }}</span>
+                        </label>
+                        {% else %}
+                        <div class="text-muted p-2">Nenhum cooperado cadastrado.</div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-lg-6">
+                    <div class="card p-3">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <div class="section-title"><i class="bi bi-shop"></i> Restaurantes</div>
+                        <span class="chip"><span class="count" id="ambRestSelCount">0</span> selecionado(s)</span>
+                      </div>
+                      <div class="mt-2 d-flex align-items-center gap-3 flex-wrap">
+                        <div class="form-check">
+                          <input class="form-check-input alcance-rest ambos" type="radio" name="rest_alcance_ambos" id="ambRestTodos" value="todos">
+                          <label class="form-check-label" for="ambRestTodos">Todos os restaurantes</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input alcance-rest ambos" type="radio" name="rest_alcance_ambos" id="ambRestSel" value="selecionados" checked>
+                          <label class="form-check-label" for="ambRestSel">Selecionar restaurantes</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAmbRestMarcarTodos">
+                          <i class="bi bi-check2-all"></i> Marcar todos
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAmbRestLimpar">
+                          <i class="bi bi-x-circle"></i> Limpar
+                        </button>
+                      </div>
+                      <div class="row g-2 mt-2">
+                        <div class="col-12">
+                          <input type="text" id="buscaAmbRest" class="form-control form-control-sm" placeholder="Buscar restaurante...">
+                        </div>
+                      </div>
+                      <div class="listbox mt-2" id="listaAmbRests">
+                        {% for r in restaurantes %}
+                        <label class="item">
+                          <input class="form-check-input chk-amb-rest" type="checkbox" name="dest_restaurantes_ambos[]" value="{{ r.id }}">
+                          <i class="bi bi-shop"></i>
+                          <span class="flex-fill">{{ r.nome }}</span>
+                        </label>
+                        {% else %}
+                        <div class="text-muted p-2">Nenhum restaurante cadastrado.</div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /row destino -->
+
+            <div class="sticky-actions d-flex flex-wrap gap-2 justify-content-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPreviewNovo" data-bs-toggle="modal" data-bs-target="#novoPreviewModal">
+                <i class="bi bi-search"></i> Visualizar
+              </button>
+              <button type="submit" class="btn btn-royal btn-sm">
+                <i class="bi bi-send"></i> Publicar
+              </button>
+              <button type="reset" class="btn btn-light btn-sm">
+                Limpar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal de pré-visualização do NOVO aviso -->
+      <div class="modal fade" id="novoPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header border-0">
+              <h5 class="modal-title"><i class="bi bi-megaphone-fill"></i> Pré-visualização</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body pt-0">
+              <div class="mb-1 text-muted small" id="prevNovoMeta">—</div>
+              <div class="fw-bold fs-5" id="prevNovoTitulo">Sem título</div>
+              <div class="mt-2" id="prevNovoMensagem" style="white-space:pre-line">—</div>
+              <div class="mt-3 d-flex gap-2 flex-wrap" id="prevNovoBadges"></div>
+              <div class="mt-2 small">
+                <span class="text-muted">Destino: </span><span id="prevDestinoTexto">—</span>
+              </div>
+            </div>
+            <div class="modal-footer border-0">
+              <button class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+              <button class="btn btn-royal" id="btnConfirmarPublicacao">
+                <i class="bi bi-send"></i> Publicar agora
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== LISTA DE AVISOS EXISTENTES ================================ -->
+      {% set total = avisos|length %}
+      {% set ativos_list = avisos|selectattr('ativo')|list %}
+      {% set qtd_ativos = ativos_list|length %}
+      {% set qtd_inativos = total - qtd_ativos %}
+
+      <div class="row g-3 align-items-stretch mt-1">
+        <div class="col-12 col-md-4">
+          <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-bold small text-muted">Total de avisos</div>
+                <div class="display-6">{{ total }}</div>
+              </div>
+              <i class="bi bi-megaphone kpi-card-icon text-primary"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="card p-3 h-100">
+            <div class="fw-bold small text-success">Ativos</div>
+            <div class="display-6 text-success">{{ qtd_ativos }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="card p-3 h-100">
+            <div class="fw-bold small text-secondary">Inativos</div>
+            <div class="display-6 text-secondary">{{ qtd_inativos }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-wrap mx-auto mt-3">
+        <input id="busca" type="text" class="form-control form-control-sm" placeholder="Filtrar avisos por título ou conteúdo...">
+      </div>
+
+      <div id="listaAvisos" class="mt-3">
+        {% for a in avisos %}
+        {% set titulo = a.titulo or a.title or 'Sem título' %}
+        {% set conteudo = a.mensagem or a.texto or a.corpo or '' %}
+        <div class="card p-3 mb-2 aviso-card" data-titulo="{{ titulo }}" data-conteudo="{{ conteudo }}">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="me-2">
+              <div class="title">{{ titulo }}</div>
+              <div class="meta">
+                <i class="bi bi-calendar-event"></i>
+                {{ a.criado_em.strftime('%d/%m/%Y %H:%M') if a.criado_em else '—' }}
+                {% if a.atualizado_em %}
+                  · <i class="bi bi-pencil-square"></i> Atualizado {{ a.atualizado_em.strftime('%d/%m/%Y %H:%M') }}
+                {% endif %}
+              </div>
+              <div class="mt-2 text-muted" style="white-space:pre-line">
+                {{ conteudo[:280] }}{% if conteudo|length > 280 %}…{% endif %}
+              </div>
+              <div class="mt-2 d-flex flex-wrap gap-2">
+                <span class="badge {{ 'bg-success-subtle text-success' if a.ativo else 'bg-secondary-subtle text-secondary' }}">
+                  {{ 'Ativo' if a.ativo else 'Inativo' }}
+                </span>
+                {% if a.prioridade %}
+                  <span class="badge-soft">Prioridade: {{ a.prioridade|capitalize }}</span>
+                {% else %}
+                  <span class="badge-soft">Prioridade: Normal</span>
+                {% endif %}
+                {% if a.exigir_confirmacao %}
+                  <span class="badge-soft"><i class="bi bi-check2-square"></i> Confirmação</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="text-end">
+              <form method="POST" action="{{ url_for('admin_avisos_toggle', aviso_id=a.id) }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-secondary">
+                  {% if a.ativo %}
+                    <i class="bi bi-eye-slash"></i> Ocultar
+                  {% else %}
+                    <i class="bi bi-eye"></i> Exibir
+                  {% endif %}
+                </button>
+              </form>
+
+              <button class="btn btn-sm btn-royal mt-1" data-bs-toggle="modal" data-bs-target="#previewModal{{ a.id }}">
+                <i class="bi bi-search"></i> Visualizar
+              </button>
+
+              <form method="POST"
+                    action="{{ url_for('admin_avisos_excluir', aviso_id=a.id) }}"
+                    class="d-inline"
+                    onsubmit="return confirm('Tem certeza que deseja excluir este aviso? Esta ação não pode ser desfeita.');">
+                <button class="btn btn-sm btn-outline-danger mt-1">
+                  <i class="bi bi-trash"></i> Excluir
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal de pré-visualização do AVISO existente -->
+        <div class="modal fade" id="previewModal{{ a.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header border-0">
+                <h5 class="modal-title"><i class="bi bi-megaphone-fill"></i> {{ titulo }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <div class="modal-body pt-0">
+                <div class="small text-muted mb-2">
+                  {{ a.criado_em.strftime('%d/%m/%Y %H:%M') if a.criado_em else '' }}
+                  {% if a.prioridade %} · Prioridade: {{ a.prioridade|capitalize }}{% endif %}
+                  {% if a.exigir_confirmacao %} · <i class="bi bi-check2-square"></i> Exige confirmação{% endif %}
+                </div>
+                <div style="white-space:pre-line">{{ conteudo }}</div>
+              </div>
+              <div class="modal-footer border-0">
+                <button class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="card p-4 text-center empty">
+          <i class="bi bi-info-circle"></i> Nenhum aviso cadastrado.
+        </div>
+        {% endfor %}
+      </div>
+
+    </div> <!-- /content-shell -->
+  </main>
+
+</div> <!-- /layout -->
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // ====== Filtro local de avisos ======
+  const busca = document.getElementById('busca');
+  const lista = document.getElementById('listaAvisos');
+
+  const filtroAvisos = () => {
+    if (!busca || !lista) return;
+    const q = (busca.value || '').toLowerCase();
+    const cards = lista.querySelectorAll('.aviso-card');
+    for (const card of cards) {
+      const titulo = (card.dataset.titulo || '').toLowerCase();
+      const conteudo = (card.dataset.conteudo || '').toLowerCase();
+      card.style.display = (!q || titulo.includes(q) || conteudo.includes(q)) ? '' : 'none';
+    }
+  };
+
+  let tFilter;
+  busca?.addEventListener('input', () => {
+    clearTimeout(tFilter);
+    tFilter = setTimeout(filtroAvisos, 80);
+  });
+
+  // ====== Alterna blocos de destino ======
+  const destCoops = document.getElementById('destCoops');
+  const destRests = document.getElementById('destRests');
+  const destAmbos = document.getElementById('destAmbos');
+  const blocoCoops = document.getElementById('blocoCoops');
+  const blocoRests = document.getElementById('blocoRests');
+  const blocoAmbos = document.getElementById('blocoAmbos');
+
+  function aplicarModoDestino(){
+    const modo = document.querySelector('input[name="destino_tipo"]:checked')?.value;
+    if (blocoCoops) blocoCoops.classList.toggle('d-none', modo !== 'cooperados');
+    if (blocoRests) blocoRests.classList.toggle('d-none', modo !== 'restaurantes');
+    if (blocoAmbos) blocoAmbos.classList.toggle('d-none', modo !== 'ambos');
+  }
+  [destCoops, destRests, destAmbos].forEach(el => el?.addEventListener('change', aplicarModoDestino));
+  aplicarModoDestino();
+
+  // ====== util contadores/busca ======
+  // COOPERADOS
+  const coopSelCount = document.getElementById('coopSelCount');
+  const listaCoops = document.getElementById('listaCoops');
+  const buscaCoop = document.getElementById('buscaCoop');
+  const btnCoopMarcarTodos = document.getElementById('btnCoopMarcarTodos');
+  const btnCoopLimpar = document.getElementById('btnCoopLimpar');
+
+  function atualizarContadorCoop(){
+    if (!coopSelCount || !listaCoops) return;
+    coopSelCount.textContent = listaCoops.querySelectorAll('.chk-coop:checked').length;
+  }
+
+  listaCoops?.addEventListener('change', e => {
+    if(e.target?.classList?.contains('chk-coop')) atualizarContadorCoop();
+  });
+
+  btnCoopMarcarTodos?.addEventListener('click', () => {
+    if (!listaCoops) return;
+    listaCoops.querySelectorAll('.chk-coop:not(:disabled)').forEach(ch => ch.checked = true);
+    atualizarContadorCoop();
+  });
+
+  btnCoopLimpar?.addEventListener('click', () => {
+    if (!listaCoops) return;
+    listaCoops.querySelectorAll('.chk-coop').forEach(ch => ch.checked = false);
+    atualizarContadorCoop();
+  });
+
+  buscaCoop?.addEventListener('input', () => {
+    if (!listaCoops) return;
+    const q = (buscaCoop.value || '').toLowerCase();
+    listaCoops.querySelectorAll('.item').forEach(it => {
+      it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  });
+
+  // RESTAURANTES
+  const restSelCount = document.getElementById('restSelCount');
+  const listaRests = document.getElementById('listaRests');
+  const buscaRest = document.getElementById('buscaRest');
+  const btnRestMarcarTodos = document.getElementById('btnRestMarcarTodos');
+  const btnRestLimpar = document.getElementById('btnRestLimpar');
+
+  function atualizarContadorRest(){
+    if (!restSelCount || !listaRests) return;
+    restSelCount.textContent = listaRests.querySelectorAll('.chk-rest:checked').length;
+  }
+
+  listaRests?.addEventListener('change', e => {
+    if(e.target?.classList?.contains('chk-rest')) atualizarContadorRest();
+  });
+
+  btnRestMarcarTodos?.addEventListener('click', () => {
+    if (!listaRests) return;
+    listaRests.querySelectorAll('.chk-rest:not(:disabled)').forEach(ch => ch.checked = true);
+    atualizarContadorRest();
+  });
+
+  btnRestLimpar?.addEventListener('click', () => {
+    if (!listaRests) return;
+    listaRests.querySelectorAll('.chk-rest').forEach(ch => ch.checked = false);
+    atualizarContadorRest();
+  });
+
+  buscaRest?.addEventListener('input', () => {
+    if (!listaRests) return;
+    const q = (buscaRest.value || '').toLowerCase();
+    listaRests.querySelectorAll('.item').forEach(it => {
+      it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  });
+
+  // AMBOS
+  const ambCoopSelCount = document.getElementById('ambCoopSelCount');
+  const ambRestSelCount = document.getElementById('ambRestSelCount');
+  const listaAmbCoops = document.getElementById('listaAmbCoops');
+  const listaAmbRests = document.getElementById('listaAmbRests');
+  const buscaAmbCoop = document.getElementById('buscaAmbCoop');
+  const buscaAmbRest = document.getElementById('buscaAmbRest');
+  const btnAmbCoopMarcarTodos = document.getElementById('btnAmbCoopMarcarTodos');
+  const btnAmbCoopLimpar = document.getElementById('btnAmbCoopLimpar');
+  const btnAmbRestMarcarTodos = document.getElementById('btnAmbRestMarcarTodos');
+  const btnAmbRestLimpar = document.getElementById('btnAmbRestLimpar');
+
+  function atualizarContadorAmbCoop(){
+    if (ambCoopSelCount && listaAmbCoops) {
+      ambCoopSelCount.textContent = listaAmbCoops.querySelectorAll('.chk-amb-coop:checked').length;
+    }
+  }
+
+  function atualizarContadorAmbRest(){
+    if (ambRestSelCount && listaAmbRests) {
+      ambRestSelCount.textContent = listaAmbRests.querySelectorAll('.chk-amb-rest:checked').length;
+    }
+  }
+
+  listaAmbCoops?.addEventListener('change', e => {
+    if(e.target?.classList?.contains('chk-amb-coop')) atualizarContadorAmbCoop();
+  });
+
+  listaAmbRests?.addEventListener('change', e => {
+    if(e.target?.classList?.contains('chk-amb-rest')) atualizarContadorAmbRest();
+  });
+
+  btnAmbCoopMarcarTodos?.addEventListener('click', () => {
+    if (!listaAmbCoops) return;
+    listaAmbCoops.querySelectorAll('.chk-amb-coop:not(:disabled)').forEach(ch => ch.checked = true);
+    atualizarContadorAmbCoop();
+  });
+
+  btnAmbCoopLimpar?.addEventListener('click', () => {
+    if (!listaAmbCoops) return;
+    listaAmbCoops.querySelectorAll('.chk-amb-coop').forEach(ch => ch.checked = false);
+    atualizarContadorAmbCoop();
+  });
+
+  btnAmbRestMarcarTodos?.addEventListener('click', () => {
+    if (!listaAmbRests) return;
+    listaAmbRests.querySelectorAll('.chk-amb-rest:not(:disabled)').forEach(ch => ch.checked = true);
+    atualizarContadorAmbRest();
+  });
+
+  btnAmbRestLimpar?.addEventListener('click', () => {
+    if (!listaAmbRests) return;
+    listaAmbRests.querySelectorAll('.chk-amb-rest').forEach(ch => ch.checked = false);
+    atualizarContadorAmbRest();
+  });
+
+  buscaAmbCoop?.addEventListener('input', () => {
+    if (!listaAmbCoops) return;
+    const q = (buscaAmbCoop.value || '').toLowerCase();
+    listaAmbCoops.querySelectorAll('.item').forEach(it => {
+      it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  });
+
+  buscaAmbRest?.addEventListener('input', () => {
+    if (!listaAmbRests) return;
+    const q = (buscaAmbRest.value || '').toLowerCase();
+    listaAmbRests.querySelectorAll('.item').forEach(it => {
+      it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  });
+
+  // ====== Pré-visualização do NOVO aviso ======
+  const novoTitulo = document.getElementById('novoTitulo');
+  const novoMensagem = document.getElementById('novoMensagem');
+  const novoPrioridade = document.getElementById('novoPrioridade');
+  const novoAtivo = document.getElementById('novoAtivo');
+  const novoConfirmacao = document.getElementById('novoConfirmacao');
+
+  const prevNovoTitulo = document.getElementById('prevNovoTitulo');
+  const prevNovoMensagem = document.getElementById('prevNovoMensagem');
+  const prevNovoBadges = document.getElementById('prevNovoBadges');
+  const prevNovoMeta = document.getElementById('prevNovoMeta');
+  const prevDestinoTexto = document.getElementById('prevDestinoTexto');
+
+  function resumoDestinoTexto(){
+    const modo = document.querySelector('input[name="destino_tipo"]:checked')?.value;
+
+    if(modo === 'cooperados'){
+      const alcance = document.querySelector('input[name="coop_alcance"]:checked')?.value;
+      if(alcance === 'todos') return 'Todos os cooperados';
+      const n = document.querySelectorAll('#listaCoops .chk-coop:checked').length;
+      return n ? `${n} cooperado(s) selecionado(s)` : 'Nenhum cooperado selecionado';
+    }
+
+    if(modo === 'restaurantes'){
+      const alcance = document.querySelector('input[name="rest_alcance"]:checked')?.value;
+      if(alcance === 'todos') return 'Todos os restaurantes';
+      const n = document.querySelectorAll('#listaRests .chk-rest:checked').length;
+      return n ? `${n} restaurante(s) selecionado(s)` : 'Nenhum restaurante selecionado';
+    }
+
+    // modo === 'ambos'
+    const alcCoop = document.querySelector('input[name="coop_alcance_ambos"]:checked')?.value;
+    const alcRest = document.querySelector('input[name="rest_alcance_ambos"]:checked')?.value;
+    const nC = document.querySelectorAll('#listaAmbCoops .chk-amb-coop:checked').length;
+    const nR = document.querySelectorAll('#listaAmbRests .chk-amb-rest:checked').length;
+
+    const txtC = (alcCoop === 'todos') ? 'todos os cooperados' :
+                 (nC ? `${nC} cooperado(s)` : 'nenhum cooperado');
+    const txtR = (alcRest === 'todos') ? 'todos os restaurantes' :
+                 (nR ? `${nR} restaurante(s)` : 'nenhum restaurante');
+
+    return `Cooperados: ${txtC} · Restaurantes: ${txtR}`;
+  }
+
+  function atualizarPreviewNovo() {
+    if (!prevNovoTitulo || !prevNovoMensagem || !prevNovoBadges || !prevNovoMeta || !prevDestinoTexto) return;
+
+    prevNovoTitulo.textContent = (novoTitulo?.value || 'Sem título');
+    prevNovoMensagem.textContent = (novoMensagem?.value || '—');
+
+    prevNovoBadges.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    const b1 = document.createElement('span');
+    b1.className = 'badge ' + (novoAtivo?.checked ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary');
+    b1.textContent = novoAtivo?.checked ? 'Ativo' : 'Inativo';
+    frag.appendChild(b1);
+
+    const pr = (novoPrioridade?.value || 'normal');
+    const b2 = document.createElement('span');
+    b2.className = 'badge-soft';
+    const pMap = {baixa:'Baixa', media:'Média', alta:'Alta', normal:'Normal'};
+    b2.textContent = 'Prioridade: ' + (pMap[pr] || 'Normal');
+    b2.style.marginLeft = '8px';
+    frag.appendChild(b2);
+
+    if (novoConfirmacao?.checked){
+      const b3 = document.createElement('span');
+      b3.className = 'badge-soft';
+      b3.style.marginLeft = '8px';
+      b3.innerHTML = '<i class="bi bi-check2-square"></i> Confirmação';
+      frag.appendChild(b3);
+    }
+    prevNovoBadges.appendChild(frag);
+
+    const agora = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    prevNovoMeta.textContent =
+      `${pad(agora.getDate())}/${pad(agora.getMonth()+1)}/${agora.getFullYear()} ` +
+      `${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
+
+    prevDestinoTexto.textContent = resumoDestinoTexto();
+  }
+
+  document.getElementById('btnPreviewNovo')?.addEventListener('click', atualizarPreviewNovo);
+  [
+    novoTitulo, novoMensagem, novoPrioridade, novoAtivo, novoConfirmacao,
+    destCoops, destRests, destAmbos
+  ].forEach(el => {
+    el?.addEventListener('input', atualizarPreviewNovo);
+    el?.addEventListener('change', atualizarPreviewNovo);
+  });
+
+  atualizarPreviewNovo();
+
+  // contadores iniciais
+  function bootCounts(){
+    const ev = new Event('change');
+    document.getElementById('listaCoops')?.dispatchEvent(ev);
+    document.getElementById('listaRests')?.dispatchEvent(ev);
+    document.getElementById('listaAmbCoops')?.dispatchEvent(ev);
+    document.getElementById('listaAmbRests')?.dispatchEvent(ev);
+  }
+  bootCounts();
+
+  // Publicar direto pelo botão dentro do modal
+  document.getElementById('btnConfirmarPublicacao')?.addEventListener('click', () => {
+    document.getElementById('formNovoAviso')?.submit();
+  });
+});
+</script>
+</body>
+</html>

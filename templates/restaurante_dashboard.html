@@ -1,0 +1,2596 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Portal do Estabelecimento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap & Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+  :root{
+    --royal:#2141d9;
+    --royal-2:#3654e6;
+    --royal-soft:#edf1ff;
+
+    --bg:#f5f7ff;
+    --text:#111827;
+    --muted:#6b7280;
+
+    --card:#ffffff;
+    --border:#e1e5f2;
+    --chip:#eef1ff;
+
+    --danger:#e74c3c;
+    --ok:#16a34a;
+  }
+
+  :root[data-theme="dark"]{
+    --bg:#020617;
+    --text:#e5e7eb;
+    --muted:#9ca3af;
+
+    --card:#020617;
+    --border:#1f2937;
+    --chip:#111827;
+
+    --royal:#3b82f6;
+    --royal-2:#2563eb;
+    --royal-soft:#0b2447;
+  }
+
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;
+    font-size:15px;
+    line-height:1.5;
+  }
+  a{text-decoration:none; color:inherit;}
+
+  .shell{
+    display:grid;
+    grid-template-columns:260px minmax(0,1fr);
+    min-height:100vh;
+  }
+
+  .aside{
+    background:linear-gradient(180deg,#2141d9 0%,#3654e6 100%);
+    color:#f9fafb;
+    padding:18px 14px;
+    position:sticky;
+    top:0;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .brand{
+    font-weight:800;
+    font-size:1.02rem;
+    padding:10px 12px;
+    border-radius:12px;
+    background:rgba(15,23,42,0.18);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .theme-toggle{
+    margin-top:4px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.35);
+    background:rgba(15,23,42,0.18);
+    color:#e5e7eb;
+    padding:8px 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    font-size:.82rem;
+  }
+
+  .navmenu{
+    margin-top:12px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .navmenu a{
+    color:#f9fafb;
+    padding:8px 10px;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:600;
+    font-size:.9rem;
+    opacity:.9;
+    transition:background .12s ease,opacity .12s ease;
+  }
+  .navmenu a i{font-size:1rem;}
+  .navmenu a:hover{background:rgba(15,23,42,0.25); opacity:1;}
+  .navmenu a.active{
+    background:#1d3ad3;
+    opacity:1;
+  }
+
+  .content{
+    padding:22px clamp(14px,3vw,32px);
+    max-width:1200px;
+    width:100%;
+    margin:0 auto;
+  }
+
+  .section-title{
+    color:var(--royal);
+    font-weight:800;
+    font-size:1.18rem;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .section-title i{font-size:1.1rem;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:0 2px 6px rgba(15,23,42,0.04);
+  }
+  .card-body{padding:14px 16px;}
+
+  .chip{
+    background:var(--chip);
+    border-radius:999px;
+    border:1px solid var(--border);
+    padding:.18rem .7rem;
+    font-size:.8rem;
+    font-weight:600;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    color:var(--text);
+  }
+
+  .table{
+    color:var(--text);
+    margin-bottom:0;
+  }
+  .table th,
+  .table td{
+    border-color:var(--border);
+    font-size:.86rem;
+  }
+  .table thead th{
+    background:#f9fafb;
+    text-transform:uppercase;
+    font-size:.75rem;
+    letter-spacing:.03em;
+    color:var(--muted);
+  }
+  .table-compact th,
+  .table-compact td{
+    padding:.45rem .55rem;
+  }
+
+  .btn-royal{
+    background:var(--royal);
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    font-size:.9rem;
+    font-weight:600;
+    padding:.4rem .9rem;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .btn-royal:hover{
+    background:var(--royal-2);
+    color:#fff;
+  }
+
+  .btn-outline-royal{
+    border-radius:999px;
+    border:1px solid var(--royal);
+    background:transparent;
+    color:var(--royal);
+    font-size:.86rem;
+    font-weight:600;
+    padding:.3rem .8rem;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .btn-outline-royal:hover{
+    background:var(--royal);
+    color:#fff;
+  }
+
+  .btn-outline-danger{
+    border-radius:999px;
+    border-color:var(--danger);
+    color:var(--danger);
+    font-size:.85rem;
+    padding:.25rem .75rem;
+  }
+  .btn-outline-danger:hover{
+    background:var(--danger);
+    color:#fff;
+  }
+
+  section[data-view]{display:none;}
+  section.view-active{display:block;}
+
+  .badge-dot{
+    min-width:20px;
+    height:20px;
+    border-radius:999px;
+    padding:0 6px;
+    font-size:.72rem;
+    font-weight:700;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#e11d48;
+    color:#fff;
+    margin-left:auto;
+  }
+
+  .aviso-card{
+    border-left:4px solid var(--royal);
+    border-radius:14px;
+  }
+  .aviso-card.lido{
+    border-left-color:#9ca3af;
+    opacity:.96;
+  }
+  .aviso-card.prioridade{border-left-color:var(--danger);}
+
+  /* LANÇAR – layout profissional */
+
+  section[data-view="lancar"] .card-cooperados-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:6px;
+  }
+  section[data-view="lancar"] .card-cooperados-header-title{
+    font-size:.8rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    font-weight:700;
+  }
+
+  #buscaCoop{
+    font-size:.86rem;
+  }
+  #selectCoop{
+    font-size:.86rem;
+    margin-top:4px;
+  }
+
+  #listaCooperados{
+    margin-top:8px;
+    padding-top:4px;
+    border-top:1px dashed var(--border);
+  }
+
+  .cooperado-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:6px 8px;
+    border-radius:10px;
+    cursor:pointer;
+    border:1px solid transparent;
+    background:transparent;
+    transition:background .12s ease,border-color .12s ease,transform .08s ease;
+  }
+  .cooperado-item:hover{
+    background:#edf2ff;
+    border-color:#d0ddff;
+    transform:translateY(-1px);
+  }
+  .cooperado-item.selected{
+    background:var(--royal-soft);
+    border-color:var(--royal);
+  }
+
+  #blocoLancamento{
+    border-radius:16px;
+  }
+
+  #hintSelecione{
+    border-radius:12px;
+    background:#eef2ff;
+    border:1px dashed #c7d2fe;
+    font-size:.9rem;
+  }
+
+  .selected-header{
+    border-radius:12px;
+    background:#f3f4ff;
+    padding:10px 12px;
+  }
+  .selected-header img.big{
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    object-fit:cover;
+  }
+
+  section[data-view="lancar"] #formLancamento{
+    border-radius:12px;
+    background:#f9fafb;
+    padding:10px 12px;
+    margin-top:8px;
+  }
+
+  section[data-view="lancar"] #formLancamento .form-label{
+    margin-bottom:2px;
+  }
+
+  .rating-group{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .rating-label{
+    min-width:150px;
+    font-weight:600;
+    font-size:.9rem;
+    color:var(--muted);
+  }
+  .stars{
+    display:inline-flex;
+    gap:3px;
+    font-size:1.1rem;
+    cursor:pointer;
+  }
+  .star{
+    color:#cbd5f5;
+  }
+  .star.active,
+  .star.hover{
+    color:#facc15;
+  }
+  .rating-group[data-name="av_geral"] .stars{
+    pointer-events:none;
+    opacity:.9;
+  }
+
+  .kpi{
+    background:#f9fbff;
+    border-radius:12px;
+    border:1px solid var(--border);
+    padding:8px 10px;
+    font-size:.86rem;
+  }
+
+  .doc-row{
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px 14px;
+    background:var(--card);
+    box-shadow:0 3px 8px rgba(15,23,42,0.08);
+  }
+  .doc-row:hover{
+    box-shadow:0 5px 12px rgba(15,23,42,0.12);
+  }
+  .doc-title{font-weight:700; font-size:.96rem;}
+  .doc-cat{
+    font-size:.72rem;
+    color:var(--royal);
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    font-weight:700;
+  }
+  .doc-date{font-size:.84rem; color:var(--muted);}
+  .doc-desc{
+    margin-top:.25rem;
+    font-size:.9rem;
+    background:#f3f4ff;
+    border-radius:10px;
+    padding:.5rem .75rem;
+  }
+
+  .form-label{
+    font-size:.8rem;
+    font-weight:600;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .form-control,
+  .form-select{
+    border-radius:10px;
+    border:1px solid var(--border);
+    font-size:.9rem;
+  }
+  .form-control:focus,
+  .form-select:focus{
+    border-color:var(--royal);
+    box-shadow:0 0 0 1px rgba(37,99,235,0.2);
+  }
+
+  textarea.form-control{
+    border-radius:12px;
+  }
+
+  @media(max-width:920px){
+    .shell{grid-template-columns:70px minmax(0,1fr);}
+    .brand span{display:none;}
+    .navmenu a span{display:none;}
+  }
+  @media(max-width:720px){
+    .content{padding-inline:14px;}
+    section[data-view="lancar"] #formLancamento{
+      padding:10px;
+    }
+  }
+
+  /* OVERLAY "LANÇANDO..." */
+  .lanc-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.35);
+    backdrop-filter:blur(2px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:2000;
+  }
+  .lanc-overlay-box{
+    background:var(--card);
+    border-radius:16px;
+    padding:18px 22px;
+    box-shadow:0 10px 30px rgba(15,23,42,0.35);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    min-width:220px;
+  }
+  .lanc-spinner{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    border:3px solid var(--border);
+    border-top-color:var(--royal);
+    animation:lanc-spin .7s linear infinite;
+  }
+  .lanc-overlay-text{
+    font-weight:600;
+    color:var(--royal);
+    font-size:.95rem;
+  }
+
+  @keyframes lanc-spin{
+    to{transform:rotate(360deg);}
+  }
+
+  /* Animação de linha ao excluir */
+  .row-exiting{
+    animation: rowHide .35s ease forwards;
+  }
+
+  @keyframes rowHide{
+    to{
+      opacity:0;
+      transform:translateX(-10px);
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <!-- ===== Aside ===== -->
+    <aside class="aside">
+      <div class="brand"><i class="bi bi-building"></i><span>Portal do Estabelecimento</span></div>
+      <button id="btnTheme" class="theme-toggle" type="button"><i class="bi bi-moon"></i><span id="lblTheme">Escuro</span></button>
+
+      <nav class="navmenu" id="sideNav">
+        <a data-target="lancar" class="{{ 'active' if (view|default('lancar') not in ['escalas','config','avisos','lancamentos','tabelas']) else '' }}" href="{{ url_for('portal_restaurante', view='lancar') }}">
+          <i class="bi bi-person-lines-fill"></i><span>Cooperados</span>
+        </a>
+        <a data-target="lancamentos" class="{{ 'active' if view=='lancamentos' else '' }}" href="{{ url_for('portal_restaurante', view='lancamentos') }}">
+          <i class="bi bi-receipt"></i><span>Lançamentos</span>
+        </a>
+        <a data-target="escalas" class="{{ 'active' if view=='escalas' else '' }}" href="{{ url_for('portal_restaurante', view='escalas') }}">
+          <i class="bi bi-calendar-week"></i><span>Escala</span>
+        </a>
+        {% if session.get('user_tipo') == 'restaurante' %}
+        <a id="linkTabelas" href="{{ url_for('rest_tabelas') }}">
+          <i class="bi bi-table"></i><span>Tabelas</span>
+      </a>
+        {% endif %}
+        <a data-target="config" class="{{ 'active' if view=='config' else '' }}" href="{{ url_for('portal_restaurante', view='config') }}">
+          <i class="bi bi-gear"></i><span>Configuração</span>
+        </a>
+        <!-- Avisos = único com badge -->
+        <a id="linkAvisos" data-target="avisos" class="{{ 'active' if view=='avisos' else '' }}" href="{{ url_for('portal_restaurante_avisos') }}">
+          <i class="bi bi-megaphone"></i><span>Avisos</span>
+          {% set _cntAvisos = (avisos_nao_lidos_count if avisos_nao_lidos_count is defined else avisos_unread_count) or 0 %}
+          <span class="badge-dot" id="badgeAvisos" {% if _cntAvisos == 0 %}style="display:none"{% endif %}>{{ _cntAvisos }}</span>
+        </a>
+        <a href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i><span>Sair</span></a>
+      </nav>
+    </aside>
+
+    <!-- ===== Main ===== -->
+    <main class="content">
+      {% with msgs = get_flashed_messages(with_categories=True) %}
+        {% if msgs %}
+          <div class="mb-3">
+            {% for cat, msg in msgs %}
+              <div class="alert alert-{{ 'danger' if cat=='error' else cat }} py-2 px-3 mb-2">{{ msg|safe }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% set _cooperados = cooperados if cooperados is defined and cooperados is not none else [] %}
+      {% set _lancamentos_periodo = lancamentos_periodo if lancamentos_periodo is defined and lancamentos_periodo is not none else [] %}
+      {% set _dias_list = dias_list if dias_list is defined and dias_list is not none else [] %}
+      {% set _agenda = agenda if agenda is defined and agenda is not none else {} %}
+      {% set _ref_data = ref_data if ref_data is defined and ref_data is not none else None %}
+      {% set _modo = modo if modo is defined and modo is not none else 'semana' %}
+      {% set _url_lancar_producao = url_lancar_producao if url_lancar_producao is defined else url_for('portal_restaurante') %}
+
+      <!-- ===== CONFIG ===== -->
+      <section data-view="config">
+        <div class="section-title"><i class="bi bi-shield-lock"></i> Configuração</div>
+        <div class="card card-body">
+          <form class="row g-3 form-password" method="POST" action="{{ url_for('rest_alterar_senha') }}">
+            <div class="col-md-4">
+              <label class="form-label">Senha atual</label>
+              <div class="input-group">
+                <input type="password" class="form-control" name="senha_atual" required>
+                <button class="btn btn-outline-royal" type="button" onclick="togglePwd(this)"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Nova senha</label>
+              <div class="input-group">
+                <input type="password" class="form-control" name="senha_nova" minlength="6" required>
+                <button class="btn btn-outline-royal" type="button" onclick="togglePwd(this)"><i class="bi bi-eye"></i></button>
+              </div>
+              <div class="form-text">Mínimo de 6 caracteres.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Confirmar nova senha</label>
+              <div class="input-group">
+                <input type="password" class="form-control" name="senha_conf" minlength="6" required>
+                <button class="btn btn-outline-royal" type="button" onclick="togglePwd(this)"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+            <div class="col-12 text-end"><button class="btn btn-royal"><i class="bi bi-save"></i> Salvar</button></div>
+          </form>
+        </div>
+      </section>
+
+     <!-- ===== ESCALAS ===== -->
+<section data-view="escalas">
+  <div class="section-title"><i class="bi bi-calendar-week"></i> Escala semanal</div>
+  <div class="card card-body">
+    <form class="row g-2 align-items-end" method="GET" action="{{ url_for('portal_restaurante') }}">
+      <input type="hidden" name="view" value="escalas">
+      <div class="col-md-3">
+        <label class="form-label">Ver</label>
+        <select name="modo" class="form-select">
+          <option value="semana" {{ 'selected' if (_modo=='semana') }}>Semana completa</option>
+          <option value="dia" {{ 'selected' if (_modo=='dia') }}>Somente 1 dia</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Referência</label>
+        <input type="date" name="ref" class="form-control" value="{{ _ref_data and _ref_data.strftime('%Y-%m-%d') }}">
+      </div>
+      <div class="col-md-6 text-end">
+        <button class="btn btn-royal"><i class="bi bi-funnel"></i> Aplicar</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('portal_restaurante', view='escalas') }}">
+          <i class="bi bi-arrow-counterclockwise"></i> Hoje
+        </a>
+      </div>
+    </form>
+
+    {% if _modo == 'semana' %}
+    <!-- ======================= MODO SEMANA COMPLETA ======================= -->
+    <hr class="my-3">
+    <div class="row g-3">
+      {% for dia in _dias_list %}
+      <div class="col-md-6 col-lg-4">
+        <div class="card-soft h-100 d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge text-bg-primary fw-semibold">
+              {{ ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'][dia.weekday()] }} — {{ dia.strftime('%d/%m/%Y') }}
+            </span>
+            <i class="bi bi-people"></i>
+          </div>
+
+          {% set lista = _agenda.get(dia, []) %}
+          {% if lista %}
+            {# ---- CONTAGENS POR TURNO (DIA / NOITE / INDEFINIDO) ---- #}
+            {% set ns = namespace(dia_total=0, noite_total=0, indef_total=0) %}
+            {% for item in lista %}
+              {% set t = (item.turno or '')|lower %}
+              {% if 'noite' not in t and ( 'dia' in t or 'manhã' in t or 'manha' in t or 'tarde' in t or 'diurno' in t or 'comercial' in t ) %}
+                {% set ns.dia_total = ns.dia_total + 1 %}
+              {% elif 'noite' in t %}
+                {% set ns.noite_total = ns.noite_total + 1 %}
+              {% else %}
+                {% set ns.indef_total = ns.indef_total + 1 %}
+              {% endif %}
+            {% endfor %}
+
+            <div class="small text-muted mb-1">
+              <span class="me-3">Dia: <strong>{{ ns.dia_total }}</strong></span>
+              <span class="me-3">Noite: <strong>{{ ns.noite_total }}</strong></span>
+              <span>Indef.: <strong>{{ ns.indef_total }}</strong></span>
+            </div>
+
+            <div style="max-height:360px; overflow:auto; border-top:1px dashed var(--border); padding-top:0.5rem;">
+              <div class="row g-2">
+                <!-- COLUNA ESQUERDA: DIA -->
+                <div class="col-6 border-end">
+                  <div class="small text-uppercase text-muted mb-1">Dia ({{ ns.dia_total }})</div>
+                  {% set tem_dia = false %}
+                  {% for grupo in (lista | groupby('contrato')) %}
+                    {% set contrato_nome = grupo.grouper or 'Sem contrato' %}
+                    {% set gns = namespace(tem_no_contrato=false) %}
+                    {% for item in grupo.list %}
+                      {% set t = (item.turno or '')|lower %}
+                      {% if 'noite' not in t and ( 'dia' in t or 'manhã' in t or 'manha' in t or 'tarde' in t or 'diurno' in t or 'comercial' in t ) %}
+                        {% if not gns.tem_no_contrato %}
+                          <div class="fw-semibold mt-2">{{ contrato_nome }}</div>
+                          {% set gns.tem_no_contrato = true %}
+                          {% set tem_dia = true %}
+                        {% endif %}
+                        <div class="py-1 border-bottom small">
+                          <div class="fw-semibold">
+                            {{ item.coop.nome if item.coop else (item.nome_planilha or item.cooperado_nome or '—') }}
+                          </div>
+                          <div class="text-muted">
+                            {{ item.turno or '—' }}{% if item.horario %} • {{ item.horario }}{% endif %}
+                          </div>
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                  {% endfor %}
+                  {% if not tem_dia %}
+                    <div class="text-muted small mt-2">Sem escala de dia.</div>
+                  {% endif %}
+                </div>
+
+                <!-- COLUNA DIREITA: NOITE -->
+                <div class="col-6">
+                  <div class="small text-uppercase text-muted mb-1">Noite ({{ ns.noite_total }})</div>
+                  {% set tem_noite = false %}
+                  {% for grupo in (lista | groupby('contrato')) %}
+                    {% set contrato_nome = grupo.grouper or 'Sem contrato' %}
+                    {% set gns = namespace(tem_no_contrato=false) %}
+                    {% for item in grupo.list %}
+                      {% set t = (item.turno or '')|lower %}
+                      {% if 'noite' in t %}
+                        {% if not gns.tem_no_contrato %}
+                          <div class="fw-semibold mt-2">{{ contrato_nome }}</div>
+                          {% set gns.tem_no_contrato = true %}
+                          {% set tem_noite = true %}
+                        {% endif %}
+                        <div class="py-1 border-bottom small">
+                          <div class="fw-semibold">
+                            {{ item.coop.nome if item.coop else (item.nome_planilha or item.cooperado_nome or '—') }}
+                          </div>
+                          <div class="text-muted">
+                            {{ item.turno or '—' }}{% if item.horario %} • {{ item.horario }}{% endif %}
+                          </div>
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                  {% endfor %}
+                  {% if not tem_noite %}
+                    <div class="text-muted small mt-2">Sem escala de noite.</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              {# OPCIONAL: LISTAR INDEFINIDOS ABAIXO #}
+              {% if ns.indef_total > 0 %}
+              <div class="mt-3 pt-2 border-top">
+                <div class="small text-uppercase text-muted mb-1">Indefinido ({{ ns.indef_total }})</div>
+                {% for grupo in (lista | groupby('contrato')) %}
+                  {% set contrato_nome = grupo.grouper or 'Sem contrato' %}
+                  {% set gns = namespace(tem_no_contrato=false) %}
+                  {% for item in grupo.list %}
+                    {% set t = (item.turno or '')|lower %}
+                    {% if not ('noite' in t or 'dia' in t or 'manhã' in t or 'manha' in t or 'tarde' in t or 'diurno' in t or 'comercial' in t) %}
+                      {% if not gns.tem_no_contrato %}
+                        <div class="fw-semibold mt-2">{{ contrato_nome }}</div>
+                        {% set gns.tem_no_contrato = true %}
+                      {% endif %}
+                      <div class="py-1 border-bottom small">
+                        <div class="fw-semibold">
+                          {{ item.coop.nome if item.coop else (item.nome_planilha or item.cooperado_nome or '—') }}
+                        </div>
+                        <div class="text-muted">
+                          {{ item.turno or '—' }}{% if item.horario %} • {{ item.horario }}{% endif %}
+                        </div>
+                      </div>
+                    {% endif %}
+                  {% endfor %}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="text-muted small py-2">Sem escala registrada.</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- ======================= MODO SOMENTE 1 DIA ======================= -->
+    <hr class="my-3">
+    <div class="card-soft">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="badge text-bg-primary fw-semibold">
+          {{ _ref_data and ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'][_ref_data.weekday()] }} — {{ _ref_data and _ref_data.strftime('%d/%m/%Y') }}
+        </span>
+        <i class="bi bi-calendar-day"></i>
+      </div>
+
+      {% set lista = _agenda.get(_ref_data, []) if _ref_data else [] %}
+      {% if lista %}
+        {# CONTAGENS PARA O DIA SELECIONADO #}
+        {% set ns = namespace(dia_total=0, noite_total=0, indef_total=0) %}
+        {% for item in lista %}
+          {% set t = (item.turno or '')|lower %}
+          {% if 'noite' not in t and ( 'dia' in t or 'manhã' in t or 'manha' in t or 'tarde' in t or 'diurno' in t or 'comercial' in t ) %}
+            {% set ns.dia_total = ns.dia_total + 1 %}
+          {% elif 'noite' in t %}
+            {% set ns.noite_total = ns.noite_total + 1 %}
+          {% else %}
+            {% set ns.indef_total = ns.indef_total + 1 %}
+          {% endif %}
+        {% endfor %}
+
+        <div class="small text-muted mb-2">
+          <span class="me-3">Dia: <strong>{{ ns.dia_total }}</strong></span>
+          <span class="me-3">Noite: <strong>{{ ns.noite_total }}</strong></span>
+          <span>Indef.: <strong>{{ ns.indef_total }}</strong></span>
+        </div>
+
+        <div class="row g-3">
+          <!-- COLUNA ESQUERDA: DIA -->
+          <div class="col-md-6">
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle table-compact mb-0">
+                <thead class="table-primary">
+                  <tr>
+                    <th colspan="4" class="text-center text-uppercase">Turno de DIA ({{ ns.dia_total }})</th>
+                  </tr>
+                  <tr>
+                    <th>Contrato</th>
+                    <th>Cooperado</th>
+                    <th>Turno</th>
+                    <th>Horário</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% set tem_dia = false %}
+                  {% for grupo in (lista | groupby('contrato')) %}
+                    {% set contrato_nome = grupo.grouper or 'Sem contrato' %}
+                    {% for item in grupo.list %}
+                      {% set t = (item.turno or '')|lower %}
+                      {% if 'noite' not in t and ( 'dia' in t or 'manhã' in t or 'manha' in t or 'tarde' in t or 'diurno' in t or 'comercial' in t ) %}
+                        {% set tem_dia = true %}
+                        <tr>
+                          <td>{{ contrato_nome }}</td>
+                          <td>{{ item.coop.nome if item.coop else (item.nome_planilha or item.cooperado_nome or '—') }}</td>
+                          <td>{{ item.turno or '—' }}</td>
+                          <td>{{ item.horario or '—' }}</td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                  {% endfor %}
+                  {% if not tem_dia %}
+                    <tr><td colspan="4" class="text-center text-muted">Sem escala de dia.</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- COLUNA DIREITA: NOITE -->
+          <div class="col-md-6">
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle table-compact mb-0">
+                <thead class="table-primary">
+                  <tr>
+                    <th colspan="4" class="text-center text-uppercase">Turno de NOITE ({{ ns.noite_total }})</th>
+                  </tr>
+                  <tr>
+                    <th>Contrato</th>
+                    <th>Cooperado</th>
+                    <th>Turno</th>
+                    <th>Horário</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% set tem_noite = false %}
+                  {% for grupo in (lista | groupby('contrato')) %}
+                    {% set contrato_nome = grupo.grouper or 'Sem contrato' %}
+                    {% for item in grupo.list %}
+                      {% set t = (item.turno or '')|lower %}
+                      {% if 'noite' in t %}
+                        {% set tem_noite = true %}
+                        <tr>
+                          <td>{{ contrato_nome }}</td>
+                          <td>{{ item.coop.nome if item.coop else (item.nome_planilha or item.cooperado_nome or '—') }}</td>
+                          <td>{{ item.turno or '—' }}</td>
+                          <td>{{ item.horario or '—' }}</td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                  {% endfor %}
+                  {% if not tem_noite %}
+                    <tr><td colspan="4" class="text-center text-muted">Sem escala de noite.</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {% if ns.indef_total > 0 %}
+        <div class="mt-3">
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle table-compact mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th colspan="4" class="text-center text-uppercase">Turno INDEFINIDO ({{ ns.indef_total }})</th>
+                </tr>
+                <tr>
+                  <th>Contrato</th>
+                  <th>Cooperado</th>
+                  <th>Turno</th>
+                  <th>Horário</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for grupo in (lista | groupby('contrato')) %}
+                  {% set contrato_nome = grupo.grouper or 'Sem contrato' %}
+                  {% for item in grupo.list %}
+                    {% set t = (item.turno or '')|lower %}
+                    {% if not ('noite' in t or 'dia' in t or 'manhã' in t or 'manha' in t or 'tarde' in t or 'diurno' in t or 'comercial' in t) %}
+                      <tr>
+                        <td>{{ contrato_nome }}</td>
+                        <td>{{ item.coop.nome if item.coop else (item.nome_planilha or item.cooperado_nome or '—') }}</td>
+                        <td>{{ item.turno or '—' }}</td>
+                        <td>{{ item.horario or '—' }}</td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+      {% else %}
+        <div class="text-center text-muted py-3">Sem escala registrada.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+      <!-- ===== AVISOS (carregado localmente ou via fetch da rota) ===== -->
+<section data-view="avisos">
+  {% set _avisos = avisos if avisos is defined and avisos is not none else [] %}
+  {% set _unread_from_list = (_avisos | selectattr('lido','equalto',False) | list | length) %}
+  {% set _unread_from_ctx = (avisos_nao_lidos_count if avisos_nao_lidos_count is defined else avisos_unread_count) or 0 %}
+  {% set _badgeN = (_unread_from_list if _unread_from_list>0 else _unread_from_ctx) %}
+  <div class="section-title">
+    <i class="bi bi-megaphone-fill"></i> Avisos
+    <span id="badgeTitulo" class="badge {{ 'text-bg-danger' if _badgeN>0 else 'text-bg-success' }} ms-2">
+      {{ _badgeN>0 and (_badgeN ~ ' não lido(s)') or 'Tudo lido' }}
+    </span>
+  </div>
+
+  <div class="card card-body">
+    <div class="d-flex align-items-center gap-2">
+      <form method="POST" action="{{ url_for('marcar_todos_avisos_lidos_restaurante') }}" class="m-0">
+        <button class="btn btn-royal" type="submit" {% if _badgeN == 0 %}disabled{% endif %}><i class="bi bi-check2-circle me-1"></i> Marcar todos como lidos</button>
+      </form>
+      <div class="form-check ms-auto">
+        <input class="form-check-input" type="checkbox" id="toggleNaoLidos">
+        <label class="form-check-label" for="toggleNaoLidos">Mostrar apenas não lidos</label>
+      </div>
+    </div>
+  </div>
+
+  <div id="avisosListContainer">
+    {% if _avisos and (_avisos | length) > 0 %}
+      {% for a in _avisos %}
+      <div id="aviso-{{ a.id }}" class="card card-body my-2 aviso-card {% if a.lido %}lido{% endif %} {% if a.prioridade_alta %}prioridade{% endif %}" data-lido="{{ '1' if a.lido else '0' }}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="fw-bold">
+              {{ a.titulo or 'Aviso' }}
+              {% if a.prioridade_alta %}
+                <span class="badge text-bg-danger ms-2"><i class="bi bi-exclamation-triangle-fill"></i> Prioridade</span>
+              {% endif %}
+            </div>
+            <div class="text-muted small">
+              Publicado em {{ a.criado_em.strftime('%d/%m/%Y %H:%M') if a.criado_em }}
+              {% if a.atualizado_em %} · Atualizado {{ a.atualizado_em.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+              {% if a.lido %} • <span class="text-success">Lido</span>{% else %} • <span class="text-danger">Não lido</span>{% endif %}
+            </div>
+          </div>
+          <div class="ms-3">
+            {% if not a.lido %}
+            <button class="btn btn-outline-royal btn-sm"
+                    data-acao="marcar-lido"
+                    data-url="{{ url_for('marcar_aviso_lido_universal', aviso_id=a.id) }}">
+              <i class="bi bi-check2"></i> Marcar como lido
+            </button>
+            {% endif %}
+          </div>
+        </div>
+
+        <hr class="my-2">
+
+        <!-- CORPO DO AVISO (robusto) -->
+        <div class="aviso-body">
+          {% set html = (
+            a.corpo_html or a.conteudo_html or a.mensagem_html or a.descricao_html or a.body_html or a.recado_html
+            or (a.dados and (a.dados.corpo_html or a.dados.conteudo_html or a.dados.mensagem_html or a.dados.descricao_html or a.dados.body_html or a.dados.recado_html))
+          ) %}
+          {% if html and html|trim %}
+            {{ html|safe }}
+          {% else %}
+            {% set txt = (
+              a.corpo or a.conteudo or a.mensagem or a.texto or a.descricao or a.body or a.message or a.content or a.recado
+              or (a.dados and (a.dados.corpo or a.dados.conteudo or a.dados.mensagem or a.dados.texto or a.dados.descricao or a.dados.body or a.dados.message or a.dados.content or a.dados.recado))
+            ) %}
+            {% if txt and txt|trim %}
+              <p class="mb-0">{{ txt|e|replace('\r\n','\n')|replace('\n','<br>')|safe }}</p>
+            {% else %}
+              <p class="text-muted mb-0"><em>(sem conteúdo)</em></p>
+            {% endif %}
+          {% endif %}
+        </div>
+        <!-- /CORPO DO AVISO -->
+      </div>
+      {% endfor %}
+    {% else %}
+      <!-- Se não vier avisos no contexto, o JS vai buscar na rota e injetar -->
+      <div class="card card-body text-muted">Carregando avisos…</div>
+    {% endif %}
+  </div>
+</section>
+<!-- ===== /AVISOS ===== -->
+
+<!-- ===== LANCAMENTOS ===== -->
+<section data-view="lancamentos">
+  <div class="section-title"><i class="bi bi-receipt"></i> Lançamentos</div>
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card card-body sticky-tools">
+        <form id="formFiltroLanc" method="GET" action="{{ url_for('portal_restaurante') }}" class="row g-2 align-items-end">
+          <input type="hidden" name="view" value="lancamentos">
+
+          <div class="col-12">
+            <label class="form-label">Início</label>
+            <input type="date" class="form-control" name="data_inicio" value="{{ filtro_inicio.strftime('%Y-%m-%d') if filtro_inicio }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Fim</label>
+            <input type="date" class="form-control" name="data_fim" value="{{ filtro_fim.strftime('%Y-%m-%d') if filtro_fim }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Mês (opcional)</label>
+            <input type="month" class="form-control" name="mes" value="{{ filtro_mes or '' }}"
+                   oninput="if(this.value){ const f=this.form; f.data_inicio.value=''; f.data_fim.value=''; }">
+            <div class="form-text">Se escolher um mês, as datas serão ignoradas.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Digite o nome do cooperado (visual)</label>
+            <input type="text" class="form-control" name="q" placeholder="Filtrar por nome...">
+          </div>
+
+          <div class="col-12 d-grid">
+            <button class="btn btn-royal" type="submit">
+              <i class="bi bi-funnel"></i> Aplicar
+            </button>
+          </div>
+          <div class="col-12 d-grid">
+            <a class="btn btn-outline-secondary" href="{{ url_for('portal_restaurante', view='lancamentos') }}">
+              <i class="bi bi-arrow-counterclockwise"></i> Limpar
+            </a>
+          </div>
+
+          <hr class="my-2">
+          <div class="kpi mb-2">
+            <div class="small text-muted">Total no período</div>
+            <div class="v">R$ <span id="kpiTotalValor">0,00</span></div>
+          </div>
+          <div class="kpi mb-2">
+            <div class="small text-muted">Entregas no período</div>
+            <div class="v"><span id="kpiTotalEntregas">0</span></div>
+          </div>
+
+          <!-- Export azul sempre -->
+          <div class="d-grid">
+            <button class="btn btn-royal" type="button" id="btnExportCsv">
+              <i class="bi bi-download"></i> Exportar CSV
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-lg-9">
+      <div class="card card-body">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="chip">
+            Período: <span id="txtPeriodo">
+              {{ filtro_inicio and filtro_inicio.strftime('%d/%m/%Y') or '' }}
+              {% if filtro_inicio and filtro_fim %} a {% endif %}
+              {{ filtro_fim and filtro_fim.strftime('%d/%m/%Y') or '' }}
+            </span>
+          </div>
+        </div>
+
+        <table class="table table-bordered table-hover align-middle table-compact" id="tblLanc">
+          <thead>
+            <tr>
+              <th class="text-center" style="width:110px;">Data</th>
+              <th>Cooperado</th>
+              <th>Contrato</th>
+              <th class="text-center" style="width:160px;">Horário</th>
+              <th>Descrição</th>
+              <th class="text-center" style="width:120px;">Entregas</th>
+              <th class="text-end" style="width:140px;">Valor (R$)</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyLanc">
+            {% for x in _lancamentos_periodo %}
+            <tr data-coop="{{ x.cooperado_id or x.coop_id }}"
+                data-coopnome="{{ x.cooperado_nome or x.coop_nome }}"
+                data-contrato="{{ x.contrato_nome or x.contrato }}">
+              <td class="text-center">
+                {{ (x.data.strftime('%d/%m/%Y') if x.data) if x.data is not string else x.data }}
+              </td>
+              <td class="fw-semibold coop-name">{{ x.cooperado_nome or x.coop_nome }}</td>
+              <td>{{ x.contrato_nome or x.contrato or '—' }}</td>
+              <td class="text-center">
+                {% if x.hora_inicio or x.hora_fim %}
+                  {{ x.hora_inicio or '' }}{% if x.hora_inicio or x.hora_fim %} às {% endif %}{{ x.hora_fim or '' }}
+                {% else %}—{% endif %}
+              </td>
+              <td class="desc">{{ x.descricao or '-' }}</td>
+              <td class="text-center entregas">
+                {{ x.qtd_entregas if x.qtd_entregas is not none else '-' }}
+              </td>
+              <td class="text-end valor" data-valor="{{ '%.2f'|format(x.valor or 0) }}">
+                R$ {{ '%.2f'|format(x.valor or 0) }}
+              </td>
+            </tr>
+            {% else %}{% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="table-secondary">
+              <th colspan="5" class="text-end">Totais</th>
+              <th class="text-center" id="ftEntregas">0</th>
+              <th class="text-end" id="ftValor">R$ 0,00</th>
+            </tr>
+          </tfoot>
+        </table>
+
+        <hr class="my-3">
+        <h6 class="mb-2"><i class="bi bi-people"></i> Totais por cooperado</h6>
+        <div id="gridCoop" class="row g-2"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LANÇAR ===== -->
+<section data-view="lancar">
+  <div class="section-title d-flex align-items-center gap-2">
+    <i class="bi bi-plus-circle"></i>
+    <span>Lançar Produção Diária</span>
+  </div>
+
+  <!-- Filtro de período -->
+  <div class="card card-body mb-3 shadow-sm border-0">
+    <form class="row g-2 align-items-end" method="GET" action="{{ url_for('portal_restaurante') }}">
+      <input type="hidden" name="view" value="lancar">
+
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Início</label>
+        <input type="date" name="data_inicio" class="form-control"
+               value="{{ filtro_inicio.strftime('%Y-%m-%d') if filtro_inicio }}">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Fim</label>
+        <input type="date" name="data_fim" class="form-control"
+               value="{{ filtro_fim.strftime('%Y-%m-%d') if filtro_fim }}">
+      </div>
+
+      <div class="col-md-3">
+        <div class="small text-muted mb-1">Período em uso</div>
+        <div class="chip">
+          {% if filtro_inicio and filtro_fim %}
+            {{ filtro_inicio.strftime('%d/%m/%Y') }} a {{ filtro_fim.strftime('%d/%m/%Y') }}
+          {% else %}
+            —
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-md-3 text-md-end">
+        <button class="btn btn-royal mb-1 mb-md-0">
+          <i class="bi bi-funnel"></i> Aplicar
+        </button>
+        <a class="btn btn-outline-secondary mb-1 mb-md-0"
+           href="{{ url_for('portal_restaurante', view='lancar') }}">
+          <i class="bi bi-arrow-counterclockwise"></i> Limpar
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <div class="row g-3">
+    <!-- COLUNA ESQUERDA: Seleção do cooperado -->
+    <div class="col-lg-4">
+      <div class="card card-body shadow-sm border-0 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold small text-uppercase text-muted">
+            1. Escolha o cooperado
+          </div>
+        </div>
+
+        <!-- Busca + select -->
+        <div class="mb-3">
+          <label class="form-label small text-muted mb-1">Buscar / Selecionar</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="bi bi-search"></i>
+            </span>
+            <input id="buscaCoop"
+                   type="text"
+                   class="form-control"
+                   placeholder="Digite o nome do cooperado..."
+                   list="cooperadosList">
+            <datalist id="cooperadosList">
+              {% for coop in _cooperados %}
+                <option value="{{ coop.nome }}"></option>
+              {% endfor %}
+            </datalist>
+          </div>
+
+          <select id="selectCoop" class="form-select mt-2">
+            <option value="">Selecione pela lista...</option>
+            {% for coop in _cooperados %}
+              <option
+                value="{{ coop.id }}"
+                data-nome="{{ coop.nome }}"
+                data-foto="{{ coop.foto_url or url_for('static', filename='img/default.png') }}"
+                data-total="{{ '%.2f'|format(coop.total_periodo or 0) }}"
+                data-fone="{{ (coop.telefone or '')|replace('(','')|replace(')','')|replace('-','')|replace(' ','')|replace('+','') }}"
+                data-fone-raw="{{ coop.telefone or '' }}"
+              >
+                {{ coop.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Lista de cooperados -->
+        <div class="small text-muted mb-1 d-flex justify-content-between align-items-center">
+          <span>Cooperados cadastrados</span>
+          <span class="badge bg-light text-dark border">{{ _cooperados|length }}</span>
+        </div>
+
+        <div id="listaCooperados" style="max-height: 60vh; overflow:auto;">
+          {% for coop in _cooperados %}
+            <button type="button"
+                    class="cooperado-item w-100 text-start"
+                    data-id="{{ coop.id }}"
+                    data-nome="{{ coop.nome }}"
+                    data-foto="{{ coop.foto_url or url_for('static', filename='img/default.png') }}"
+                    data-total="{{ '%.2f'|format(coop.total_periodo or 0) }}"
+                    data-fone="{{ (coop.telefone or '')|replace('(','')|replace(')','')|replace('-','')|replace(' ','')|replace('+','') }}"
+                    data-fone-raw="{{ coop.telefone or '' }}">
+              <span class="fw-semibold text-truncate">{{ coop.nome }}</span>
+              <span class="text-muted small">
+                <i class="bi bi-check2-circle" title="Selecionar"></i>
+                </span>
+            </button>
+          {% else %}
+            <div class="text-muted small mt-2">Nenhum cooperado cadastrado.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA: Lançamento + histórico -->
+    <div class="col-lg-8">
+      <div class="card card-body shadow-sm border-0" id="blocoLancamento">
+
+        <!-- Cabeçalho do cooperado selecionado -->
+        <div class="selected-header text-center mb-3" id="selectedHeader" style="display:none;">
+          <img id="selFoto" src="" class="big mb-2" alt="Foto do cooperado selecionado">
+          <div class="fw-bold fs-5 d-flex justify-content-center align-items-center gap-2 flex-wrap">
+            <span id="selNome"></span>
+            <a id="selPhone"
+               class="badge bg-light text-dark border text-decoration-none"
+               style="font-weight:500;"
+               href="javascript:void(0)">
+              <span class="text-muted">Sem telefone</span>
+            </a>
+          </div>
+          <div class="text-muted">
+            Total no período selecionado:
+            <span class="fw-semibold">R$ <span id="selTotal">0,00</span></span>
+          </div>
+        </div>
+
+        <!-- Estado inicial -->
+        <div class="py-4 text-center text-muted" id="hintSelecione">
+          <div class="mb-2">
+            <i class="bi bi-person-badge" style="font-size: 2rem;"></i>
+          </div>
+          <div class="fw-semibold">Nenhum cooperado selecionado</div>
+          <div class="small">
+            Utilize a lista ou a caixa de busca à esquerda para escolher um cooperado
+            e então registrar a produção diária.
+          </div>
+        </div>
+
+        <!-- Formulário de lançamento -->
+        <form id="formLancamento"
+              method="POST"
+              action="{{ _url_lancar_producao }}"
+              class="row g-2 align-items-end mb-1"
+              style="display:none;">
+
+          <input type="hidden" name="cooperado_id" id="inputCooperadoId" value="">
+
+          <div class="col-md-3">
+            <label class="form-label">Valor (R$)</label>
+            <input type="number" class="form-control" name="valor" step="0.01" required>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Data</label>
+            <input type="date" class="form-control" name="data" required>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Hora Início</label>
+            <input type="time" class="form-control" name="hora_inicio">
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Hora Fim</label>
+            <input type="time" class="form-control" name="hora_fim">
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Entregas</label>
+            <input type="number" class="form-control" name="qtd_entregas" min="0" step="1">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Descrição (opcional)</label>
+            <textarea class="form-control"
+                      name="descricao"
+                      rows="2"
+                      placeholder="Ex.: motivo do valor, observações, contrato especial…"></textarea>
+          </div>
+
+          <div class="col-12"><hr class="my-2"></div>
+
+          <!-- Avaliação opcional -->
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input"
+                     type="checkbox"
+                     id="chkAvaliar"
+                     onclick="document.getElementById('boxAval').style.display=this.checked?'block':'none'; document.getElementById('inputAvaliar').value=this.checked?'1':'0';">
+              <label class="form-check-label" for="chkAvaliar">
+                Registrar avaliação agora
+              </label>
+            </div>
+            <input type="hidden" name="avaliar" id="inputAvaliar" value="0">
+          </div>
+
+          <div id="boxAval" class="row g-2" style="display:none;">
+            {% for nm,titulo in [('av_pontualidade','Pontualidade'),
+                                 ('av_educacao','Educação'),
+                                 ('av_eficiencia','Eficiência / Cuidado'),
+                                 ('av_apresentacao','Apresentação')] %}
+              <div class="col-md-6">
+                <div class="rating-group" data-name="{{ nm }}">
+                  <div class="rating-label">{{ titulo }}</div>
+                  <div class="stars">
+                    <i class="bi bi-star-fill star" data-v="1"></i>
+                    <i class="bi bi-star-fill star" data-v="2"></i>
+                    <i class="bi bi-star-fill star" data-v="3"></i>
+                    <i class="bi bi-star-fill star" data-v="4"></i>
+                    <i class="bi bi-star-fill star" data-v="5"></i>
+                  </div>
+                  <input type="hidden" name="{{ nm }}" value="">
+                </div>
+              </div>
+            {% endfor %}
+
+            <div class="col-md-6">
+              <div class="rating-group" data-name="av_geral" data-auto="true">
+                <div class="rating-label">Geral (média automática)</div>
+                <div class="stars">
+                  <i class="bi bi-star-fill star" data-v="1"></i>
+                  <i class="bi bi-star-fill star" data-v="2"></i>
+                  <i class="bi bi-star-fill star" data-v="3"></i>
+                  <i class="bi bi-star-fill star" data-v="4"></i>
+                  <i class="bi bi-star-fill star" data-v="5"></i>
+                </div>
+                <input type="hidden" name="av_geral" value="">
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Comentário (opcional)</label>
+              <textarea class="form-control"
+                        name="av_comentario"
+                        rows="2"
+                        placeholder="Conte rapidamente como foi a experiência..."></textarea>
+            </div>
+          </div>
+
+          <div class="col-12 text-end mt-2">
+            <button class="btn btn-royal">
+              <i class="bi bi-plus-circle"></i> Lançar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Histórico por cooperado -->
+      <div id="blocoTabelas" class="mt-3">
+        {% for coop in _cooperados %}
+          <div id="tabela-{{ coop.id }}"
+               class="card card-body lancamentos-table shadow-sm border-0"
+               style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold small text-muted text-uppercase">
+                Produção no período selecionado
+              </span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle table-sm">
+                <thead class="table-light">
+                  <tr>
+                    <th>Valor</th>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Entregas</th>
+                    <th class="text-center">Editar</th>
+                    <th class="text-center">Excluir</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for lanc in coop.lancamentos %}
+                    <tr>
+                      <td>R$ {{ '%.2f'|format(lanc.valor or 0) }}</td>
+                      <td>{{ lanc.data.strftime('%d/%m/%Y') if lanc.data }}</td>
+                      <td>
+                        {{ lanc.hora_inicio or '' }}
+                        {% if lanc.hora_inicio or lanc.hora_fim %} às {% endif %}
+                        {{ lanc.hora_fim or '' }}
+                      </td>
+                      <td>{{ lanc.qtd_entregas if lanc.qtd_entregas is not none else '-' }}</td>
+                      <td class="text-center">
+                        {% if has_editar_lanc %}
+                          <a href="{{ url_for('editar_lancamento', id=lanc.id) }}"
+                             class="btn btn-outline-royal btn-sm">
+                            <i class="bi bi-pencil"></i>
+                          </a>
+                        {% endif %}
+                      </td>
+                      <td class="text-center">
+                        <a href="{{ url_for('excluir_lancamento', id=lanc.id) }}"
+                           class="btn btn-outline-danger btn-sm">
+                          <i class="bi bi-trash"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  {% else %}
+                    <tr>
+                      <td colspan="6" class="text-center text-muted">
+                        Nenhum lançamento no período selecionado
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL – PERGUNTA SE QUER AVALIAR ANTES DE LANÇAR -->
+<div class="modal fade" id="modalAvaliar" tabindex="-1" aria-labelledby="modalAvaliarLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0" style="border-radius: 14px;">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="modalAvaliarLabel">
+          Avaliar este cooperado?
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p class="mb-3 text-muted">
+          Você pode lançar a produção agora sem registrar avaliação, ou abrir o formulário
+          de avaliação para registrar a nota deste cooperado antes de concluir o lançamento.
+        </p>
+
+        <ul class="small text-muted mb-3 ps-3">
+          <li><strong>Avaliar agora:</strong> abre os campos de avaliação (estrelas e comentário).</li>
+          <li><strong>Lançar sem avaliar:</strong> grava o lançamento sem nenhuma avaliação.</li>
+        </ul>
+      </div>
+      <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
+        <button type="button"
+                class="btn btn-outline-secondary"
+                id="btnPularAval">
+          Lançar sem avaliar
+        </button>
+        <button type="button"
+                class="btn btn-royal"
+                id="btnAvaliarAgora">
+          Avaliar agora
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY DE LANÇAMENTO -->
+<div id="overlayLancando" class="lanc-overlay">
+  <div class="lanc-overlay-box">
+    <div class="lanc-spinner"></div>
+    <div class="lanc-overlay-text">Lançando…</div>
+  </div>
+</div>
+
+<!-- TOASTS (Avisos + OK) -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 3000;">
+  <!-- Toast de NOVO AVISO -->
+  <div id="toastAvisos" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <i class="bi bi-megaphone-fill me-2 text-primary"></i>
+      <strong class="me-auto">Avisos</strong>
+      <small><span id="toastCount">0</span></small>
+      <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="Fechar"></button>
+    </div>
+    <div class="toast-body">
+      Você tem um novo aviso.
+      <div class="mt-2 pt-2 border-top d-flex gap-2">
+        <a id="toastVerAgora" class="btn btn-royal btn-sm" href="{{ url_for('portal_restaurante_avisos') }}">
+          <i class="bi bi-eye"></i> Ver agora
+        </a>
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="toast">Depois</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast OK (ex.: marcou como lido) -->
+  <div id="toastOK" class="toast align-items-center text-bg-success border-0 mt-2" role="alert" aria-live="polite" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="bi bi-check2-circle me-1"></i> Aviso marcado como lido.
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ÁUDIO DO AVISO -->
+<audio id="audioAvisos" preload="auto" src="{{ url_for('static', filename='avisos.mp3') }}"></audio>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ========================
+// OVERLAY GLOBAL (LANÇAR / EXCLUIR)
+// ========================
+function showLancOverlay(mode){
+  const overlayLanc = document.getElementById('overlayLancando');
+  if (!overlayLanc) return;
+
+  const overlayTextEl = overlayLanc.querySelector('.lanc-overlay-text');
+  if (overlayTextEl) {
+    overlayTextEl.textContent = (mode === 'delete') ? 'Excluindo…' : 'Lançando…';
+  }
+
+  overlayLanc.style.display = 'flex';
+}
+
+function hideLancOverlay(){
+  const overlayLanc = document.getElementById('overlayLancando');
+  if (!overlayLanc) return;
+  overlayLanc.style.display = 'none';
+}
+
+// ========================
+// MÁSCARA + SELEÇÃO COOPERADO (LANÇAR)
+// ========================
+
+// máscara simples BR
+function formatPhoneBR(v) {
+  let d = (v || '').replace(/\D/g,'');
+  if (d.length > 11 && d.startsWith('55')) d = d.slice(d.length - 11);
+  d = d.slice(0, 11);
+  if (d.length <= 10) {
+    return d.replace(/^(\d{0,2})(\d{0,4})(\d{0,4}).*$/, (_,a,b,c)=>{
+      let out=''; if(a) out+='('+a; if(a && a.length===2) out+=') ';
+      if(b) out+=b; if(b && b.length===4 && c) out+='-'+c; return out;
+    });
+  }
+  return d.replace(/^(\d{2})(\d{5})(\d{4}).*$/, '($1) $2-$3');
+}
+
+// Controle de seleção do cooperado (Lançar)
+(function(){
+  const header  = document.getElementById('selectedHeader');
+  const img     = document.getElementById('selFoto');
+  const nomeEl  = document.getElementById('selNome');
+  const totalEl = document.getElementById('selTotal');
+  const phoneEl = document.getElementById('selPhone');
+  const form    = document.getElementById('formLancamento');
+  const hint    = document.getElementById('hintSelecione');
+  const inputId = document.getElementById('inputCooperadoId');
+
+  const listaCooperados = document.getElementById('listaCooperados');
+  const cooperadoCards  = listaCooperados ? listaCooperados.querySelectorAll('.cooperado-item') : [];
+
+  function setPhone(digits, raw) {
+    const d = (digits || '').replace(/\D/g,'');
+    if (d) {
+      phoneEl.textContent = formatPhoneBR(d);
+      phoneEl.href = 'https://wa.me/55' + d;
+      phoneEl.target = '_blank';
+      phoneEl.classList.remove('text-muted');
+    } else {
+      phoneEl.innerHTML = '<span class="text-muted">Sem telefone</span>';
+      phoneEl.removeAttribute('href');
+      phoneEl.removeAttribute('target');
+    }
+  }
+
+  function clearSelection() {
+    cooperadoCards.forEach(c => c.classList.remove('selected'));
+  }
+
+  function selectCoop({id, nome, foto, total, foneDigits, foneRaw}) {
+    if (!id) return;
+
+    if (header) header.style.display = '';
+    if (form) form.style.display = '';
+    if (hint) hint.style.display = 'none';
+
+    if (img && foto) img.src = foto;
+    if (nomeEl) nomeEl.textContent = nome || '—';
+    if (totalEl) totalEl.textContent = (total || '0,00');
+
+    setPhone(foneDigits, foneRaw);
+    if (inputId) inputId.value = id || '';
+
+    // mostra tabela correspondente
+    document.querySelectorAll('.lancamentos-table').forEach(t => t.style.display = 'none');
+    const table = document.getElementById('tabela-' + id);
+    if (table) table.style.display = '';
+
+    // define data de hoje se o campo estiver vazio
+    if (form) {
+      const campoData = form.querySelector('input[name="data"]');
+      if (campoData && !campoData.value) {
+        const hoje = new Date();
+        const yyyy = hoje.getFullYear();
+        const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoje.getDate()).padStart(2, '0');
+        campoData.value = `${yyyy}-${mm}-${dd}`;
+      }
+    }
+  }
+
+  // clique na lista de cooperados
+  listaCooperados?.addEventListener('click', (e) => {
+    const card = e.target.closest('.cooperado-item');
+    if (!card) return;
+    clearSelection();
+    card.classList.add('selected');
+    selectCoop({
+      id: card.dataset.id,
+      nome: card.dataset.nome,
+      foto: card.dataset.foto,
+      total: (parseFloat(card.dataset.total || '0') || 0).toFixed(2).replace('.', ','),
+      foneDigits: card.dataset.fone || '',
+      foneRaw: card.dataset['foneRaw'] || ''
+    });
+  });
+
+  // mudança no <select> de cooperado
+  document.getElementById('selectCoop')?.addEventListener('change', (e) => {
+    const opt = e.target.selectedOptions[0];
+    if (!opt || !opt.value) return;
+
+    const card = document.querySelector('.cooperado-item[data-id="'+opt.value+'"]');
+    if (card) {
+      clearSelection();
+      card.classList.add('selected');
+    }
+
+    selectCoop({
+      id: opt.value,
+      nome: opt.textContent.trim(),
+      foto: card ? card.dataset.foto : '',
+      total: card ? (parseFloat(card.dataset.total || '0').toFixed(2).replace('.', ',')) : '0,00',
+      foneDigits: opt.getAttribute('data-fone') || (card ? card.dataset.fone : ''),
+      foneRaw: opt.getAttribute('data-fone-raw') || (card ? card.dataset['foneRaw'] : '')
+    });
+  });
+})();
+
+// ========================
+// TEMA
+// ========================
+const THEME_KEY='portal_theme';
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light');
+  const lbl=document.getElementById('lblTheme');
+  const icon=document.querySelector('#btnTheme i');
+  if(lbl) lbl.textContent = (t==='dark')?'Claro':'Escuro';
+  if(icon){
+    icon.classList.toggle('bi-moon', t!=='dark');
+    icon.classList.toggle('bi-sun', t==='dark');
+  }
+  localStorage.setItem(THEME_KEY, t);
+}
+(function initTheme(){
+  const saved = localStorage.getItem(THEME_KEY) || 'light';
+  applyTheme(saved);
+  document.getElementById('btnTheme')?.addEventListener('click', ()=>{
+    const cur = localStorage.getItem(THEME_KEY) || 'light';
+    applyTheme(cur==='dark'?'light':'dark');
+  });
+})();
+
+// ========================
+// NAVEGAÇÃO SPA
+// ========================
+function showSection(view){
+  document.querySelectorAll('section[data-view]').forEach(sec=>{
+    sec.classList.toggle('view-active', sec.getAttribute('data-view')===view);
+  });
+  document.querySelectorAll('#sideNav a').forEach(a=>{
+    const t=a.getAttribute('data-target');
+    a.classList.toggle('active', t===view);
+  });
+  if(view==='avisos') initAvisos();
+  if(view==='lancamentos') initLancamentos();
+  if(view==='lancar') initLancar();
+  if(view==='tabelas') initTabelas();
+}
+function pushView(v){
+  try{
+    const u=new URL(location.href);
+    u.searchParams.set('view',v);
+    history.pushState({view:v},'',u.toString());
+  }catch(e){}
+}
+function startView(){
+  try{
+    return new URL(location.href).searchParams.get('view') || 'lancar';
+  }catch(e){
+    return 'lancar';
+  }
+}
+
+// ========================
+// UTILS
+// ========================
+function togglePwd(btn){
+  const i=btn.previousElementSibling;
+  if(!i) return;
+  i.type=i.type==='password'?'text':'password';
+  const icon = btn.querySelector('i');
+  if(icon){
+    icon.classList.toggle('bi-eye');
+    icon.classList.toggle('bi-eye-slash');
+  }
+}
+const brMoney = (n)=> (n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+const todayStr = ()=>{
+  const d=new Date();
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  return d.getFullYear()+'-'+mm+'-'+dd;
+};
+function prefetch(href){
+  try{
+    const l=document.createElement('link');
+    l.rel='prefetch';
+    l.href=href;
+    document.head.appendChild(l);
+  }catch(e){}
+}
+
+// ========================
+// TOAST & BADGE DE AVISOS (CORRIGIDO: SEM PISCAR)
+// ========================
+let toastAvisosInst=null;
+function ensureToastInstance(){
+  const el=document.getElementById('toastAvisos');
+  if(!el) return null;
+  if(!toastAvisosInst) toastAvisosInst = new bootstrap.Toast(el,{autohide:false});
+  return toastAvisosInst;
+}
+
+/**
+ * setAvisosBadge(n, {showToast:boolean})
+ * - showToast=false: atualiza badge/contador sem abrir/fechar toast (não pisca)
+ * - showToast=true : abre se n>0 / fecha se n==0
+ */
+function setAvisosBadge(n, opts){
+  const o = Object.assign({showToast:false}, (opts||{}));
+
+  const b=document.getElementById('badgeAvisos');
+  if(b){
+    b.style.display = n>0 ? 'inline-flex':'none';
+    b.textContent=n;
+  }
+  const tCnt=document.getElementById('toastCount');
+  if(tCnt) tCnt.textContent=n;
+
+  if(!o.showToast) return;
+
+  const t=ensureToastInstance();
+  if(t){
+    if(n>0) t.show();
+    else t.hide();
+  }
+}
+
+// ========================
+// AVISO: ÁUDIO (DESBLOQUEIO + "PENDENTE" PARA LOGIN)
+// ========================
+let __audioAvisosUnlocked = false;
+let __audioAvisosPending = false;
+
+function tryPlayAvisoSound(){
+  const a = document.getElementById('audioAvisos');
+  if(!a) return;
+
+  try{
+    a.currentTime = 0;
+    const p = a.play();
+    if(p && typeof p.catch === 'function'){
+      p.catch(()=>{
+        __audioAvisosPending = true; // se bloqueou autoplay, toca no primeiro clique/tecla
+      });
+    }
+  }catch(e){
+    __audioAvisosPending = true;
+  }
+}
+
+// ========================
+// ADICIONADO: UNLOCK DO ÁUDIO (SEM ISSO O CHROME BLOQUEIA)
+// ========================
+(function unlockAudioOnce(){
+  const a = document.getElementById('audioAvisos');
+  if(!a) return;
+
+  let unlocked = false;
+  async function unlock(){
+    if(unlocked) return;
+    unlocked = true;
+    try{
+      a.muted = true;
+      a.currentTime = 0;
+      await a.play();
+      a.pause();
+      a.muted = false;
+      a.currentTime = 0;
+
+      __audioAvisosUnlocked = true;
+
+      // se tinha som pendente (login bloqueado), toca agora
+      if(__audioAvisosPending){
+        __audioAvisosPending = false;
+        tryPlayAvisoSound();
+      }
+    }catch(e){
+      unlocked = false;
+      __audioAvisosUnlocked = false;
+    }
+  }
+
+  ['click','touchstart','keydown'].forEach(evt=>{
+    window.addEventListener(evt, unlock, {once:true, passive:true});
+  });
+})();
+
+// ========================
+// AVISOS
+// ========================
+let avisosWired=false;
+function initAvisos(){
+  if(avisosWired) return;
+  avisosWired=true;
+
+  const toastOKEl = document.getElementById('toastOK');
+  const toastOK = toastOKEl ? new bootstrap.Toast(toastOKEl) : null;
+
+  function getUnread(){
+    return document.querySelectorAll('.aviso-card[data-lido="0"]').length;
+  }
+  function refresh(){
+    // aqui NÃO abre toast (para não piscar)
+    setAvisosBadge(getUnread(), {showToast:false});
+  }
+
+  // filtro
+  document.getElementById('toggleNaoLidos')?.addEventListener('change', (e)=>{
+    const only=e.target.checked;
+    document.querySelectorAll('.aviso-card').forEach(card=>{
+      const lido=card.getAttribute('data-lido')==='1';
+      card.style.display = (only && lido) ? 'none' : '';
+    });
+  });
+
+  // marcar lido
+  (document.getElementById('avisosListContainer')||document).addEventListener('click', async (ev)=>{
+    const btn=ev.target.closest('[data-acao="marcar-lido"]');
+    if(!btn) return;
+    const url=btn.getAttribute('data-url');
+    const card=btn.closest('.aviso-card');
+    try{
+      const resp=await fetch(url,{method:'POST',credentials:'same-origin'});
+      if(resp.ok){
+        card.setAttribute('data-lido','1');
+        card.classList.add('lido');
+        const meta=card.querySelector('.text-muted.small');
+        if(meta && !/Lido/.test(meta.innerHTML)){
+          meta.innerHTML += ' • <span class="text-success">Lido</span>';
+        }
+        btn.remove();
+        refresh();
+        toastOK?.show();
+
+        // sincroniza com backend (para badge ficar perfeito)
+        pollAvisos();
+      }else{
+        alert('Falha ao marcar como lido ('+resp.status+').');
+      }
+    }catch(e){
+      alert('Erro de rede.');
+    }
+  });
+
+  refresh();
+
+  if(!document.querySelector('#avisosListContainer .aviso-card')){
+    const href=document.getElementById('linkAvisos')?.href;
+    if(href) loadAvisosFromRoute(href);
+  }
+}
+
+async function loadAvisosFromRoute(href){
+  try{
+    const res=await fetch(href,{credentials:'same-origin'});
+    if(!res.ok) throw new Error(res.status);
+    const html=await res.text();
+    const dom=new DOMParser().parseFromString(html,'text/html');
+    const cards=[...dom.querySelectorAll('.aviso-card,#avisosListContainer .aviso,.aviso')];
+    const cont=document.getElementById('avisosListContainer');
+    if(!cont) return;
+    cont.innerHTML='';
+    if(cards.length){
+      cards.forEach(c=>cont.appendChild(document.importNode(c,true)));
+      avisosWired=false;
+      initAvisos();
+
+      // atualiza badge sem abrir toast (sem piscar)
+      const unreadLocal = cards.filter(c=>c.getAttribute('data-lido')==='0').length;
+      setAvisosBadge(unreadLocal, {showToast:false});
+
+      // alinha com backend
+      pollAvisos();
+    }else{
+      cont.innerHTML='<div class="card card-body"><div class="text-muted"><i class="bi bi-inbox me-1"></i> Nenhum aviso disponível.</div></div>';
+      setAvisosBadge(0, {showToast:false});
+      pollAvisos();
+    }
+  }catch(e){
+    const cont=document.getElementById('avisosListContainer');
+    if(cont) cont.innerHTML='<div class="card card-body text-muted">Não foi possível carregar os avisos agora.</div>';
+  }
+}
+
+// ========================
+// LANÇAR (TELA DE LANÇAMENTO)
+// ========================
+let lancarWired = false;
+function initLancar(){
+  if (lancarWired) return;
+  lancarWired = true;
+
+  const busca = document.getElementById('buscaCoop');
+  const itens  = Array.from(document.querySelectorAll('.cooperado-item'));
+
+  function filtrarESelecionar(valor, autoSelecionar){
+    const q = (valor || '').trim().toLowerCase();
+    const visiveis = [];
+
+    itens.forEach(el=>{
+      const nome = (el.dataset.nome || '').toLowerCase();
+      const match = !q || nome.includes(q);
+      el.style.display = match ? '' : 'none';
+      if (match) visiveis.push(el);
+    });
+
+    if (!autoSelecionar) return;
+
+    let alvo = visiveis.find(el => (el.dataset.nome || '').toLowerCase() === q);
+    if (!alvo && visiveis.length === 1){
+      alvo = visiveis[0];
+    }
+
+    if (alvo){
+      alvo.click();
+      if (busca) busca.blur();
+    }
+  }
+
+  busca?.addEventListener('input', function(){
+    filtrarESelecionar(this.value, false);
+  });
+
+  busca?.addEventListener('change', function(){
+    filtrarESelecionar(this.value, true);
+  });
+
+  busca?.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      filtrarESelecionar(this.value, true);
+    }
+  });
+
+  document.querySelectorAll('.rating-group').forEach(g=>{
+    if (g.dataset.name !== 'av_geral') wireStars(g);
+  });
+  autoGeral();
+
+  wireAvaliacaoFlow();
+
+  // EXCLUSÃO COM OVERLAY "EXCLUINDO…"
+  const blocoTabelas = document.getElementById('blocoTabelas');
+  blocoTabelas?.addEventListener('click', (e)=>{
+    const link = e.target.closest('a.btn-outline-danger');
+    if(!link) return;
+    e.preventDefault();
+    if(!confirm('Deseja realmente excluir este lançamento?')) return;
+    showLancOverlay('delete');
+    setTimeout(()=>{ window.location.href = link.href; }, 80);
+  });
+}
+
+// ========================
+// LANÇAMENTOS (LISTAGEM)
+// ========================
+let lancamentosWired=false;
+function initLancamentos(){
+  if(lancamentosWired) return;
+  lancamentosWired=true;
+  const tbody=document.getElementById('tbodyLanc');
+  if(!tbody) return;
+  const ftValor=document.getElementById('ftValor');
+  const ftEnt=document.getElementById('ftEntregas');
+  const kpiV=document.getElementById('kpiTotalValor');
+  const kpiE=document.getElementById('kpiTotalEntregas');
+  const grid=document.getElementById('gridCoop');
+  const f=document.getElementById('formFiltroLanc');
+
+  const key='lanc_applied_today';
+  if(f && !f.data_inicio.value && !f.data_fim.value && !f.mes.value && !sessionStorage.getItem(key)){
+    const t=todayStr();
+    f.data_inicio.value=t;
+    f.data_fim.value=t;
+    sessionStorage.setItem(key,'1');
+    sessionStorage.setItem('scrollY', String(window.scrollY));
+    f.submit();
+    return;
+  }
+  const savedY=Number(sessionStorage.getItem('scrollY')||0);
+  if(savedY){
+    window.scrollTo(0,savedY);
+    sessionStorage.removeItem('scrollY');
+  }
+
+  function rows(){
+    return Array.from(tbody.querySelectorAll('tr'));
+  }
+  function recompute(){
+    let totV=0, totE=0;
+    const per={};
+    rows().forEach(tr=>{
+      if(tr.style.display==='none') return;
+      const v=Number(tr.querySelector('.valor')?.dataset.valor||0);
+      const eTxt = tr.querySelector('.entregas')?.textContent?.trim() || '0';
+      const e = eTxt === '-' ? 0 : Number(eTxt.replace(/\D+/g,''));
+      totV+=v;
+      totE+=e;
+      const id=tr.dataset.coop;
+      const nm=tr.dataset.coopnome;
+      per[id]=per[id]||{nome:nm,valor:0,ent:0};
+      per[id].valor+=v;
+      per[id].ent+=e;
+    });
+    if(ftValor) ftValor.textContent='R$ '+brMoney(totV);
+    if(ftEnt) ftEnt.textContent=String(totE);
+    if(kpiV) kpiV.textContent=brMoney(totV);
+    if(kpiE) kpiE.textContent=String(totE);
+    if(grid){
+      grid.innerHTML='';
+      Object.values(per).sort((a,b)=>b.valor-a.valor).forEach(p=>{
+        const div=document.createElement('div');
+        div.className='col-sm-6 col-xl-4';
+        div.innerHTML=`<div class="kpi h-100">
+          <div class="fw-bold">${p.nome||'-'}</div>
+          <div class="small text-muted">Entregas: <b>${p.ent||0}</b></div>
+          <div>Total: <b>R$ ${brMoney(p.valor||0)}</b></div>
+        </div>`;
+        grid.appendChild(div);
+      });
+    }
+  }
+  f?.q?.addEventListener('input', ()=>{
+    const q=(f.q.value||'').toLowerCase().trim();
+    sessionStorage.setItem('lanc_q',q);
+    rows().forEach(tr=>{
+      const coop=(tr.dataset.coopnome||'').toLowerCase();
+      const contrato=(tr.dataset.contrato||'').toLowerCase();
+      tr.style.display = (!q || coop.includes(q) || contrato.includes(q)) ? '' : 'none';
+    });
+    recompute();
+  });
+  f?.addEventListener('submit', ()=>{
+    sessionStorage.setItem('scrollY', String(window.scrollY));
+  });
+
+  document.getElementById('btnExportCsv')?.addEventListener('click', ()=>{
+    const rowsVis=rows().filter(r=>r.style.display!=='none');
+    const header=['Data','Cooperado','Contrato','Horário','Descrição','Entregas','Valor (R$)'];
+    const linhas=[header];
+    let totE=0, totV=0;
+
+    function csvEscape(t){ return '"' + String(t||'').replace(/"/g,'""') + '"'; }
+
+    rowsVis.forEach(r=>{
+      const c=r.cells;
+      const data=c[0]?.textContent.trim()||'';
+      const coop=c[1]?.textContent.trim()||'';
+      const contrato=c[2]?.textContent.trim()||'';
+      const horario=c[3]?.textContent.trim()||'';
+      const desc=(r.querySelector('.desc')?.textContent||'').replace(/\s+/g,' ').trim();
+      const eTxt=(r.querySelector('.entregas')?.textContent.trim()||'0');
+      const entregas=(eTxt==='-')?0:Number(eTxt.replace(/\D+/g,''));
+      const valorNum=Number(r.querySelector('.valor')?.dataset.valor||0);
+
+      linhas.push([data,coop,contrato,horario,csvEscape(desc),String(entregas),valorNum.toFixed(2).replace('.',',')]);
+      totE+=entregas;
+      totV+=valorNum;
+    });
+    linhas.push(['Totais','','','', '', String(totE), String(totV.toFixed(2)).replace('.',',')]);
+    const csv='\uFEFF'+linhas.map(l=>l.join(';')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='lancamentos.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  recompute();
+  const savedQ=sessionStorage.getItem('lanc_q')||'';
+  if(savedQ && f?.q){
+    f.q.value=savedQ;
+    f.q.dispatchEvent(new Event('input'));
+  }
+
+  wireAvalLanc();
+}
+
+// ========================
+// HELPERS AVALIAÇÃO (ESTRELAS)
+// ========================
+function wireStars(group){
+  const hidden=group.querySelector('input[type="hidden"]');
+  const stars=group.querySelectorAll('.star');
+  function paint(v,hover=false){
+    stars.forEach(s=>{
+      const on=Number(s.dataset.v)<=v;
+      s.classList.toggle('active',on);
+      s.classList.toggle('hover',hover&&on);
+    });
+  }
+  stars.forEach(s=>{
+    s.addEventListener('mouseenter',()=>paint(Number(s.dataset.v),true));
+    s.addEventListener('mouseleave',()=>paint(Number(hidden.value||0),false));
+    s.addEventListener('click',()=>{
+      hidden.value=Number(s.dataset.v);
+      paint(Number(hidden.value),false);
+      autoGeral();
+    });
+  });
+  paint(Number(hidden.value||0),false);
+}
+
+// autoGeral: média só se houver notas
+function autoGeral(){
+  const g=document.querySelector('.rating-group[data-name="av_geral"]');
+  if(!g) return;
+  const h=g.querySelector('input[type="hidden"]');
+  const nomes=['av_pontualidade','av_educacao','av_eficiencia','av_apresentacao'];
+  const vals=[];
+  nomes.forEach(n=>{
+    const v=Number(document.querySelector(`.rating-group[data-name="${n}"] input[type="hidden"]`)?.value||0);
+    if(v>0) vals.push(v);
+  });
+  const media = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+  h.value = media ?? '';
+  g.querySelectorAll('.star').forEach(s=>{
+    const v=Number(s.dataset.v);
+    s.classList.toggle('active', !!media && v<=media);
+    s.classList.remove('hover');
+  });
+}
+
+// ========================
+// FLUXO MODAL AVALIAÇÃO (LANÇAR) + OVERLAY "LANÇANDO…"
+// ========================
+function setAvalInputsEnabled(enabled){
+  const boxAval = document.getElementById('boxAval');
+  if(!boxAval) return;
+  boxAval.querySelectorAll('input[name^="av_"], textarea[name="av_comentario"]').forEach(el=>{
+    el.disabled = !enabled;
+  });
+}
+
+function wireAvaliacaoFlow(){
+  const form = document.getElementById('formLancamento');
+  if(!form) return;
+
+  const modalEl = document.getElementById('modalAvaliar');
+  const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+  const btnAvaliarAgora = document.getElementById('btnAvaliarAgora');
+  const btnPularAval = document.getElementById('btnPularAval');
+  const chkAvaliar = document.getElementById('chkAvaliar');
+  const inputAvaliar = document.getElementById('inputAvaliar');
+  const boxAval = document.getElementById('boxAval');
+
+  let isSubmitting = false;
+  const submitBtn = form.querySelector('button.btn-royal[type="submit"], button.btn-royal');
+
+  function setSubmitting(on){
+    isSubmitting = !!on;
+    if(submitBtn){
+      submitBtn.disabled = on;
+      if(submitBtn.dataset.origText == null) submitBtn.dataset.origText = submitBtn.innerHTML;
+      submitBtn.innerHTML = on
+        ? '<span class="spinner-border spinner-border-sm me-1"></span> Lançando…'
+        : submitBtn.dataset.origText;
+    }
+    form.style.pointerEvents = on ? 'none' : '';
+    form.classList.toggle('opacity-75', on);
+
+    if(on) showLancOverlay('launch'); else hideLancOverlay();
+  }
+
+  function ensureRequestId(){
+    let inp = form.querySelector('input[name="request_id"]');
+    if(!inp){
+      inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'request_id';
+      form.appendChild(inp);
+    }
+    inp.value = Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
+  }
+
+  function scrollIntoViewSmooth(el){
+    try{ el?.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+  }
+
+  setAvalInputsEnabled(false);
+
+  chkAvaliar?.addEventListener('change', ()=>{
+    const on = chkAvaliar.checked;
+    if(inputAvaliar) inputAvaliar.value = on ? '1':'0';
+    if(boxAval) boxAval.style.display = on ? 'block':'none';
+    setAvalInputsEnabled(on);
+    if(on){ autoGeral(); }
+  });
+
+  // SUBMIT PRINCIPAL
+  form.addEventListener('submit', function(ev){
+    if(isSubmitting){
+      ev.preventDefault();
+      return;
+    }
+    if(!form.checkValidity()){
+      form.reportValidity?.();
+      ev.preventDefault();
+      return;
+    }
+
+    const avaliando = (chkAvaliar && chkAvaliar.checked) ||
+                      (inputAvaliar && inputAvaliar.value === '1') ||
+                      (boxAval && boxAval.style.display === 'block');
+
+    // Já está avaliando → só envia com overlay
+    if(avaliando){
+      setAvalInputsEnabled(true);
+      autoGeral();
+      ensureRequestId();
+      setSubmitting(true);   // mostra "Lançando…"
+      // NÃO dá preventDefault → submit segue normal
+      return;
+    }
+
+    // Não está avaliando
+    if(modal){
+      // Usa o modal "Avaliar agora / Pular e lançar"
+      ev.preventDefault();
+      modal.show();
+    }else{
+      // Fallback: confirm do navegador com a frase
+      ev.preventDefault();
+      const querAvaliar = confirm('Deseja registrar uma avaliação agora antes de lançar?');
+      if(querAvaliar){
+        if(chkAvaliar) chkAvaliar.checked = true;
+        if(inputAvaliar) inputAvaliar.value = '1';
+        if(boxAval) boxAval.style.display = 'block';
+        setAvalInputsEnabled(true);
+        autoGeral();
+        ensureRequestId();
+        setSubmitting(true);
+        form.submit();
+      }else{
+        if(chkAvaliar) chkAvaliar.checked = false;
+        if(inputAvaliar) inputAvaliar.value = '0';
+        if(boxAval) boxAval.style.display = 'none';
+        setAvalInputsEnabled(false);
+        ensureRequestId();
+        setSubmitting(true);
+        form.submit();
+      }
+    }
+  });
+
+  // Clicou "Avaliar agora" no modal
+  btnAvaliarAgora?.addEventListener('click', ()=>{
+    if(!chkAvaliar || !inputAvaliar) return;
+    chkAvaliar.checked = true;
+    inputAvaliar.value = '1';
+    if(boxAval) boxAval.style.display = 'block';
+    setAvalInputsEnabled(true);
+    modal?.hide();
+    setTimeout(()=>{
+      scrollIntoViewSmooth(boxAval);
+      boxAval?.querySelector('.rating-group .star')?.focus?.();
+    }, 150);
+  });
+
+  // Clicou "Pular e lançar" no modal
+  btnPularAval?.addEventListener('click', ()=>{
+    if(!inputAvaliar) return;
+    if(chkAvaliar) chkAvaliar.checked = false;
+    inputAvaliar.value = '0';
+    if(boxAval) boxAval.style.display = 'none';
+    setAvalInputsEnabled(false);
+    modal?.hide();
+    setTimeout(()=>{
+      if(isSubmitting) return;
+      ensureRequestId();
+      setSubmitting(true);  // overlay "Lançando…"
+      form.submit();
+    }, 80);
+  });
+
+  window.addEventListener('pageshow', (e)=>{
+    if(e.persisted){
+      setSubmitting(false);
+      hideLancOverlay();
+    }
+  });
+}
+
+// ========================
+// AVALIAÇÃO NA LISTA DE LANÇAMENTOS
+// ========================
+function paintStaticStars(el){
+  const score = Number(el?.dataset?.score||0);
+  if(!el) return;
+  const s = Math.max(0, Math.min(5, score));
+  el.textContent = '★★★★★'.slice(0, s).padEnd(5, '☆');
+}
+function wireAvalLanc(){
+  const tbody = document.getElementById('tbodyLanc');
+  const modalEl = document.getElementById('modalAvalLanc');
+  if(!tbody || !modalEl) return;
+
+  const modal = new bootstrap.Modal(modalEl);
+  const form = document.getElementById('formAvalLanc');
+  const info = document.getElementById('avLancInfo');
+  const inputLancId = document.getElementById('avLancId');
+
+  function initStarsInModal(){
+    modalEl.querySelectorAll('.rating-group').forEach(g=>{
+      if(g.dataset.name!=='av_geral') wireStars(g);
+    });
+    autoGeral();
+  }
+
+  tbody.addEventListener('click', async (ev)=>{
+    const btn = ev.target.closest('[data-open-av]');
+    if(!btn) return;
+    const tr = btn.closest('tr');
+    const lancId = tr.dataset.id;
+    const getUrl = tr.dataset.getavurl;
+    inputLancId.value = lancId;
+    info.textContent = `${tr.cells[0].textContent.trim()} • ${tr.dataset.coopnome}`;
+
+    modalEl.querySelectorAll('input[name^="av_"]').forEach(i=>i.value='');
+    const ta = modalEl.querySelector('textarea[name="av_comentario"]');
+    if(ta) ta.value='';
+
+    try{
+      const r = await fetch(getUrl, {credentials:'same-origin'});
+      if(r.ok){
+        const j = await r.json();
+        if(j.ok && j.data){
+          const d = j.data;
+          const map = {
+            'av_pontualidade': d.pontualidade,
+            'av_educacao': d.educacao,
+            'av_eficiencia': d.eficiencia,
+            'av_apresentacao': d.apresentacao,
+            'av_geral': d.geral
+          };
+          Object.entries(map).forEach(([k,v])=>{
+            const inp = modalEl.querySelector(`input[name="${k}"]`);
+            if(inp){ inp.value = v || ''; }
+          });
+          if(ta) ta.value = d.comentario || '';
+        }
+      }
+    }catch(e){
+      // silencioso
+    }
+
+    initStarsInModal();
+    modal.show();
+  });
+
+  form.addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    const lancId = inputLancId.value;
+    const tr = tbody.querySelector(`tr[data-id="${CSS.escape(lancId)}"]`);
+    if(!tr) return;
+    const postUrl = tr.dataset.avurl;
+
+    const fd = new FormData(form);
+    autoGeral();
+
+    try{
+      const r = await fetch(postUrl, {method:'POST', body:fd, credentials:'same-origin'});
+      if(!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      if(j.ok){
+        const cell = tr.querySelector('[data-avcell]');
+        if(cell){
+          cell.innerHTML = `<span class="stars-static" data-score="${j.geral||0}">★★★★★</span>
+                            <button class="btn btn-outline-royal btn-sm ms-1" data-open-av>Editar</button>`;
+          paintStaticStars(cell.querySelector('.stars-static'));
+        }
+        modal.hide();
+      }else{
+        alert(j.error || 'Falha ao salvar avaliação.');
+      }
+    }catch(e){
+      alert('Erro de rede ao salvar avaliação.');
+    }
+  });
+
+  document.querySelectorAll('.stars-static').forEach(paintStaticStars);
+}
+
+// ========================
+// TABELAS
+// ========================
+function initTabelas(){
+  if(!document.getElementById('tabelasContainer')) return;
+  if(!document.querySelector('#tabelasContainer .doc-row')){
+    const href=document.getElementById('linkTabelas')?.href;
+    if(href) loadTabelasFromRoute(href);
+  }
+  wireTabelaViewer();
+}
+async function loadTabelasFromRoute(href){
+  try{
+    const res=await fetch(href,{credentials:'same-origin'});
+    if(!res.ok) throw new Error(res.status);
+    const html=await res.text();
+    const dom=new DOMParser().parseFromString(html,'text/html');
+    const card=dom.querySelector('.doc-row');
+    if(!card) return;
+    const cont=document.getElementById('tabelasContainer');
+    if(!cont) return;
+    cont.innerHTML='';
+    cont.appendChild(document.importNode(card,true));
+    wireTabelaViewer();
+  }catch(e){
+    // mantém como está
+  }
+}
+function wireTabelaViewer(){
+  const modalEl=document.getElementById('modalTabela');
+  if(!modalEl) return;
+  const modal=new bootstrap.Modal(modalEl);
+  const lbl=document.getElementById('modalTabelaLabel');
+  const frame=document.getElementById('modalFrame');
+  const baixar=document.getElementById('modalBaixar');
+  const novaAba=document.getElementById('modalAbrirNovaAba');
+
+  document.getElementById('tabelasContainer')?.addEventListener('click', (ev)=>{
+    const card=ev.target.closest('.doc-row');
+    if(!card) return;
+    if(ev.target.closest('a[data-direct-download],button[data-direct-download]')) return;
+    const viewUrl=card.dataset.view||'#';
+    const downUrl=card.dataset.download||viewUrl;
+    const title=card.dataset.titleFull||'';
+    lbl.textContent=title;
+    baixar.href=downUrl;
+    novaAba.href=viewUrl;
+    frame.src=viewUrl;
+    modal.show();
+  });
+  modalEl.addEventListener('hidden.bs.modal',()=>{ frame.src=''; });
+}
+
+// ========================
+// POLLING DE AVISOS (PERFEITO: LOGIN + NOVO AVISO + SEM PISCAR)
+// ========================
+let lastUnread = null;
+let __shownAtLogin = false;
+
+async function pollAvisos(){
+  try{
+    const r = await fetch('/api/rest/avisos/unread_count', {credentials:'same-origin'});
+    if(!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    if(!j || !j.ok) return;
+
+    const unread = Number(j.unread || 0);
+
+    // 1) atualiza badge SEM abrir toast (evita piscar)
+    setAvisosBadge(unread, { showToast: false });
+
+    // 2) PRIMEIRA LEITURA (após login/load)
+    if(lastUnread === null){
+      lastUnread = unread;
+
+      // se já tem não lidos ao logar: mostra toast UMA vez e tenta som
+      if(unread > 0 && !__shownAtLogin){
+        __shownAtLogin = true;
+        setAvisosBadge(unread, { showToast: true });
+        tryPlayAvisoSound(); // tenta tocar; se bloquear, toca no primeiro clique/tecla
+      }
+      return;
+    }
+
+    // 3) Se aumentou, chegou aviso novo
+    if(unread > lastUnread){
+      onNewAviso(unread);
+    }
+
+    // 4) Se virou 0 (todos lidos), pode fechar toast
+    if(unread === 0 && lastUnread > 0){
+      setAvisosBadge(0, { showToast: true }); // fecha
+    }
+
+    lastUnread = unread;
+  }catch(e){
+    // silencioso
+  }
+}
+
+function onNewAviso(unread){
+  // abre toast UMA vez + atualiza badge
+  setAvisosBadge(unread, { showToast: true });
+
+  // toca som 1x (ou marca pendente se o browser bloquear)
+  tryPlayAvisoSound();
+}
+
+// ========================
+// EVENTOS DO MENU / INICIALIZAÇÃO
+// ========================
+document.getElementById('sideNav')?.addEventListener('click', async (e)=>{
+  const a=e.target.closest('a');
+  if(!a) return;
+  const t=a.getAttribute('data-target');
+  if(!t) return; // logout segue normal
+  e.preventDefault();
+  document.querySelectorAll('#sideNav a').forEach(x=>x.classList.remove('active'));
+  a.classList.add('active');
+  showSection(t);
+  pushView(t);
+  if(t==='avisos' || t==='tabelas'){
+    prefetch(a.href);
+  }
+});
+
+document.getElementById('toastVerAgora')?.addEventListener('click', async (e)=>{
+  e.preventDefault();
+  const href=e.currentTarget.getAttribute('href');
+  showSection('avisos');
+  pushView('avisos');
+  await loadAvisosFromRoute(href);
+});
+
+// ========================
+// NO LOGIN / LOAD: POLL IMEDIATO + INTERVALO
+// ========================
+document.addEventListener('DOMContentLoaded', ()=>{
+  const initial=startView();
+  showSection(initial);
+
+  hideLancOverlay(); // garante overlay escondido ao carregar
+
+  // puxa contagem real imediatamente + a cada 25s
+  pollAvisos();
+  setInterval(pollAvisos, 25000);
+});
+
+window.addEventListener('popstate',(ev)=>{
+  const v=(ev.state&&ev.state.view)||startView();
+  showSection(v);
+});
+</script>
+</body>
+</html>

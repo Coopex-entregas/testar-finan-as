@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Painel Admin - Documentos - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap / Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <style>
+    :root{
+      --royal-blue:#2747d9;
+      --royal-dark:#16258a;
+      --hover-blue:#3b61e3;
+      --sidebar-w:260px;
+      --text-muted:#8f9bb8;
+    }
+
+    *{box-sizing:border-box;}
+
+    body{
+      margin:0;
+      font-family:'Roboto',sans-serif;
+      background:#f3f5fb;
+      color:#1f2430;
+      overflow-x:hidden;
+    }
+
+    .layout{
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* SIDEBAR ----------------------------------------------------------------*/
+
+    .sidebar{
+      position:fixed;
+      top:0;
+      left:0;
+      height:100vh;
+      width:var(--sidebar-w);
+      background:linear-gradient(180deg,var(--royal-blue),var(--royal-dark));
+      color:#fff;
+      padding:18px 14px;
+      display:flex;
+      flex-direction:column;
+      box-shadow:0 0 22px rgba(0,0,0,.25);
+      z-index:1020;
+      overflow-y:auto;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      margin-bottom:12px;
+      padding:0 4px;
+    }
+    .brand-title{
+      font-family:'Orbitron',sans-serif;
+      font-size:1.25rem;
+      letter-spacing:2px;
+      text-transform:uppercase;
+      margin:0;
+    }
+    .brand-sub{
+      font-size:.75rem;
+      opacity:.8;
+    }
+
+    .sidebar-nav{
+      margin-top:8px;
+      padding:0;
+    }
+
+    .nav-section-label{
+      font-size:.7rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.60);
+      margin:12px 6px 6px;
+    }
+
+    .sidebar-divider{
+      border-color:rgba(255,255,255,.08);
+      margin:10px 0 6px;
+    }
+
+    .nav-link-main,
+    .nav-link-group-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      border:0;
+      border-radius:10px;
+      padding:8px 10px;
+      margin:2px 0;
+      background:transparent;
+      color:#fff;
+      font-size:.9rem;
+      text-align:left;
+      text-decoration:none;
+      cursor:pointer;
+      transition:background .15s,transform .05s;
+    }
+    .nav-link-main:hover,
+    .nav-link-group-toggle:hover{
+      background:rgba(255,255,255,.08);
+    }
+    .nav-link-main.active{
+      background:rgba(0,0,0,.20);
+      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+    }
+    .nav-link-main:active,
+    .nav-link-group-toggle:active{
+      transform:scale(.98);
+    }
+
+    .nav-link-left{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .nav-link-icon{
+      width:18px;
+      display:flex;
+      justify-content:center;
+    }
+    .nav-link-label{
+      white-space:nowrap;
+    }
+
+    .nav-caret{
+      font-size:.8rem;
+      opacity:.7;
+    }
+
+    .nav-sublinks{
+      padding-left:30px;
+      margin-bottom:4px;
+    }
+
+    .nav-sublink{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 8px;
+      margin:2px 0;
+      border-radius:8px;
+      font-size:.85rem;
+      color:rgba(255,255,255,.85);
+      text-decoration:none;
+      transition:background .15s,color .15s,transform .05s;
+    }
+    .nav-sublink:hover{
+      background:rgba(255,255,255,.08);
+      color:#fff;
+    }
+    .nav-sublink.active{
+      background:rgba(0,0,0,.20);
+      color:#fff;
+      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+    }
+
+    .sidebar-footer{
+      margin-top:auto;
+      padding-top:10px;
+    }
+
+    /* MAIN -------------------------------------------------------------------*/
+
+    .main{
+      flex:1;
+      margin-left:var(--sidebar-w);
+      padding:18px 22px;
+    }
+
+    .content-shell{
+      max-width:1320px;
+      margin:0 auto 32px;
+    }
+
+    .page-header{
+      margin-bottom:16px;
+    }
+    .page-header h3{
+      margin:0;
+      font-size:1.35rem;
+      font-weight:600;
+    }
+    .page-header small{
+      color:var(--text-muted);
+      font-size:.85rem;
+    }
+
+    .card{
+      border-radius:12px;
+      border:0;
+      box-shadow:0 2px 8px rgba(15,23,42,.09);
+      background:#fff;
+    }
+
+    .btn-royal{
+      background:var(--royal-blue);
+      color:#fff;
+      border-color:var(--royal-blue);
+    }
+    .btn-royal:hover{
+      background:var(--hover-blue);
+      border-color:var(--hover-blue);
+      color:#fff;
+    }
+
+    .badge-soft{
+      background:#eef2ff;
+      color:#223;
+      border-radius:999px;
+      padding:.15rem .55rem;
+      font-size:.75rem;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:.35rem;
+      padding:.25rem .75rem;
+      border-radius:999px;
+      background:#eef2ff;
+      font-size:.8rem;
+      color:#384152;
+    }
+
+    /* ====== Documentos específicos ========================================= */
+
+    .doc-row{
+      border-radius:12px;
+      padding:12px 14px;
+      margin-bottom:10px;
+      background:#fff;
+      border:1px solid rgba(15,23,42,.05);
+      transition:box-shadow .15s,transform .05s,border-color .15s;
+    }
+    .doc-row:hover{
+      box-shadow:0 4px 14px rgba(15,23,42,.12);
+      border-color:rgba(39,71,217,.35);
+      transform:translateY(-1px);
+    }
+    .doc-title{
+      font-weight:600;
+      font-size:.98rem;
+    }
+    .doc-cat{
+      font-size:.8rem;
+      color:#6c757d;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+    }
+    .doc-meta{
+      font-size:.8rem;
+      color:#6c757d;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:.35rem;
+      padding:.15rem .55rem;
+      border-radius:999px;
+      font-size:.75rem;
+      background:#f8fafc;
+      color:#475569;
+    }
+
+    @media (max-width: 991.98px){
+      :root{ --sidebar-w:72px; }
+
+      .sidebar{
+        padding:18px 8px;
+      }
+      .brand-sub,
+      .brand-title,
+      .nav-section-label,
+      .nav-link-label{
+        display:none;
+      }
+      .nav-sublinks{
+        padding-left:12px;
+      }
+      .main{
+        margin-left:var(--sidebar-w);
+        padding:16px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -------------------------------------------------------------->
+  <aside class="sidebar">
+
+    <div class="brand">
+      <h1 class="brand-title">PAINEL COOPEX</h1>
+      <span class="brand-sub">Administração Central</span>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <div class="nav-section-label">Visão Geral</div>
+
+      <!-- Resumo -->
+      <a class="nav-sublink"
+         href="{{ url_for('admin_dashboard', tab='resumo') }}">
+        <i class="bi bi-graph-up"></i> <span class="nav-link-label">Resumo</span>
+      </a>
+
+      <!-- Avaliações -->
+      <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
+         href="{{ url_for('admin_avaliacoes') }}">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
+          <span class="nav-link-label">Avaliações</span>
+        </div>
+      </a>
+
+      <hr class="sidebar-divider">
+
+      <!-- FINANCEIRO ------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuFinanceiro"
+              aria-expanded="false">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span>
+          <span class="nav-link-label">Financeiro</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuFinanceiro" class="collapse nav-sublinks">
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='lancamentos') }}">
+          <i class="bi bi-journal-text"></i> <span class="nav-link-label">Lançamentos</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='receitas') }}">
+          <i class="bi bi-cash"></i> <span class="nav-link-label">Receitas Coop</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='despesas') }}">
+          <i class="bi bi-cart-dash"></i> <span class="nav-link-label">Despesas Coop</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='coop_receitas') }}">
+          <i class="bi bi-cash-coin"></i> <span class="nav-link-label">Receitas Cooperados</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='coop_despesas') }}">
+          <i class="bi bi-people"></i> <span class="nav-link-label">Despesas Cooperados</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='beneficios') }}">
+          <i class="bi bi-heart-pulse"></i> <span class="nav-link-label">Benefícios</span>
+        </a>
+      </div>
+
+      <!-- CADASTROS -------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuCadastros"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-people"></i></span>
+          <span class="nav-link-label">Cadastros</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuCadastros" class="collapse show nav-sublinks">
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='cooperados') }}">
+          <i class="bi bi-person-badge"></i> <span class="nav-link-label">Cooperados</span>
+        </a>
+
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='restaurantes') }}">
+          <i class="bi bi-shop"></i> <span class="nav-link-label">Estabelecimentos</span>
+        </a>
+
+        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
+           href="{{ url_for('admin_documentos') }}">
+          <i class="bi bi-folder2"></i> <span class="nav-link-label">Documentos</span>
+        </a>
+
+        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
+           href="{{ url_for('admin_tabelas') }}">
+          <i class="bi bi-table"></i> <span class="nav-link-label">Tabelas</span>
+        </a>
+      </div>
+
+      <!-- OPERAÇÃO --------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuOperacao"
+              aria-expanded="false">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span>
+          <span class="nav-link-label">Operação</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuOperacao" class="collapse nav-sublinks">
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='escalas') }}">
+          <i class="bi bi-calendar2-week"></i> <span class="nav-link-label">Escalas</span>
+        </a>
+
+        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
+           href="{{ url_for('admin_avisos') }}">
+          <i class="bi bi-megaphone"></i> <span class="nav-link-label">Avisos</span>
+        </a>
+      </div>
+
+      <hr class="sidebar-divider">
+
+      <!-- Config + Sair ------------------------------------------------------>
+      <div class="sidebar-footer">
+        <a class="nav-link-main {% if request.endpoint == 'admin_dashboard' and request.args.get('tab') == 'config' %}active{% endif %}"
+           href="{{ url_for('admin_dashboard', tab='config') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-gear"></i></span>
+            <span class="nav-link-label">Configurações</span>
+          </div>
+        </a>
+
+        <a class="nav-link-main"
+           href="{{ url_for('logout') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-box-arrow-right"></i></span>
+            <span class="nav-link-label">Sair</span>
+          </div>
+        </a>
+      </div>
+
+    </nav>
+  </aside>
+
+  <!-- MAIN ------------------------------------------------------------------>
+  <main class="main">
+    <div class="content-shell">
+
+      <!-- Cabeçalho da página -->
+      <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h3 class="mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-folder2-open text-primary"></i>
+            Documentos
+          </h3>
+          <small>Central de estatutos, regimentos, atas e demais arquivos da cooperativa.</small>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <!-- Botão rápido para voltar ao painel -->
+          <a href="{{ url_for('admin_dashboard', tab='resumo') }}" class="btn btn-light btn-sm">
+            <i class="bi bi-arrow-left"></i> Voltar para o painel
+          </a>
+          <a href="{{ url_for('documentos_publicos') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-eye"></i> Ver como cooperado
+          </a>
+        </div>
+      </div>
+
+      <!-- PUBLICAR NOVO DOCUMENTO ------------------------------------------->
+      <section class="mb-4">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-upload"></i> Publicar novo documento</span>
+            <span class="chip">
+              <i class="bi bi-info-circle"></i>
+              Envie PDFs, atas e regimentos para o painel dos cooperados
+            </span>
+          </div>
+          <div class="card-body">
+            <form action="{{ url_for('admin_upload_documento') }}" method="post" enctype="multipart/form-data" class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Título *</label>
+                <input type="text" name="titulo" class="form-control" placeholder="Ex.: Estatuto Social atualizado" required>
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label">Categoria</label>
+                <select name="categoria" class="form-select">
+                  <option value="regimento">Regimento</option>
+                  <option value="estatuto">Estatuto</option>
+                  <option value="ata">Ata AGO</option>
+                  <option value="ata">Ata AGE</option>
+                  <option value="outro" selected>Outro</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Descrição (opcional)</label>
+                <input type="text" name="descricao" class="form-control" placeholder="Breve descrição do conteúdo (visível para o cooperado)">
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Arquivo (PDF / Word) *</label>
+                <input type="file" name="arquivo" class="form-control" accept=".pdf,.doc,.docx,.odt,.rtf" required>
+              </div>
+              <div class="col-12 d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-royal">
+                  <i class="bi bi-cloud-arrow-up"></i> Publicar
+                </button>
+                <a class="btn btn-link p-0 ps-1" href="{{ url_for('documentos_publicos') }}">
+                  <i class="bi bi-box-arrow-up-right"></i> Abrir visão do cooperado
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- LISTA DE DOCUMENTOS ----------------------------------------------->
+      <section>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">Documentos publicados</h5>
+          {% if documentos %}
+          <span class="pill">
+            <i class="bi bi-files"></i>
+            {{ documentos|length }} documento(s)
+          </span>
+          {% endif %}
+        </div>
+
+        {% if not documentos %}
+          <div class="card p-4 text-center text-muted">
+            <i class="bi bi-folder-x mb-2" style="font-size:2rem;"></i>
+            <div>Nenhum documento publicado ainda.</div>
+            <div class="small mt-1">Use o formulário acima para enviar o primeiro arquivo.</div>
+          </div>
+        {% else %}
+          <div class="list-group border-0">
+            {% for d in documentos %}
+              <div class="doc-row">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                  <div>
+                    <div class="doc-title">{{ d.titulo }}</div>
+                    <div class="doc-cat mt-1">
+                      {{ (d.categoria or 'outro')|upper }} • 
+                      {{ d.enviado_em.strftime('%d/%m/%Y %H:%M') if d.enviado_em else '' }}
+                    </div>
+                    {% if d.descricao %}
+                      <div class="text-muted small mt-2">{{ d.descricao }}</div>
+                    {% endif %}
+                    <div class="doc-meta mt-2">
+                      <i class="bi bi-file-earmark-text"></i>
+                      Arquivo: {{ d.arquivo_nome or '—' }}
+                    </div>
+                  </div>
+                  <div class="ms-0 ms-md-3 d-flex flex-column gap-1">
+                    <a class="btn btn-sm btn-outline-primary"
+                       href="{{ url_for('baixar_documento', doc_id=d.id) }}"
+                       target="_blank">
+                      <i class="bi bi-box-arrow-up-right"></i> Abrir
+                    </a>
+                    <a class="btn btn-sm btn-outline-danger"
+                       href="{{ url_for('admin_delete_documento', doc_id=d.id) }}"
+                       onclick="return confirm('Remover este documento? Esta ação não pode ser desfeita.');">
+                      <i class="bi bi-trash"></i> Excluir
+                    </a>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
+    </div> <!-- /content-shell -->
+  </main>
+
+</div> <!-- /layout -->
+
+<!-- JS --------------------------------------------------------------------->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

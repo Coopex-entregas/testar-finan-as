@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Painel Admin - Avaliações - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap / Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <style>
+    :root{
+      --royal-blue:#2747d9;
+      --royal-dark:#16258a;
+      --hover-blue:#3b61e3;
+      --sidebar-w:260px;
+      --text-muted:#8f9bb8;
+    }
+
+    *{box-sizing:border-box;}
+
+    body{
+      margin:0;
+      font-family:'Roboto',sans-serif;
+      background:#f3f5fb;
+      color:#1f2430;
+      overflow-x:hidden;
+    }
+
+    .layout{
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* SIDEBAR ----------------------------------------------------------------*/
+
+    .sidebar{
+      position:fixed;
+      top:0;
+      left:0;
+      height:100vh;
+      width:var(--sidebar-w);
+      background:linear-gradient(180deg,var(--royal-blue),var(--royal-dark));
+      color:#fff;
+      padding:18px 14px;
+      display:flex;
+      flex-direction:column;
+      box-shadow:0 0 22px rgba(0,0,0,.25);
+      z-index:1020;
+      overflow-y:auto;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      margin-bottom:12px;
+      padding:0 4px;
+    }
+    .brand-title{
+      font-family:'Orbitron',sans-serif;
+      font-size:1.25rem;
+      letter-spacing:2px;
+      text-transform:uppercase;
+      margin:0;
+    }
+    .brand-sub{
+      font-size:.75rem;
+      opacity:.8;
+    }
+
+    .sidebar-nav{
+      margin-top:8px;
+      padding:0;
+    }
+
+    .nav-section-label{
+      font-size:.7rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.60);
+      margin:12px 6px 6px;
+    }
+
+    .sidebar-divider{
+      border-color:rgba(255,255,255,.08);
+      margin:10px 0 6px;
+    }
+
+    .nav-link-main,
+    .nav-link-group-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      border:0;
+      border-radius:10px;
+      padding:8px 10px;
+      margin:2px 0;
+      background:transparent;
+      color:#fff;
+      font-size:.9rem;
+      text-align:left;
+      text-decoration:none;
+      cursor:pointer;
+      transition:background .15s,transform .05s;
+    }
+    .nav-link-main:hover,
+    .nav-link-group-toggle:hover{
+      background:rgba(255,255,255,.08);
+    }
+    .nav-link-main.active{
+      background:rgba(0,0,0,.20);
+      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+    }
+    .nav-link-main:active,
+    .nav-link-group-toggle:active{
+      transform:scale(.98);
+    }
+
+    .nav-link-left{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .nav-link-icon{
+      width:18px;
+      display:flex;
+      justify-content:center;
+    }
+    .nav-link-label{
+      white-space:nowrap;
+    }
+
+    .nav-caret{
+      font-size:.8rem;
+      opacity:.7;
+    }
+
+    .nav-sublinks{
+      padding-left:30px;
+      margin-bottom:4px;
+    }
+
+    .nav-sublink{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 8px;
+      margin:2px 0;
+      border-radius:8px;
+      font-size:.85rem;
+      color:rgba(255,255,255,.85);
+      text-decoration:none;
+      transition:background .15s,color .15s,transform .05s;
+    }
+    .nav-sublink:hover{
+      background:rgba(255,255,255,.08);
+      color:#fff;
+    }
+    .nav-sublink.active{
+      background:rgba(0,0,0,.20);
+      color:#fff;
+      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+    }
+
+    .sidebar-footer{
+      margin-top:auto;
+      padding-top:10px;
+    }
+
+    /* MAIN -------------------------------------------------------------------*/
+
+    .main{
+      flex:1;
+      margin-left:var(--sidebar-w);
+      padding:18px 22px;
+    }
+
+    .content-shell{
+      max-width:1320px;
+      margin:0 auto 32px;
+    }
+
+    .page-header{
+      margin-bottom:16px;
+    }
+    .page-header h3{
+      margin:0;
+      font-size:1.35rem;
+      font-weight:600;
+    }
+    .page-header small{
+      color:var(--text-muted);
+      font-size:.85rem;
+    }
+
+    .card{
+      border-radius:12px;
+      border:0;
+      box-shadow:0 2px 8px rgba(15,23,42,.09);
+      background:#fff;
+    }
+
+    .btn-royal{
+      background:var(--royal-blue);
+      color:#fff;
+      border-color:var(--royal-blue);
+    }
+    .btn-royal:hover{
+      background:var(--hover-blue);
+      border-color:var(--hover-blue);
+      color:#fff;
+    }
+
+    table thead th{
+      font-size:.8rem;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+    }
+
+    .form-label{
+      font-size:.8rem;
+      font-weight:500;
+      color:#3c4460;
+    }
+
+    .badge-soft{
+      background:#eef2ff;
+      color:#223;
+      border-radius:999px;
+      padding:.15rem .55rem;
+      font-size:.75rem;
+    }
+
+    /* Responsivo -------------------------------------------------------------*/
+
+    @media (max-width: 991.98px){
+      :root{ --sidebar-w:72px; }
+
+      .sidebar{
+        padding:18px 8px;
+      }
+      .brand-sub,
+      .brand-title,
+      .nav-section-label,
+      .nav-link-label{
+        display:none;
+      }
+      .nav-sublinks{
+        padding-left:12px;
+      }
+      .main{
+        margin-left:var(--sidebar-w);
+        padding:16px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -------------------------------------------------------------->
+  <aside class="sidebar">
+
+    <div class="brand">
+      <h1 class="brand-title">PAINEL COOPEX</h1>
+      <span class="brand-sub">Administração Central</span>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <div class="nav-section-label">Visão Geral</div>
+
+      <!-- Receitas Coop (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='resumo') }}">
+          <i class="bi bi-cash"></i> <span class="nav-link-label">resumo</span>
+        </a>
+
+      <!-- Avaliações (página atual) -->
+      <a class="nav-link-main active"
+         href="{{ url_for('admin_avaliacoes') }}">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
+          <span class="nav-link-label">Avaliações</span>
+        </div>
+      </a>
+
+      <hr class="sidebar-divider">
+
+      <!-- FINANCEIRO: tudo volta pra /admin com a tab certa ------------------>
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuFinanceiro"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span>
+          <span class="nav-link-label">Financeiro</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuFinanceiro" class="collapse show nav-sublinks">
+        <!-- Lançamentos (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='lancamentos') }}">
+          <i class="bi bi-journal-text"></i> <span class="nav-link-label">Lançamentos</span>
+        </a>
+
+        <!-- Receitas Coop (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='receitas') }}">
+          <i class="bi bi-cash"></i> <span class="nav-link-label">Receitas Coop</span>
+        </a>
+
+        <!-- Despesas Coop (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='despesas') }}">
+          <i class="bi bi-cart-dash"></i> <span class="nav-link-label">Despesas Coop</span>
+        </a>
+
+        <!-- Receitas Cooperados (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='coop_receitas') }}">
+          <i class="bi bi-cash-coin"></i> <span class="nav-link-label">Receitas Cooperados</span>
+        </a>
+
+        <!-- Despesas Cooperados (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='coop_despesas') }}">
+          <i class="bi bi-people"></i> <span class="nav-link-label">Despesas Cooperados</span>
+        </a>
+
+        <!-- Benefícios (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='beneficios') }}">
+          <i class="bi bi-heart-pulse"></i> <span class="nav-link-label">Benefícios</span>
+        </a>
+      </div>
+
+      <!-- CADASTROS --------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuCadastros"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-people"></i></span>
+          <span class="nav-link-label">Cadastros</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuCadastros" class="collapse show nav-sublinks">
+        <!-- Cooperados (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='cooperados') }}">
+          <i class="bi bi-person-badge"></i> <span class="nav-link-label">Cooperados</span>
+        </a>
+
+        <!-- Estabelecimentos (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='restaurantes') }}">
+          <i class="bi bi-shop"></i> <span class="nav-link-label">Estabelecimentos</span>
+        </a>
+
+        <!-- Documentos (rota dedicada) -->
+        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
+           href="{{ url_for('admin_documentos') }}">
+          <i class="bi bi-folder2"></i> <span class="nav-link-label">Documentos</span>
+        </a>
+
+        <!-- Tabelas (rota dedicada) -->
+        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
+           href="{{ url_for('admin_tabelas') }}">
+          <i class="bi bi-table"></i> <span class="nav-link-label">Tabelas</span>
+        </a>
+      </div>
+
+      <!-- OPERAÇÃO ---------------------------------------------------------->
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuOperacao"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span>
+          <span class="nav-link-label">Operação</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuOperacao" class="collapse show nav-sublinks">
+        <!-- Escalas (aba) -->
+        <a class="nav-sublink"
+           href="{{ url_for('admin_dashboard', tab='escalas') }}">
+          <i class="bi bi-calendar2-week"></i> <span class="nav-link-label">Escalas</span>
+        </a>
+
+        <!-- Avisos (rota dedicada) -->
+        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
+           href="{{ url_for('admin_avisos') }}">
+          <i class="bi bi-megaphone"></i> <span class="nav-link-label">Avisos</span>
+        </a>
+      </div>
+
+      <hr class="sidebar-divider">
+
+      <!-- Config (aba) + Sair ---------------------------------------------->
+      <div class="sidebar-footer">
+        <a class="nav-link-main"
+           href="{{ url_for('admin_dashboard', tab='config') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-gear"></i></span>
+            <span class="nav-link-label">Configurações</span>
+          </div>
+        </a>
+
+        <a class="nav-link-main"
+           href="{{ url_for('logout') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-box-arrow-right"></i></span>
+            <span class="nav-link-label">Sair</span>
+          </div>
+        </a>
+      </div>
+
+    </nav>
+  </aside>
+
+  <!-- MAIN / CONTEÚDO ------------------------------------------------------>
+  <main class="main">
+    <div class="content-shell">
+
+      {% set page_title = "Avaliações" %}
+
+      <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h3 class="mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-stars text-warning"></i>
+            Avaliações
+          </h3>
+          <small>
+            {{ 'Cooperado → Restaurante' if (tipo|default('restaurante'))=='restaurante' else 'Restaurante → Cooperado' }}
+          </small>
+        </div>
+
+        <div class="btn-group" role="group" aria-label="Tipo de avaliação">
+          <a class="btn btn-sm {{ 'btn-primary' if (tipo|default('restaurante'))=='restaurante' else 'btn-outline-primary' }}"
+             href="{{ url_for('admin_avaliacoes',
+                              tipo='restaurante',
+                              restaurante_id=_flt.restaurante_id|default(''),
+                              cooperado_id=_flt.cooperado_id|default(''),
+                              data_inicio=_flt.data_inicio|default(''),
+                              data_fim=_flt.data_fim|default('')) }}">
+            Cooperado → Restaurante
+          </a>
+          <a class="btn btn-sm {{ 'btn-primary' if (tipo|default('restaurante'))=='cooperado' else 'btn-outline-primary' }}"
+             href="{{ url_for('admin_avaliacoes',
+                              tipo='cooperado',
+                              restaurante_id=_flt.restaurante_id|default(''),
+                              cooperado_id=_flt.cooperado_id|default(''),
+                              data_inicio=_flt.data_inicio|default(''),
+                              data_fim=_flt.data_fim|default('')) }}">
+            Restaurante → Cooperado
+          </a>
+        </div>
+      </div>
+
+      <!-- Barra de ações -->
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{{ url_for('admin_export_avaliacoes_csv',
+                            tipo=tipo|default('restaurante'),
+                            restaurante_id=_flt.restaurante_id|default(''),
+                            cooperado_id=_flt.cooperado_id|default(''),
+                            data_inicio=_flt.data_inicio|default(''),
+                            data_fim=_flt.data_fim|default('')) }}">
+          <i class="bi bi-download"></i> Exportar CSV
+        </a>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <form method="GET" action="{{ url_for('admin_avaliacoes') }}" class="row g-2 align-items-end">
+            <input type="hidden" name="tipo" value="{{ tipo|default('restaurante') }}">
+
+            <div class="col-md-4">
+              <label class="form-label">Restaurante</label>
+              <select class="form-select form-select-sm" name="restaurante_id">
+                <option value="">Todos</option>
+                {% for r in (restaurantes|default([])) %}
+                  <option value="{{ r.id }}" {{ 'selected' if ((_flt.restaurante_id|default(0))==r.id) else '' }}>{{ r.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Cooperado</label>
+              <select class="form-select form-select-sm" name="cooperado_id">
+                <option value="">Todos</option>
+                {% for c in (cooperados|default([])) %}
+                  <option value="{{ c.id }}" {{ 'selected' if ((_flt.cooperado_id|default(0))==c.id) else '' }}>{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">De</label>
+              <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ _flt.data_inicio|default('') }}">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Até</label>
+              <input type="date" class="form-control form-control-sm" name="data_fim" value="{{ _flt.data_fim|default('') }}">
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+              <button class="btn btn-royal btn-sm"><i class="bi bi-funnel"></i> Filtrar</button>
+              <button type="button" id="btnMesAtual" class="btn btn-light btn-sm">Este mês (1–último)</button>
+              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin_avaliacoes', tipo=tipo|default('restaurante')) }}">Limpar</a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      {% set _k = kpis|default({}) %}
+      <div class="row g-2 mb-3">
+        <div class="col-6 col-lg-2">
+          <div class="card p-3 text-center h-100">
+            <div class="small text-muted">Avaliações</div>
+            <div class="fs-5 fw-bold">{{ _k.qtd|default(0) }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="card p-3 text-center h-100">
+            <div class="small text-muted">Média Geral</div>
+            <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.geral|default(0)) }}</div>
+          </div>
+        </div>
+
+        {% if (tipo|default('restaurante'))=='restaurante' %}
+          <div class="col-6 col-lg-2">
+            <div class="card p-3 text-center h-100">
+              <div class="small text-muted">Tratamento</div>
+              <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.trat|default(0)) }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-2">
+            <div class="card p-3 text-center h-100">
+              <div class="small text-muted">Ambiente</div>
+              <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.amb|default(0)) }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-2">
+            <div class="card p-3 text-center h-100">
+              <div class="small text-muted">Suporte</div>
+              <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.sup|default(0)) }}</div>
+            </div>
+          </div>
+        {% else %}
+          <div class="col-6 col-lg-2">
+            <div class="card p-3 text-center h-100">
+              <div class="small text-muted">Pontualidade</div>
+              <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.pont|default(0)) }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-2">
+            <div class="card p-3 text-center h-100">
+              <div class="small text-muted">Educação</div>
+              <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.educ|default(0)) }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-2">
+            <div class="card p-3 text-center h-100">
+              <div class="small text-muted">Eficiência</div>
+              <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.efic|default(0)) }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-2">
+            <div class="card p-3 text-center h-100">
+              <div class="small text-muted">Apresentação</div>
+              <div class="fs-5 fw-bold">{{ '%.2f'|format(_k.apres|default(0)) }}</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Ranking + Gráfico -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="m-0">
+              <i class="bi bi-trophy"></i>
+              Ranking por {{ 'restaurante' if (tipo|default('restaurante'))=='restaurante' else 'cooperado' }} (mín. 3 avaliações)
+            </h6>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover align-middle">
+              <thead class="table-light">
+                <tr class="text-nowrap">
+                  {% if (tipo|default('restaurante'))=='restaurante' %}
+                    <th>Restaurante</th>
+                    <th class="text-center">Avaliações</th>
+                    <th class="text-center">Média Geral</th>
+                    <th class="text-center">Trat.</th>
+                    <th class="text-center">Amb.</th>
+                    <th class="text-center">Sup.</th>
+                  {% else %}
+                    <th>Cooperado</th>
+                    <th class="text-center">Avaliações</th>
+                    <th class="text-center">Média Geral</th>
+                    <th class="text-center">Pont.</th>
+                    <th class="text-center">Educ.</th>
+                    <th class="text-center">Efic.</th>
+                    <th class="text-center">Apres.</th>
+                  {% endif %}
+                </tr>
+              </thead>
+              <tbody>
+                {% if (tipo|default('restaurante'))=='restaurante' %}
+                  {% set _rk = ranking|default([]) %}
+                  {% set _have = false %}
+                  {% for r in _rk %}
+                    {% if (r.qtd|default(0)) >= 3 %}
+                      {% set _have = true %}
+                      <tr>
+                        <td>{{ r.rest_nome }}</td>
+                        <td class="text-center">{{ r.qtd }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_geral|default(0)) }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_trat|default(0)) }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_amb|default(0)) }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_sup|default(0)) }}</td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                  {% if not _have %}
+                    <tr><td colspan="6" class="text-center text-muted">Sem dados suficientes</td></tr>
+                  {% endif %}
+                {% else %}
+                  {% set _rk = ranking|default([]) %}
+                  {% set _have = false %}
+                  {% for r in _rk %}
+                    {% if (r.qtd|default(0)) >= 3 %}
+                      {% set _have = true %}
+                      <tr>
+                        <td>{{ r.coop_nome }}</td>
+                        <td class="text-center">{{ r.qtd }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_geral|default(0)) }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_pont|default(0)) }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_educ|default(0)) }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_efic|default(0)) }}</td>
+                        <td class="text-center">{{ '%.2f'|format(r.m_apres|default(0)) }}</td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                  {% if not _have %}
+                    <tr><td colspan="7" class="text-center text-muted">Sem dados suficientes</td></tr>
+                  {% endif %}
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-3">
+            <canvas id="chartTop" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compatibilidade Cooperado × Restaurante (percentual) -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <h6 class="m-0 d-flex align-items-center gap-2">
+              <i class="bi bi-heart-fill text-danger"></i> Compatibilidade Cooperado × Restaurante
+            </h6>
+            <span class="text-muted small">
+              Percentual calculado como <b>(média ★ ÷ 5) × 100</b>. Quando disponível, mostramos também o 360° (mão dupla).
+            </span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover align-middle">
+              <thead class="table-light">
+                <tr class="text-nowrap">
+                  <th style="width:260px">Cooperado</th>
+                  <th style="width:260px">Restaurante</th>
+                  <th class="text-center" style="width:120px">Média ★</th>
+                  <th style="min-width:220px">Compatibilidade</th>
+                  <th class="text-center" style="width:120px">Avaliações</th>
+                  <th class="text-center" style="width:120px">360°</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set _compat = compat|default([]) %}
+                {% if _compat and (_compat|length) > 0 %}
+                  {% set shown = 0 %}
+                  {% for row in _compat %}
+                    {% if (row.count|default(0)) >= 1 %}
+                      {% set shown = shown + 1 %}
+                      {% set pct = ((row.avg|default(0) / 5.0) * 100.0) %}
+                      <tr>
+                        <td class="text-break">{{ row.coop|default('-') }}</td>
+                        <td class="text-break">{{ row.rest|default('-') }}</td>
+                        <td class="text-center fw-bold">{{ '%.2f'|format(row.avg|default(0)) }}</td>
+                        <td>
+                          <div class="progress" style="height:10px;">
+                            <div class="progress-bar {{ 'bg-success' if pct>=80 else ('bg-warning' if pct>=60 else 'bg-danger') }}"
+                                 role="progressbar"
+                                 style="width: {{ '%.0f'|format(pct) }}%;"
+                                 aria-valuenow="{{ '%.0f'|format(pct) }}" aria-valuemin="0" aria-valuemax="100"></div>
+                          </div>
+                          <div class="small text-muted mt-1">
+                            {{ '%.0f'|format(pct) }}%
+                            {% if (tipo|default('restaurante'))=='restaurante' %}
+                              (coop → rest)
+                            {% else %}
+                              (rest → coop)
+                            {% endif %}
+                          </div>
+                        </td>
+                        <td class="text-center">{{ row.count|default(0) }}</td>
+                        <td class="text-center">
+                          {% if compat360 is defined %}
+                            {% set k = row.key if row.key is defined else (row.pair_key if row.pair_key is defined else None) %}
+                            {% set x = (compat360.get(k) if k else None) %}
+                            {% if x %}
+                              {% set pct_cr = ((x.avg_cr|default(0) / 5.0)*100.0) %}
+                              {% set pct_rc = ((x.avg_rc|default(0) / 5.0)*100.0) %}
+                              {% set pct_mix = ((pct_cr + pct_rc)/2.0) %}
+                              <span class="badge {{ 'text-bg-success' if pct_mix>=80 else ('text-bg-warning' if pct_mix>=60 else 'text-bg-danger') }}">
+                                {{ '%.0f'|format(pct_mix) }}%
+                              </span>
+                            {% else %}
+                              <span class="text-muted">—</span>
+                            {% endif %}
+                          {% else %}
+                            <span class="text-muted">—</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                  {% if shown == 0 %}
+                    <tr><td colspan="6" class="text-center text-muted">Sem dados suficientes.</td></tr>
+                  {% endif %}
+                {% else %}
+                  <tr><td colspan="6" class="text-center text-muted">Sem dados suficientes.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insights rápidos -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="m-0 mb-2"><i class="bi bi-graph-up-arrow"></i> Insights rápidos</h6>
+          <div id="insightsWrap" class="row g-2">
+            <!-- preenchido via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista detalhada -->
+      <div class="card">
+        <div class="card-body">
+          <h6 class="m-0 mb-2"><i class="bi bi-list-stars"></i> Avaliações (detalhe)</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover align-middle">
+              <thead class="table-light">
+                <tr class="text-nowrap">
+                  <th>Data</th>
+                  <th>Restaurante</th>
+                  <th>Cooperado</th>
+                  <th>Geral</th>
+                  {% if (tipo|default('restaurante'))=='restaurante' %}
+                    <th>Trat.</th><th>Amb.</th><th>Sup.</th>
+                  {% else %}
+                    <th>Pont.</th><th>Educ.</th><th>Efic.</th><th>Apres.</th>
+                  {% endif %}
+                  <th>Comentário</th>
+                  <th>Média</th>
+                  <th>Sentimento</th>
+                  <th>Temas</th>
+                  <th>Crítico?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set _avs = avaliacoes|default([]) %}
+                {% if _avs and (_avs|length) > 0 %}
+                  {% for a in _avs %}
+                    <tr>
+                      <td class="text-nowrap">{{ a.criado_em.strftime('%d/%m/%Y %H:%M') if a.criado_em else '-' }}</td>
+                      <td class="text-break">{{ a.rest_nome|default('-') }}</td>
+                      <td class="text-break">{{ a.coop_nome|default('-') }}</td>
+                      <td class="text-center">{{ a.geral|default('') }}</td>
+
+                      {% if (tipo|default('restaurante'))=='restaurante' %}
+                        <td class="text-center">{{ a.trat|default('') }}</td>
+                        <td class="text-center">{{ a.amb|default('') }}</td>
+                        <td class="text-center">{{ a.sup|default('') }}</td>
+                      {% else %}
+                        <td class="text-center">{{ a.pont|default('') }}</td>
+                        <td class="text-center">{{ a.educ|default('') }}</td>
+                        <td class="text-center">{{ a.efic|default('') }}</td>
+                        <td class="text-center">{{ a.apres|default('') }}</td>
+                      {% endif %}
+
+                      <td class="text-break">{{ a.comentario|default('') }}</td>
+                      <td class="text-center">{{ a.media if a.media is not none else '' }}</td>
+                      <td class="text-center">{{ a.sentimento|default('') }}</td>
+                      <td class="text-break">{{ a.temas|default('') }}</td>
+                      <td class="text-center">{{ 'SIM' if a.alerta else 'NÃO' }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="{{ 11 if (tipo|default('restaurante'))=='restaurante' else 13 }}"
+                        class="text-center text-muted">Nenhuma avaliação</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /content-shell -->
+  </main>
+
+</div> <!-- /layout -->
+
+<!-- JS --------------------------------------------------------------------->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  window.addEventListener('load', function(){
+
+    // Botão "Este mês (1–último)"
+    (function(){
+      const btn = document.getElementById('btnMesAtual');
+      if(!btn) return;
+      btn.addEventListener('click', ()=>{
+        const now = new Date();
+        const y = now.getFullYear(), m = now.getMonth();
+        const first = new Date(y, m, 1);
+        const last  = new Date(y, m+1, 0);
+        const pad = n => String(n).padStart(2,'0');
+        const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        const di = document.querySelector('input[name="data_inicio"]');
+        const df = document.querySelector('input[name="data_fim"]');
+        if (di) di.value = toISO(first);
+        if (df) df.value = toISO(last);
+        if (btn.form) btn.form.submit();
+      });
+    })();
+
+    // Chart Top
+    (function initChart(){
+      const ensureChartJS = () => new Promise((resolve)=>{
+        if (window.Chart) return resolve();
+        const s = document.createElement('script');
+        s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+        s.onload = () => resolve();
+        document.head.appendChild(s);
+      });
+
+      const dataTop = {{ chart_top|default({'labels':[], 'values':[]})|tojson }};
+      const el = document.getElementById('chartTop');
+      if (!el || !dataTop || !Array.isArray(dataTop.labels) || dataTop.labels.length===0) return;
+
+      ensureChartJS().then(()=>{
+        new Chart(el, {
+          type: 'bar',
+          data: { labels: dataTop.labels, datasets: [{ label: 'Média Geral', data: dataTop.values }] },
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, max: 5 } },
+            plugins: { legend: { display: false } }
+          }
+        });
+      });
+    })();
+
+    // Insights rápidos
+    (function insights(){
+      const wrap = document.getElementById('insightsWrap');
+      if (!wrap) return;
+
+      const tipo = "{{ tipo|default('restaurante') }}";
+      const k = {{ kpis|default({})|tojson }};
+      const pct = v => Math.max(0, Math.min(100, Math.round((Number(v||0)/5)*100)));
+
+      function card(title, value, badgeClass){
+        const div = document.createElement('div');
+        div.className = 'col-12 col-md-6 col-lg-3';
+        const valStr = String(value || '');
+        div.innerHTML = `
+          <div class="card p-3 h-100">
+            <div class="small text-muted">${title}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1">
+              <div class="fw-bold">${valStr}</div>
+              <span class="badge ${badgeClass}">${valStr.includes('%')? valStr : ''}</span>
+            </div>
+          </div>`;
+        return div;
+      }
+
+      if (tipo === 'restaurante') {
+        const vals = [
+          {k:'trat', label:'Tratamento', v:k.trat||0},
+          {k:'amb',  label:'Ambiente',   v:k.amb||0},
+          {k:'sup',  label:'Suporte',    v:k.sup||0},
+        ];
+        const sorted = vals.slice().sort((a,b)=>a.v-b.v);
+        const worst = sorted[0], best = sorted[sorted.length-1];
+        const comp = pct(k.geral||0);
+
+        wrap.appendChild(card('Compatibilidade média (coop → rest)', comp+'%', comp>=80?'text-bg-success':(comp>=60?'text-bg-warning':'text-bg-danger')));
+        wrap.appendChild(card('Ponto forte', `${best.label} · ${best.v.toFixed(2)}★`, 'text-bg-success'));
+        wrap.appendChild(card('Ponto de atenção', `${worst.label} · ${worst.v.toFixed(2)}★`, 'text-bg-danger'));
+        wrap.appendChild(card('Amostra', `${(k.qtd||0)} avaliação(ões)`, 'text-bg-secondary'));
+      } else {
+        const vals = [
+          {k:'pont', label:'Pontualidade',  v:k.pont||0},
+          {k:'educ', label:'Educação',      v:k.educ||0},
+          {k:'efic', label:'Eficiência',    v:k.efic||0},
+          {k:'apres',label:'Apresentação',  v:k.apres||0},
+        ];
+        const sorted = vals.slice().sort((a,b)=>a.v-b.v);
+        const worst = sorted[0], best = sorted[sorted.length-1];
+        const comp = pct(k.geral||0);
+
+        wrap.appendChild(card('Compatibilidade média (rest → coop)', comp+'%', comp>=80?'text-bg-success':(comp>=60?'text-bg-warning':'text-bg-danger')));
+        wrap.appendChild(card('Ponto forte', `${best.label} · ${best.v.toFixed(2)}★`, 'text-bg-success'));
+        wrap.appendChild(card('Ponto de atenção', `${worst.label} · ${worst.v.toFixed(2)}★`, 'text-bg-danger'));
+        wrap.appendChild(card('Amostra', `${(k.qtd||0)} avaliação(ões)`, 'text-bg-secondary'));
+      }
+    })();
+
+  });
+</script>
+
+</body>
+</html>
+

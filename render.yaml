@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: financas-coopex
+    env: python
+    plan: starter
+    autoDeploy: false
+    buildCommand: pip install -r requirements.txt
+    startCommand: >
+      gunicorn app:app
+      --bind 0.0.0.0:$PORT
+      --workers ${WEB_CONCURRENCY:-1}          # 1 worker para gastar menos RAM
+      --threads 1
+      --timeout 120
+      --graceful-timeout 30
+      --keep-alive 5
+      --max-requests 400                      # recicla mais cedo p/ não acumular memória
+      --max-requests-jitter 50
+      --access-logfile /dev/null
+      --error-logfile -
+      --log-level info
+    healthCheckPath: /healthz
+    envVars:
+      - key: TZ
+        value: America/Sao_Paulo
+      - key: PYTHON_VERSION
+        value: 3.12.5
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONUTF8
+        value: "1"
+      - key: WEB_CONCURRENCY
+        value: "1"         # força só 1 worker mesmo
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
