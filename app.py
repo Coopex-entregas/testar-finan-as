@@ -28,7 +28,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dateutil.relativedelta import relativedelta
 
-# ✅ FALTAVA ISSO (resolve o erro do UserMixin e já deixa pronto p/ login)
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -48,7 +47,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, IntegrityError, DisconnectionError
 from sqlalchemy import delete as sa_delete
 
-# 👉 Novo: para gerar XLSX em memória
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
@@ -77,7 +75,6 @@ DOCS_PERSIST_DIR = os.path.join(PERSIST_ROOT, "docs")
 os.makedirs(DOCS_PERSIST_DIR, exist_ok=True)
 
 
-
 def _merge_qs(url: str, extra: dict[str, str]) -> str:
     """Insere parâmetros de query no URI sem duplicar os já existentes."""
     p = urlparse(url)
@@ -88,21 +85,23 @@ def _merge_qs(url: str, extra: dict[str, str]) -> str:
 
 
 def _build_db_uri() -> str:
-    raw = os.environ.get("DATABASE_URL")
+    raw = (os.environ.get("DATABASE_URL") or "").strip()
+
+    # Sem DATABASE_URL => usa SQLite local
     if not raw:
         return "sqlite:///" + os.path.join(BASE_DIR, "app.db")
 
-    # força driver psycopg3 (SQLAlchemy)
+    # força driver psycopg/psycopg3 no Postgres
     if raw.startswith("postgres://"):
         raw = raw.replace("postgres://", "postgresql+psycopg://", 1)
     elif raw.startswith("postgresql://") and "+psycopg" not in raw:
         raw = raw.replace("postgresql://", "postgresql+psycopg://", 1)
 
-    # SSL + keepalive + app name via libpq (idempotente)
+    # parâmetros extras só para Postgres/libpq
     extras = {
         "sslmode": "require",
         "keepalives": "1",
-        "keepalives_idle": "30",   # segundos ocioso antes de mandar keepalive
+        "keepalives_idle": "30",
         "keepalives_interval": "10",
         "keepalives_count": "3",
         "application_name": os.environ.get("APP_NAME", "financas-dxsu"),
@@ -111,6 +110,36 @@ def _build_db_uri() -> str:
 
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
+
+# ============================================================
+# BANCO DE DADOS - PREPARADO PARA SQLITE E POSTGRES
+# ============================================================
+DATABASE_URI = _build_db_uri()
+
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+engine_options = {
+    "pool_pre_ping": True
+}
+
+if DATABASE_URI.startswith("sqlite"):
+    # SQLite local / teste
+    engine_options["connect_args"] = {
+        "timeout": 10
+    }
+else:
+    # Postgres / Render
+    engine_options["connect_args"] = {
+        "connect_timeout": 10
+    }
+    engine_options["pool_recycle"] = 300
+    engine_options["pool_size"] = 5
+    engine_options["max_overflow"] = 10
+
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = engine_options
+
+db = SQLAlchemy(app)
 
 
 # =========================
