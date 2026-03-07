@@ -183,6 +183,25 @@ app.config.update(
 
 db = SQLAlchemy(app)
 
+with app.app_context():
+    try:
+        admin = Usuario.query.filter_by(usuario="COOPEX").first()
+        if not admin:
+            admin = Usuario(
+                nome="Administrador Master",
+                usuario="COOPEX",
+                senha=generate_password_hash("COOPEX05289"),
+                tipo="admin",
+                ativo=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("ADMIN COOPEX CRIADO COM SUCESSO")
+        else:
+            print("ADMIN COOPEX JÁ EXISTE")
+    except Exception as e:
+        print("ERRO AO CRIAR ADMIN:", e)
+
 def _sso_serializer():
     secret = os.environ.get("SSO_SHARED_SECRET") or app.secret_key
     # "salt" separa o token SSO de outros usos do secret
