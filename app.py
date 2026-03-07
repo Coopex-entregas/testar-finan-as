@@ -183,24 +183,6 @@ app.config.update(
 
 db = SQLAlchemy(app)
 
-with app.app_context():
-    try:
-        admin = Usuario.query.filter_by(usuario="COOPEX").first()
-        if not admin:
-            admin = Usuario(
-                nome="Administrador Master",
-                usuario="COOPEX",
-                senha=generate_password_hash("COOPEX05289"),
-                tipo="admin",
-                ativo=True
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print("ADMIN COOPEX CRIADO COM SUCESSO")
-        else:
-            print("ADMIN COOPEX JÁ EXISTE")
-    except Exception as e:
-        print("ERRO AO CRIAR ADMIN:", e)
 
 def _sso_serializer():
     secret = os.environ.get("SSO_SHARED_SECRET") or app.secret_key
@@ -339,6 +321,32 @@ class Usuario(db.Model, UserMixin):
 
     def check_password(self, raw: str) -> bool:
         return check_password_hash(self.senha_hash, raw)
+
+with app.app_context():
+    try:
+        db.create_all()
+
+        admin = Usuario.query.filter_by(usuario="COOPEX").first()
+
+        if not admin:
+            admin = Usuario(
+                usuario="COOPEX",
+                tipo="admin",
+                ativo=True
+            )
+            admin.set_password("COOPEX05289")
+            db.session.add(admin)
+            db.session.commit()
+            print("ADMIN COOPEX CRIADO")
+        else:
+            admin.tipo = "admin"
+            admin.ativo = True
+            admin.set_password("COOPEX05289")
+            db.session.commit()
+            print("ADMIN COOPEX ATUALIZADO")
+
+    except Exception as e:
+        print("ERRO AO CRIAR ADMIN:", e)
 
 
 class Cooperado(db.Model):
