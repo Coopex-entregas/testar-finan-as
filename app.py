@@ -2533,7 +2533,7 @@ def admin_dashboard():
 @admin_required
 def admin_resumo_split():
     ctx = _build_admin_context("resumo")
-    return render_template("resumo.html", **ctx, aba_ativa="resumo")
+    return render_template("resumo.html", **ctx)
 
     # --- Datas unificadas para o RESUMO (prioriza resumo_inicio/fim)
     data_inicio = _pick_date("resumo_inicio", "data_inicio")
