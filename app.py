@@ -2529,6 +2529,76 @@ def _build_admin_context(active_tab="resumo"):
 def admin_dashboard():
     return redirect(url_for("admin_resumo_split"))
 
+@app.get("/admin/lancamentos")
+@admin_required
+def admin_lancamentos_split():
+    ctx = _build_admin_context("lancamentos")
+    return render_template("lancamentos.html", **ctx)
+
+
+@app.get("/admin/receitas")
+@admin_required
+def admin_receitas_split():
+    ctx = _build_admin_context("receitas")
+    return render_template("receitas.html", **ctx)
+
+
+@app.get("/admin/despesas")
+@admin_required
+def admin_despesas_split():
+    ctx = _build_admin_context("despesas")
+    return render_template("despesas.html", **ctx)
+
+
+@app.get("/admin/coop_receitas")
+@admin_required
+def admin_coop_receitas_split():
+    ctx = _build_admin_context("coop_receitas")
+    return render_template("coop_receitas.html", **ctx)
+
+
+@app.get("/admin/coop_despesas")
+@admin_required
+def admin_coop_despesas_split():
+    ctx = _build_admin_context("coop_despesas")
+    return render_template("coop_despesas.html", **ctx)
+
+
+@app.get("/admin/beneficios")
+@admin_required
+def admin_beneficios_split():
+    ctx = _build_admin_context("beneficios")
+    return render_template("beneficios.html", **ctx)
+
+
+@app.get("/admin/cooperados")
+@admin_required
+def admin_cooperados_split():
+    ctx = _build_admin_context("cooperados")
+    return render_template("cooperados.html", **ctx)
+
+
+@app.get("/admin/restaurantes")
+@admin_required
+def admin_restaurantes_split():
+    ctx = _build_admin_context("restaurantes")
+    return render_template("restaurantes.html", **ctx)
+
+
+@app.get("/admin/escalas")
+@admin_required
+def admin_escalas_split():
+    ctx = _build_admin_context("escalas")
+    return render_template("escalas.html", **ctx)
+
+
+@app.get("/admin/config")
+@admin_required
+def admin_config_split():
+    ctx = _build_admin_context("config")
+    return render_template("config.html", **ctx)
+
+
 @app.get("/admin/resumo")
 @admin_required
 def admin_resumo_split():
