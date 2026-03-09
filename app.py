@@ -2711,7 +2711,7 @@ def admin_dashboard():
     current_date = date.today()
     data_limite = date(current_date.year, 12, 31)
 
-        return render_template(
+    return render_template(
         "admin_escalas.html",
         tab=active_tab,
         total_producoes=total_producoes,
