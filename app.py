@@ -2824,6 +2824,143 @@ def admin_avisos():
     restaurantes = Restaurante.query.order_by(Restaurante.nome.asc()).all()
     return render_template("admin_avisos.html", avisos=avisos, cooperados=cooperados, restaurantes=restaurantes)
 
+# =========================
+# Ações do painel admin (necessárias para os HTMLs split)
+# =========================
+
+@app.route("/config/update", methods=["POST"])
+@admin_required
+def update_config():
+    cfg = get_config()
+    cfg.salario_minimo = request.form.get("salario_minimo", type=float) or 0.0
+    db.session.commit()
+    flash("Configuração atualizada.", "success")
+    return redirect(url_for("admin_config_split"))
+
+
+@app.route("/admin/alterar_admin", methods=["POST"])
+@admin_required
+def alterar_admin():
+    admin = Usuario.query.filter_by(tipo="admin").first()
+    admin.usuario = request.form.get("usuario", admin.usuario).strip()
+    nova = request.form.get("nova_senha", "")
+    confirmar = request.form.get("confirmar_senha", "")
+
+    if nova or confirmar:
+        if nova != confirmar:
+            flash("As senhas não conferem.", "warning")
+            return redirect(url_for("admin_config_split"))
+        admin.set_password(nova)
+
+    db.session.commit()
+    flash("Conta do administrador atualizada.", "success")
+    return redirect(url_for("admin_config_split"))
+
+
+@app.route("/cooperados/add", methods=["POST"])
+@admin_required
+def add_cooperado():
+    f = request.form
+    nome = (f.get("nome") or "").strip()
+    usuario_login = (f.get("usuario") or "").strip()
+    senha = f.get("senha") or ""
+    telefone = (f.get("telefone") or "").strip()
+    foto = request.files.get("foto")
+
+    if Usuario.query.filter_by(usuario=usuario_login).first():
+        flash("Usuário já existente.", "warning")
+        return redirect(url_for("admin_cooperados_split"))
+
+    u = Usuario(usuario=usuario_login, tipo="cooperado", senha_hash="")
+    u.set_password(senha)
+    db.session.add(u)
+    db.session.flush()
+
+    c = Cooperado(
+        nome=nome,
+        usuario_id=u.id,
+        telefone=telefone,
+        ultima_atualizacao=datetime.now(),
+    )
+    db.session.add(c)
+    db.session.flush()
+
+    if foto and foto.filename:
+        _save_foto_to_db(c, foto, is_cooperado=True)
+
+    db.session.commit()
+    flash("Cooperado cadastrado.", "success")
+    return redirect(url_for("admin_cooperados_split"))
+
+
+@app.route("/cooperados/<int:id>/reset_senha", methods=["POST"])
+@admin_required
+def reset_senha_cooperado(id):
+    c = Cooperado.query.get_or_404(id)
+    ns = request.form.get("nova_senha") or ""
+    cs = request.form.get("confirmar_senha") or ""
+
+    if ns != cs:
+        flash("As senhas não conferem.", "warning")
+        return redirect(url_for("admin_cooperados_split"))
+
+    c.usuario_ref.set_password(ns)
+    db.session.commit()
+    flash("Senha do cooperado atualizada.", "success")
+    return redirect(url_for("admin_cooperados_split"))
+
+
+@app.route("/restaurantes/add", methods=["POST"])
+@admin_required
+def add_restaurante():
+    f = request.form
+    nome = f.get("nome", "").strip()
+    periodo = f.get("periodo", "seg-dom")
+    usuario_login = f.get("usuario", "").strip()
+    senha = f.get("senha", "")
+    foto = request.files.get("foto")
+
+    if Usuario.query.filter_by(usuario=usuario_login).first():
+        flash("Usuário já existente.", "warning")
+        return redirect(url_for("admin_restaurantes_split"))
+
+    u = Usuario(usuario=usuario_login, tipo="restaurante", senha_hash="")
+    u.set_password(senha)
+    db.session.add(u)
+    db.session.flush()
+
+    r = Restaurante(
+        nome=nome,
+        periodo=periodo,
+        usuario_id=u.id,
+    )
+    db.session.add(r)
+    db.session.flush()
+
+    if foto and foto.filename:
+        _save_foto_to_db(r, foto, is_cooperado=False)
+
+    db.session.commit()
+    flash("Estabelecimento cadastrado.", "success")
+    return redirect(url_for("admin_restaurantes_split"))
+
+
+@app.route("/restaurantes/<int:id>/reset_senha", methods=["POST"])
+@admin_required
+def reset_senha_restaurante(id):
+    r = Restaurante.query.get_or_404(id)
+    ns = request.form.get("nova_senha") or ""
+    cs = request.form.get("confirmar_senha") or ""
+
+    if ns != cs:
+        flash("As senhas não conferem.", "warning")
+        return redirect(url_for("admin_restaurantes_split"))
+
+    r.usuario_ref.set_password(ns)
+    db.session.commit()
+    flash("Senha do restaurante atualizada.", "success")
+    return redirect(url_for("admin_restaurantes_split"))
+
 
 # =========================
 # Navegação/Export util
