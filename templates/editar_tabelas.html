@@ -9,7 +9,7 @@
 </head>
 <body class="bg-light">
   <div class="container py-4">
-    <a class="btn btn-outline-secondary mb-3" href="{{ url_for('admin_dashboard') }}?tab=escalas">
+    <a class="btn btn-outline-secondary mb-3" href="{{ url_for('admin_escalas_split') }}">
       <i class="bi bi-arrow-left"></i> Voltar ao painel
     </a>
 
@@ -37,7 +37,6 @@
     </div>
 
     <form method="POST" class="row g-4">
-      <!-- CNH -->
       <div class="col-12">
         <div class="card">
           <div class="card-header"><b>CNH</b></div>
@@ -77,7 +76,6 @@
         </div>
       </div>
 
-      <!-- PLACA -->
       <div class="col-12">
         <div class="card">
           <div class="card-header"><b>Placa</b></div>
@@ -119,7 +117,7 @@
 
       <div class="col-12 d-flex gap-2">
         <button class="btn btn-primary"><i class="bi bi-save"></i> Salvar</button>
-        <a class="btn btn-outline-secondary" href="{{ url_for('admin_dashboard') }}?tab=escalas">Cancelar</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('admin_escalas_split') }}">Cancelar</a>
       </div>
     </form>
 
@@ -140,7 +138,6 @@
   </div>
 
   <script>
-    // Contagem regressiva em tempo real até 31/12 (prazo final)
     (function(){
       const diasEl1 = document.getElementById('dias_restantes');
       const diasEl2 = document.getElementById('dias_restantes2');
@@ -153,7 +150,7 @@
         if (diasEl2) diasEl2.textContent = dias;
       }
       update();
-      setInterval(update, 60*1000); // atualiza a cada minuto
+      setInterval(update, 60*1000);
     })();
   </script>
 </body>
