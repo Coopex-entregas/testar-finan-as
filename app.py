@@ -2204,6 +2204,8 @@ def toggle_status_cooperado(id):
         return jsonify(ok=False, error="Falha ao salvar no banco"), 500
 
 def _build_admin_context(active_tab="resumo"):
+    import time
+    t0 = time.time()
     args = request.args
 
     considerar_periodo = False
@@ -2217,6 +2219,119 @@ def _build_admin_context(active_tab="resumo"):
                 if d:
                     return d
         return None
+
+    data_inicio = _pick_date("resumo_inicio", "data_inicio")
+    data_fim = _pick_date("resumo_fim", "data_fim")
+
+    restaurante_id = args.get("restaurante_id", type=int)
+    cooperado_id = args.get("cooperado_id", type=int)
+    considerar_periodo = bool(args.get("considerar_periodo"))
+    dows = set(args.getlist("dow"))
+
+    q = Lancamento.query
+
+    if restaurante_id:
+        q = q.filter(Lancamento.restaurante_id == restaurante_id)
+
+    if cooperado_id:
+        q = q.filter(Lancamento.cooperado_id == cooperado_id)
+
+    if data_inicio:
+        q = q.filter(Lancamento.data >= data_inicio)
+
+    if data_fim:
+        q = q.filter(Lancamento.data <= data_fim)
+
+    lancamentos = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
+
+    total_producoes = sum((l.valor or 0.0) for l in lancamentos)
+    total_inss = round(total_producoes * INSS_ALIQ, 2)
+    total_sest = round(total_producoes * SEST_ALIQ, 2)
+    total_encargos = round(total_inss + total_sest, 2)
+
+    rq = ReceitaCooperativa.query
+    dq = DespesaCooperativa.query
+
+    if data_inicio:
+        rq = rq.filter(ReceitaCooperativa.data >= data_inicio)
+        dq = dq.filter(DespesaCooperativa.data >= data_inicio)
+
+    if data_fim:
+        rq = rq.filter(ReceitaCooperativa.data <= data_fim)
+        dq = dq.filter(DespesaCooperativa.data <= data_fim)
+
+    receitas = rq.order_by(ReceitaCooperativa.data.desc(), ReceitaCooperativa.id.desc()).all()
+    despesas = dq.order_by(DespesaCooperativa.data.desc(), DespesaCooperativa.id.desc()).all()
+
+    total_receitas = sum((r.valor_total or 0.0) for r in receitas)
+    total_despesas = sum((d.valor or 0.0) for d in despesas)
+
+    rq2 = ReceitaCooperado.query
+    dq2 = DespesaCooperado.query
+
+    if data_inicio:
+        rq2 = rq2.filter(ReceitaCooperado.data >= data_inicio)
+
+    if data_fim:
+        rq2 = rq2.filter(ReceitaCooperado.data <= data_fim)
+
+    receitas_coop = rq2.order_by(ReceitaCooperado.data.desc(), ReceitaCooperado.id.desc()).all()
+    despesas_coop = dq2.order_by(DespesaCooperado.id.desc()).all()
+
+    total_receitas_coop = sum((r.valor or 0.0) for r in receitas_coop)
+    total_despesas_coop = sum((d.valor or 0.0) for d in despesas_coop if not getattr(d, "eh_adiantamento", False))
+
+    cfg = get_config()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
+
+    chart_data_lancamentos_coop = {"labels": [], "values": []}
+    chart_data_lancamentos_cooperados = {"labels": [], "values": []}
+
+    current_date = date.today()
+    data_limite = date(current_date.year, 12, 31)
+
+    print("TEMPO ADMIN:", time.time() - t0)
+
+    return {
+        "aba_ativa": active_tab,
+        "tab": active_tab,
+        "total_producoes": total_producoes,
+        "total_inss": total_inss,
+        "total_sest": total_sest,
+        "total_encargos": total_encargos,
+        "total_receitas": total_receitas,
+        "total_despesas": total_despesas,
+        "total_receitas_coop": total_receitas_coop,
+        "total_despesas_coop": total_despesas_coop,
+        "salario_minimo": cfg.salario_minimo or 0.0,
+        "lancamentos": lancamentos,
+        "receitas": receitas,
+        "despesas": despesas,
+        "receitas_coop": receitas_coop,
+        "despesas_coop": despesas_coop,
+        "cooperados": cooperados,
+        "restaurantes": restaurantes,
+        "beneficios_view": [],
+        "historico_beneficios": [],
+        "current_date": current_date,
+        "data_limite": data_limite,
+        "admin": Usuario.query.filter_by(tipo="admin").first(),
+        "docinfo_map": {},
+        "escalas_por_coop": {},
+        "escalas_por_coop_json": {},
+        "qtd_escalas_map": {},
+        "qtd_escalas_sem_cadastro": 0,
+        "status_doc_por_coop": {},
+        "chart_data_lancamentos_coop": chart_data_lancamentos_coop,
+        "chart_data_lancamentos_cooperados": chart_data_lancamentos_cooperados,
+        "folha_inicio": None,
+        "folha_fim": None,
+        "folha_por_coop": [],
+        "trocas_pendentes": [],
+        "trocas_historico": [],
+        "trocas_historico_flat": [],
+    }
 
     data_inicio = _pick_date("resumo_inicio", "data_inicio")
     data_fim = _pick_date("resumo_fim", "data_fim")
