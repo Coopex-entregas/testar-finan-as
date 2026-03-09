@@ -2132,26 +2132,64 @@ def sso_entrar():
     
 
 # =========================
-# Admin Dashboard
+# ADMIN DASHBOARD SPLIT
 # =========================
 
-from flask import jsonify, request, render_template, redirect, url_for, flash
-from sqlalchemy import func, inspect
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, ProgrammingError
-from datetime import date, timedelta
+from flask import (
+    jsonify, request, render_template, redirect,
+    url_for, flash, current_app, send_file, session
+)
+from sqlalchemy import func, inspect, and_, or_, literal
+from sqlalchemy.exc import (
+    SQLAlchemyError, OperationalError, ProgrammingError,
+    IntegrityError
+)
+from sqlalchemy import delete as sa_delete
+from datetime import datetime, date, timedelta
 from collections import defaultdict, namedtuple
 from types import SimpleNamespace
+import io
 import re
 
 
-@app.post("/admin/cooperados/<int:id>/toggle-status")
-def toggle_status_cooperado(id):
-    """
-    Alterna o status 'ativo' do usuário vinculado ao cooperado.
+# =========================
+# HELPERS
+# =========================
 
-    Observação crítica:
-    - Se o campo/coluna 'ativo' ainda não existir no MODEL/DB, retorna erro orientando migração.
-    """
+def _parse_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    value = value.strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _dow(d: date) -> str:
+    return str(d.weekday()) if d else ""
+
+
+def _fmt_time(t) -> str:
+    if not t:
+        return ""
+    if hasattr(t, "strftime"):
+        try:
+            return t.strftime("%H:%M")
+        except Exception:
+            pass
+    return str(t)
+
+
+# =========================
+# STATUS COOPERADO
+# =========================
+
+@app.post("/admin/cooperados/<int:id>/toggle-status")
+@admin_required
+def toggle_status_cooperado(id):
     try:
         coop = db.session.get(Cooperado, id)
         if not coop or not getattr(coop, "usuario_ref", None):
@@ -2162,31 +2200,23 @@ def toggle_status_cooperado(id):
         if not hasattr(user, "ativo"):
             return jsonify(
                 ok=False,
-                error="Campo 'ativo' ausente no modelo. Atualize o models.py (Usuario.ativo) e faça deploy."
+                error="Campo 'ativo' ausente no modelo. Atualize o models.py e faça deploy."
             ), 500
 
         try:
             insp = inspect(db.engine)
             table = getattr(Usuario, "__tablename__", None)
-            if not table:
-                return jsonify(ok=False, error="Não foi possível identificar a tabela do modelo Usuario."), 500
-
             cols = {c["name"] for c in insp.get_columns(table)}
             if "ativo" not in cols:
                 return jsonify(
                     ok=False,
-                    error=(
-                        "Coluna 'ativo' ausente no banco. Faça a migração/ALTER TABLE em produção "
-                        f"(tabela: {table})."
-                    ),
+                    error=f"Coluna 'ativo' ausente no banco (tabela: {table}). Faça a migração.",
                     table=table
                 ), 409
         except Exception:
             pass
 
-        atual = bool(getattr(user, "ativo", True))
-        user.ativo = (not atual)
-
+        user.ativo = not bool(getattr(user, "ativo", True))
         db.session.commit()
         return jsonify(ok=True, ativo=bool(user.ativo))
 
@@ -2194,12 +2224,16 @@ def toggle_status_cooperado(id):
         db.session.rollback()
         return jsonify(
             ok=False,
-            error="Falha ao salvar: provável falta da coluna 'ativo' no banco. Faça migração/ALTER TABLE."
+            error="Falha ao salvar: provável falta da coluna 'ativo' no banco."
         ), 409
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify(ok=False, error="Falha ao salvar no banco"), 500
 
+
+# =========================
+# CONTEXTO DO ADMIN
+# =========================
 
 def _admin_dashboard_context(active_tab="resumo"):
     import time
@@ -2256,19 +2290,11 @@ def _admin_dashboard_context(active_tab="resumo"):
                 6: 6,
                 7: 0,
             }
-
             db_dows = [dow_map[d] for d in dows_int if d in dow_map]
-
             if db_dows:
-                q = q.filter(
-                    db.extract("dow", Lancamento.data).in_(db_dows)
-                )
+                q = q.filter(db.extract("dow", Lancamento.data).in_(db_dows))
 
-    lanc_base = q.order_by(
-        Lancamento.data.desc(),
-        Lancamento.id.desc()
-    ).all()
-
+    lanc_base = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
     lancamentos = lanc_base
 
     if considerar_periodo and restaurante_id:
@@ -2280,10 +2306,7 @@ def _admin_dashboard_context(active_tab="resumo"):
                 "sex-qui": {"5", "6", "7", "1", "2", "3", "4"},
             }
             permitidos = mapa.get(rest.periodo, {"1", "2", "3", "4", "5", "6", "7"})
-            lancamentos = [
-                l for l in lancamentos
-                if l.data and _dow(l.data) in permitidos
-            ]
+            lancamentos = [l for l in lancamentos if l.data and _dow(l.data) in permitidos]
 
     total_producoes = sum((l.valor or 0.0) for l in lancamentos)
     total_inss = round(total_producoes * INSS_ALIQ, 2)
@@ -2344,18 +2367,8 @@ def _admin_dashboard_context(active_tab="resumo"):
     ).all()
 
     total_receitas_coop = sum((r.valor or 0.0) for r in receitas_coop)
-
-    total_despesas_coop = sum(
-        (d.valor or 0.0)
-        for d in despesas_coop
-        if not d.eh_adiantamento
-    )
-
-    total_adiantamentos_coop = sum(
-        (d.valor or 0.0)
-        for d in despesas_coop
-        if d.eh_adiantamento
-    )
+    total_despesas_coop = sum((d.valor or 0.0) for d in despesas_coop if not getattr(d, "eh_adiantamento", False))
+    total_adiantamentos_coop = sum((d.valor or 0.0) for d in despesas_coop if getattr(d, "eh_adiantamento", False))
 
     cfg = get_config()
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
@@ -2406,8 +2419,8 @@ def _admin_dashboard_context(active_tab="resumo"):
 
     def _fmt_label(k: str) -> str:
         parts = k.split("-")
-        if len(parts) == 2 and parts[0] and parts[1]:
-            year, month = parts[0], parts[1]
+        if len(parts) == 2:
+            year, month = parts
             return f"{month}/{year[-2:]}"
         return k
 
@@ -2417,285 +2430,6 @@ def _admin_dashboard_context(active_tab="resumo"):
     chart_data_lancamentos_cooperados = chart_data_lancamentos_coop
 
     admin_user = Usuario.query.filter_by(tipo="admin").first()
-
-    folha_por_coop = []
-    folha_inicio = None
-    folha_fim = None
-
-    if active_tab == "folha":
-        folha_inicio = _parse_date(args.get("folha_inicio")) or (date.today() - timedelta(days=30))
-        folha_fim = _parse_date(args.get("folha_fim")) or date.today()
-
-        INSS_ALIQ_FOLHA = 0.04
-        SEST_ALIQ_FOLHA = 0.005
-
-        FolhaItem = namedtuple(
-            "FolhaItem",
-            "cooperado lancamentos receitas despesas bruto inss sest encargos outras_desp liquido"
-        )
-
-        for c in cooperados:
-            l = (
-                Lancamento.query.filter(
-                    Lancamento.cooperado_id == c.id,
-                    Lancamento.data >= folha_inicio,
-                    Lancamento.data <= folha_fim,
-                )
-                .order_by(Lancamento.data.asc(), Lancamento.id.asc())
-                .all()
-            )
-            r = (
-                ReceitaCooperado.query.filter(
-                    ReceitaCooperado.cooperado_id == c.id,
-                    ReceitaCooperado.data >= folha_inicio,
-                    ReceitaCooperado.data <= folha_fim,
-                )
-                .order_by(ReceitaCooperado.data.asc(), ReceitaCooperado.id.asc())
-                .all()
-            )
-            d = (
-                DespesaCooperado.query.filter(
-                    (DespesaCooperado.cooperado_id == c.id) | (DespesaCooperado.cooperado_id.is_(None)),
-                    DespesaCooperado.data_inicio <= folha_fim,
-                    DespesaCooperado.data_fim >= folha_inicio,
-                )
-                .order_by(DespesaCooperado.data_inicio.asc(), DespesaCooperado.id.asc())
-                .all()
-            )
-
-            bruto_lanc = sum((x.valor or 0) for x in l)
-
-            inss = round(bruto_lanc * INSS_ALIQ_FOLHA, 2)
-            sest = round(bruto_lanc * SEST_ALIQ_FOLHA, 2)
-            encargos = round(inss + sest, 2)
-
-            outras_desp = sum((x.valor or 0) for x in d)
-            bruto_total = bruto_lanc + sum((x.valor or 0) for x in r)
-            liquido = round(bruto_total - encargos - outras_desp, 2)
-
-            for x in l:
-                x.conta_inss = True
-                x.isento_benef = False
-                x.inss = round((x.valor or 0) * INSS_ALIQ_FOLHA, 2)
-                x.sest = round((x.valor or 0) * SEST_ALIQ_FOLHA, 2)
-                x.encargos = round((x.inss or 0) + (x.sest or 0), 2)
-
-            folha_por_coop.append(
-                FolhaItem(
-                    cooperado=c,
-                    lancamentos=l,
-                    receitas=r,
-                    despesas=d,
-                    bruto=round(bruto_total, 2),
-                    inss=inss,
-                    sest=sest,
-                    encargos=encargos,
-                    outras_desp=round(outras_desp, 2),
-                    liquido=liquido,
-                )
-            )
-
-    def _tokenize(s: str):
-        return [x.strip() for x in re.split(r"[;,]", s or "") if x.strip()]
-
-    def _d(s):
-        if not s:
-            return None
-        s = s.strip()
-        try:
-            if "/" in s:
-                d_, m_, y_ = s.split("/")
-                return date(int(y_), int(m_), int(d_))
-            y_, m_, d_ = s.split("-")
-            return date(int(y_), int(m_), int(d_))
-        except Exception:
-            return None
-
-    b_ini = _d(request.args.get("b_ini"))
-    b_fim = _d(request.args.get("b_fim"))
-    coop_filter = request.args.get("coop_benef_id", type=int)
-
-    q_benef = BeneficioRegistro.query
-
-    if b_ini and b_fim:
-        q_benef = q_benef.filter(
-            BeneficioRegistro.data_inicial <= b_fim,
-            BeneficioRegistro.data_final >= b_ini,
-        )
-    elif b_ini:
-        q_benef = q_benef.filter(BeneficioRegistro.data_final >= b_ini)
-    elif b_fim:
-        q_benef = q_benef.filter(BeneficioRegistro.data_inicial <= b_fim)
-
-    historico_beneficios = q_benef.order_by(BeneficioRegistro.id.desc()).all()
-
-    beneficios_view = []
-    for b in historico_beneficios:
-        nomes = _tokenize(b.recebedores_nomes or "")
-        ids = _tokenize(b.recebedores_ids or "")
-
-        recs = []
-        for i, nome in enumerate(nomes):
-            rid = None
-            if i < len(ids) and str(ids[i]).isdigit():
-                try:
-                    rid = int(ids[i])
-                except Exception:
-                    rid = None
-
-            if coop_filter and (rid is not None) and (rid != coop_filter):
-                continue
-
-            recs.append({"id": rid, "nome": nome})
-
-        if coop_filter and not recs:
-            continue
-
-        beneficios_view.append({
-            "id": b.id,
-            "data_inicial": b.data_inicial,
-            "data_final": b.data_final,
-            "data_lancamento": b.data_lancamento,
-            "tipo": b.tipo,
-            "valor_total": b.valor_total or 0.0,
-            "recebedores": recs,
-        })
-
-    def _escala_desc(e):
-        return _escala_label(e) if e else ""
-
-    def _split_turno_horario(s: str) -> tuple[str, str]:
-        if not s:
-            return "", ""
-        parts = [p.strip() for p in s.split("•")]
-        if len(parts) == 2:
-            return parts[0], parts[1]
-        return s.strip(), ""
-
-    def _linha_from_escala(e: Escala, saiu: str, entrou: str) -> dict:
-        return {
-            "dia": _escala_label(e).split(" • ")[0],
-            "turno_horario": " • ".join(
-                [x for x in [(e.turno or "").strip(), (e.horario or "").strip()] if x]
-            ),
-            "contrato": (e.contrato or "").strip(),
-            "saiu": saiu,
-            "entrou": entrou,
-        }
-
-    trocas_all = TrocaSolicitacao.query.order_by(TrocaSolicitacao.id.desc()).all()
-    trocas_pendentes = []
-    trocas_historico = []
-    trocas_historico_flat = []
-
-    for t in trocas_all:
-        solicitante = Cooperado.query.get(t.solicitante_id)
-        destinatario = Cooperado.query.get(t.destino_id)
-        orig = Escala.query.get(t.origem_escala_id)
-
-        linhas_afetadas = _parse_linhas_from_msg(t.mensagem) if t.status == "aprovada" else []
-
-        if t.status == "aprovada" and not linhas_afetadas and orig and solicitante and destinatario:
-            linhas_afetadas.append(_linha_from_escala(orig, saiu=solicitante.nome, entrou=destinatario.nome))
-
-            wd_o = _weekday_from_data_str(orig.data)
-            buck_o = _turno_bucket(orig.turno, orig.horario)
-            candidatas = Escala.query.filter_by(cooperado_id=destinatario.id).all()
-            best = None
-            for e in candidatas:
-                if _weekday_from_data_str(e.data) == wd_o and _turno_bucket(e.turno, e.horario) == buck_o:
-                    if (orig.contrato or "").strip().lower() == (e.contrato or "").strip().lower():
-                        best = e
-                        break
-                    if best is None:
-                        best = e
-            if best:
-                linhas_afetadas.append(_linha_from_escala(best, saiu=destinatario.nome, entrou=solicitante.nome))
-
-        destino_data = ""
-        destino_turno = ""
-        destino_horario = ""
-        destino_contrato = ""
-
-        if t.status == "aprovada" and linhas_afetadas and solicitante and destinatario:
-            linha_dest = None
-            for r_ in linhas_afetadas:
-                if r_.get("saiu") == destinatario.nome and r_.get("entrou") == solicitante.nome:
-                    linha_dest = r_
-                    break
-            if linha_dest:
-                destino_data = linha_dest.get("dia", "")
-                turno_txt, horario_txt = _split_turno_horario(linha_dest.get("turno_horario", ""))
-                destino_turno = turno_txt
-                destino_horario = horario_txt
-                destino_contrato = linha_dest.get("contrato", "")
-
-        if not destino_data and orig and destinatario:
-            wd_o = _weekday_from_data_str(orig.data)
-            buck_o = _turno_bucket(orig.turno, orig.horario)
-            candidatas = Escala.query.filter_by(cooperado_id=destinatario.id).all()
-            best = None
-            for e in candidatas:
-                if _weekday_from_data_str(e.data) == wd_o and _turno_bucket(e.turno, e.horario) == buck_o:
-                    if (orig.contrato or "").strip().lower() == (e.contrato or "").strip().lower():
-                        best = e
-                        break
-                    if best is None:
-                        best = e
-            if best:
-                destino_data = best.data
-                destino_turno = (best.turno or "").strip()
-                destino_horario = (best.horario or "").strip()
-                destino_contrato = (best.contrato or "").strip()
-
-        item = {
-            "id": t.id,
-            "status": t.status,
-            "mensagem": t.mensagem,
-            "criada_em": t.criada_em,
-            "aplicada_em": t.aplicada_em,
-            "solicitante": solicitante,
-            "destinatario": destinatario,
-            "origem": orig,
-            "destino": destinatario,
-            "origem_desc": _escala_desc(orig),
-            "origem_weekday": _weekday_from_data_str(orig.data) if orig else None,
-            "origem_turno_bucket": _turno_bucket(orig.turno if orig else None, orig.horario if orig else None),
-            "destino_data": destino_data,
-            "destino_turno": destino_turno,
-            "destino_horario": destino_horario,
-            "destino_contrato": destino_contrato,
-            "linhas_afetadas": linhas_afetadas,
-        }
-
-        if t.status == "aprovada" and linhas_afetadas:
-            itens = []
-            for r_ in linhas_afetadas:
-                turno_txt, horario_txt = _split_turno_horario(r_.get("turno_horario", ""))
-                itens.append(
-                    {
-                        "data": r_.get("dia", ""),
-                        "turno": turno_txt,
-                        "horario": horario_txt,
-                        "contrato": r_.get("contrato", ""),
-                        "saiu_nome": r_.get("saiu", ""),
-                        "entrou_nome": r_.get("entrou", ""),
-                    }
-                )
-                trocas_historico_flat.append(
-                    {
-                        "data": r_.get("dia", ""),
-                        "turno": turno_txt,
-                        "horario": horario_txt,
-                        "contrato": r_.get("contrato", ""),
-                        "saiu_nome": r_.get("saiu", ""),
-                        "entrou_nome": r_.get("entrou", ""),
-                        "aplicada_em": t.aplicada_em,
-                    }
-                )
-            item["itens"] = itens
-
-        (trocas_pendentes if t.status == "pendente" else trocas_historico).append(item)
 
     current_date = date.today()
     data_limite = date(current_date.year, 12, 31)
@@ -2722,8 +2456,6 @@ def _admin_dashboard_context(active_tab="resumo"):
         "despesas_coop": despesas_coop,
         "cooperados": cooperados,
         "restaurantes": restaurantes,
-        "beneficios_view": beneficios_view,
-        "historico_beneficios": historico_beneficios,
         "current_date": current_date,
         "data_limite": data_limite,
         "admin": admin_user,
@@ -2735,20 +2467,18 @@ def _admin_dashboard_context(active_tab="resumo"):
         "status_doc_por_coop": status_doc_por_coop,
         "chart_data_lancamentos_coop": chart_data_lancamentos_coop,
         "chart_data_lancamentos_cooperados": chart_data_lancamentos_cooperados,
-        "folha_inicio": folha_inicio,
-        "folha_fim": folha_fim,
-        "folha_por_coop": folha_por_coop,
-        "trocas_pendentes": trocas_pendentes,
-        "trocas_historico": trocas_historico,
-        "trocas_historico_flat": trocas_historico_flat,
     }
 
 
-# Rotas split do painel admin
+# =========================
+# ROTAS SPLIT
+# =========================
+
 @app.route("/admin", methods=["GET"])
 @admin_required
 def admin_dashboard():
     return redirect(url_for("admin_resumo_split"))
+
 
 @app.get("/admin/resumo")
 @admin_required
@@ -2756,11 +2486,13 @@ def admin_resumo_split():
     ctx = _admin_dashboard_context("resumo")
     return render_template("resumo.html", **ctx)
 
+
 @app.get("/admin/lancamentos")
 @admin_required
 def admin_lancamentos_split():
     ctx = _admin_dashboard_context("lancamentos")
     return render_template("lancamentos.html", **ctx)
+
 
 @app.get("/admin/receitas")
 @admin_required
@@ -2768,11 +2500,13 @@ def admin_receitas_split():
     ctx = _admin_dashboard_context("receitas")
     return render_template("receitas.html", **ctx)
 
+
 @app.get("/admin/despesas")
 @admin_required
 def admin_despesas_split():
     ctx = _admin_dashboard_context("despesas")
     return render_template("despesas.html", **ctx)
+
 
 @app.get("/admin/coop_receitas")
 @admin_required
@@ -2780,11 +2514,13 @@ def admin_coop_receitas_split():
     ctx = _admin_dashboard_context("coop_receitas")
     return render_template("coop_receitas.html", **ctx)
 
+
 @app.get("/admin/coop_despesas")
 @admin_required
 def admin_coop_despesas_split():
     ctx = _admin_dashboard_context("coop_despesas")
     return render_template("coop_despesas.html", **ctx)
+
 
 @app.get("/admin/beneficios")
 @admin_required
@@ -2792,11 +2528,13 @@ def admin_beneficios_split():
     ctx = _admin_dashboard_context("beneficios")
     return render_template("beneficios.html", **ctx)
 
+
 @app.get("/admin/cooperados")
 @admin_required
 def admin_cooperados_split():
     ctx = _admin_dashboard_context("cooperados")
     return render_template("cooperados.html", **ctx)
+
 
 @app.get("/admin/restaurantes")
 @admin_required
@@ -2804,11 +2542,13 @@ def admin_restaurantes_split():
     ctx = _admin_dashboard_context("restaurantes")
     return render_template("restaurantes.html", **ctx)
 
+
 @app.get("/admin/escalas")
 @admin_required
 def admin_escalas_split():
     ctx = _admin_dashboard_context("escalas")
     return render_template("escalas.html", **ctx)
+
 
 @app.get("/admin/config")
 @admin_required
@@ -2816,13 +2556,62 @@ def admin_config_split():
     ctx = _admin_dashboard_context("config")
     return render_template("config.html", **ctx)
 
+
 @app.route("/admin/avisos", methods=["GET", "POST"], endpoint="admin_avisos")
 @admin_required
 def admin_avisos():
     avisos = Aviso.query.order_by(Aviso.fixado.desc(), Aviso.criado_em.desc()).all()
     cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
     restaurantes = Restaurante.query.order_by(Restaurante.nome.asc()).all()
-    return render_template("admin_avisos.html", avisos=avisos, cooperados=cooperados, restaurantes=restaurantes)
+    return render_template(
+        "admin_avisos.html",
+        avisos=avisos,
+        cooperados=cooperados,
+        restaurantes=restaurantes
+    )
+
+
+# =========================
+# CONFIG
+# =========================
+
+@app.route("/config/update", methods=["POST"])
+@admin_required
+def update_config():
+    cfg = get_config()
+    if "salario_minimo" in request.form:
+        cfg.salario_minimo = request.form.get("salario_minimo", type=float) or 0.0
+        db.session.commit()
+        flash("Configuração atualizada.", "success")
+    return redirect(url_for("admin_config_split"))
+
+
+@app.route("/admin/alterar_admin", methods=["POST"])
+@admin_required
+def alterar_admin():
+    admin = Usuario.query.filter_by(tipo="admin").first()
+    if not admin:
+        flash("Administrador não encontrado.", "danger")
+        return redirect(url_for("admin_config_split"))
+
+    admin.usuario = (request.form.get("usuario") or admin.usuario).strip()
+    nova = request.form.get("nova_senha", "")
+    confirmar = request.form.get("confirmar_senha", "")
+
+    if nova or confirmar:
+        if nova != confirmar:
+            flash("As senhas não conferem.", "warning")
+            return redirect(url_for("admin_config_split"))
+        admin.set_password(nova)
+
+    db.session.commit()
+    flash("Conta do administrador atualizada.", "success")
+    return redirect(url_for("admin_config_split"))
+
+
+# =========================
+# RECEITAS COOPERATIVA
+# =========================
 
 @app.route("/receitas/add", methods=["POST"])
 @admin_required
@@ -2861,38 +2650,144 @@ def delete_receita(id):
     flash("Receita excluída.", "success")
     return redirect(url_for("admin_receitas_split"))
 
-# =========================================================
-# ROTAS DE AÇÃO DO PAINEL ADMIN - ADAPTADAS PARA O SPLIT
-# =========================================================
 
-@app.route("/config/update", methods=["POST"])
+# =========================
+# DESPESAS COOPERATIVA
+# =========================
+
+@app.route("/despesas/add", methods=["POST"])
 @admin_required
-def update_config():
-    cfg = get_config()
-    cfg.salario_minimo = request.form.get("salario_minimo", type=float) or 0.0
+def add_despesa():
+    f = request.form
+    obj = DespesaCooperativa(
+        descricao=(f.get("descricao") or "").strip(),
+        valor=f.get("valor", type=float) or 0.0,
+        data=_parse_date(f.get("data")),
+    )
+    db.session.add(obj)
     db.session.commit()
-    flash("Configuração atualizada.", "success")
-    return redirect(url_for("admin_config_split"))
+    flash("Despesa adicionada.", "success")
+    return redirect(url_for("admin_despesas_split"))
 
 
-@app.route("/admin/alterar_admin", methods=["POST"])
+@app.route("/despesas/<int:id>/edit", methods=["POST"])
 @admin_required
-def alterar_admin():
-    admin = Usuario.query.filter_by(tipo="admin").first()
-    admin.usuario = request.form.get("usuario", admin.usuario).strip()
-    nova = request.form.get("nova_senha", "")
-    confirmar = request.form.get("confirmar_senha", "")
-
-    if nova or confirmar:
-        if nova != confirmar:
-            flash("As senhas não conferem.", "warning")
-            return redirect(url_for("admin_config_split"))
-        admin.set_password(nova)
-
+def edit_despesa(id):
+    obj = DespesaCooperativa.query.get_or_404(id)
+    f = request.form
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor = f.get("valor", type=float) or 0.0
+    obj.data = _parse_date(f.get("data"))
     db.session.commit()
-    flash("Conta do administrador atualizada.", "success")
-    return redirect(url_for("admin_config_split"))
+    flash("Despesa atualizada.", "success")
+    return redirect(url_for("admin_despesas_split"))
 
+
+@app.route("/despesas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_despesa(id):
+    obj = DespesaCooperativa.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Despesa excluída.", "success")
+    return redirect(url_for("admin_despesas_split"))
+
+
+# =========================
+# RECEITAS COOPERADOS
+# =========================
+
+@app.route("/coop_receitas/add", methods=["POST"])
+@admin_required
+def add_receita_coop():
+    f = request.form
+    obj = ReceitaCooperado(
+        cooperado_id=f.get("cooperado_id", type=int),
+        descricao=(f.get("descricao") or "").strip(),
+        valor=f.get("valor", type=float) or 0.0,
+        data=_parse_date(f.get("data")),
+    )
+    db.session.add(obj)
+    db.session.commit()
+    flash("Receita do cooperado adicionada.", "success")
+    return redirect(url_for("admin_coop_receitas_split"))
+
+
+@app.route("/coop_receitas/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_receita_coop(id):
+    obj = ReceitaCooperado.query.get_or_404(id)
+    f = request.form
+    obj.cooperado_id = f.get("cooperado_id", type=int)
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor = f.get("valor", type=float) or 0.0
+    obj.data = _parse_date(f.get("data"))
+    db.session.commit()
+    flash("Receita do cooperado atualizada.", "success")
+    return redirect(url_for("admin_coop_receitas_split"))
+
+
+@app.route("/coop_receitas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_receita_coop(id):
+    obj = ReceitaCooperado.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Receita do cooperado excluída.", "success")
+    return redirect(url_for("admin_coop_receitas_split"))
+
+
+# =========================
+# DESPESAS COOPERADOS
+# =========================
+
+@app.route("/coop_despesas/add", methods=["POST"])
+@admin_required
+def add_despesa_coop():
+    f = request.form
+    obj = DespesaCooperado(
+        cooperado_id=f.get("cooperado_id", type=int),
+        descricao=(f.get("descricao") or "").strip(),
+        valor=f.get("valor", type=float) or 0.0,
+        data_inicio=_parse_date(f.get("data_inicio") or f.get("data")),
+        data_fim=_parse_date(f.get("data_fim") or f.get("data")),
+        eh_adiantamento=bool(f.get("eh_adiantamento")),
+    )
+    db.session.add(obj)
+    db.session.commit()
+    flash("Despesa do cooperado adicionada.", "success")
+    return redirect(url_for("admin_coop_despesas_split"))
+
+
+@app.route("/coop_despesas/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_despesa_coop(id):
+    obj = DespesaCooperado.query.get_or_404(id)
+    f = request.form
+    obj.cooperado_id = f.get("cooperado_id", type=int)
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor = f.get("valor", type=float) or 0.0
+    obj.data_inicio = _parse_date(f.get("data_inicio") or f.get("data"))
+    obj.data_fim = _parse_date(f.get("data_fim") or f.get("data"))
+    obj.eh_adiantamento = bool(f.get("eh_adiantamento"))
+    db.session.commit()
+    flash("Despesa do cooperado atualizada.", "success")
+    return redirect(url_for("admin_coop_despesas_split"))
+
+
+@app.route("/coop_despesas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_despesa_coop(id):
+    obj = DespesaCooperado.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Despesa do cooperado excluída.", "success")
+    return redirect(url_for("admin_coop_despesas_split"))
+
+
+# =========================
+# COOPERADOS
+# =========================
 
 @app.route("/cooperados/add", methods=["POST"])
 @admin_required
@@ -2957,48 +2852,31 @@ def delete_cooperado(id):
     u = c.usuario_ref
 
     try:
-        escala_ids = [eid for (eid,) in db.session.query(Escala.id)
-                      .filter(Escala.cooperado_id == id).all()]
+        escala_ids = [eid for (eid,) in db.session.query(Escala.id).filter(Escala.cooperado_id == id).all()]
 
         if escala_ids:
             db.session.execute(
-                sa_delete(TrocaSolicitacao)
-                .where(TrocaSolicitacao.origem_escala_id.in_(escala_ids))
+                sa_delete(TrocaSolicitacao).where(TrocaSolicitacao.origem_escala_id.in_(escala_ids))
             )
             db.session.execute(
-                sa_delete(Escala)
-                .where(Escala.id.in_(escala_ids))
+                sa_delete(Escala).where(Escala.id.in_(escala_ids))
             )
 
         db.session.execute(
-            sa_delete(TrocaSolicitacao)
-            .where(or_(
-                TrocaSolicitacao.solicitante_id == id,
-                TrocaSolicitacao.destino_id == id
-            ))
+            sa_delete(TrocaSolicitacao).where(
+                or_(
+                    TrocaSolicitacao.solicitante_id == id,
+                    TrocaSolicitacao.destino_id == id
+                )
+            )
         )
 
-        db.session.execute(
-            sa_delete(AvaliacaoCooperado).where(AvaliacaoCooperado.cooperado_id == id)
-        )
-        db.session.execute(
-            sa_delete(AvaliacaoRestaurante).where(AvaliacaoRestaurante.cooperado_id == id)
-        )
-
-        db.session.execute(
-            sa_delete(Lancamento).where(Lancamento.cooperado_id == id)
-        )
-
-        db.session.execute(
-            sa_delete(ReceitaCooperado).where(ReceitaCooperado.cooperado_id == id)
-        )
-        db.session.execute(
-            sa_delete(DespesaCooperado).where(DespesaCooperado.cooperado_id == id)
-        )
-
-        db.session.execute(
-            sa_delete(AvisoLeitura).where(AvisoLeitura.cooperado_id == id)
-        )
+        db.session.execute(sa_delete(AvaliacaoCooperado).where(AvaliacaoCooperado.cooperado_id == id))
+        db.session.execute(sa_delete(AvaliacaoRestaurante).where(AvaliacaoRestaurante.cooperado_id == id))
+        db.session.execute(sa_delete(Lancamento).where(Lancamento.cooperado_id == id))
+        db.session.execute(sa_delete(ReceitaCooperado).where(ReceitaCooperado.cooperado_id == id))
+        db.session.execute(sa_delete(DespesaCooperado).where(DespesaCooperado.cooperado_id == id))
+        db.session.execute(sa_delete(AvisoLeitura).where(AvisoLeitura.cooperado_id == id))
 
         db.session.delete(c)
         if u:
@@ -3032,13 +2910,17 @@ def reset_senha_cooperado(id):
     return redirect(url_for("admin_cooperados_split"))
 
 
+# =========================
+# RESTAURANTES
+# =========================
+
 @app.route("/restaurantes/add", methods=["POST"])
 @admin_required
 def add_restaurante():
     f = request.form
-    nome = f.get("nome", "").strip()
+    nome = (f.get("nome") or "").strip()
     periodo = f.get("periodo", "seg-dom")
-    usuario_login = f.get("usuario", "").strip()
+    usuario_login = (f.get("usuario") or "").strip()
     senha = f.get("senha", "")
     foto = request.files.get("foto")
 
@@ -3069,9 +2951,9 @@ def edit_restaurante(id):
     r = Restaurante.query.get_or_404(id)
     f = request.form
 
-    r.nome = f.get("nome", "").strip()
+    r.nome = (f.get("nome") or "").strip()
     r.periodo = f.get("periodo", "seg-dom")
-    r.usuario_ref.usuario = f.get("usuario", "").strip()
+    r.usuario_ref.usuario = (f.get("usuario") or "").strip()
 
     foto = request.files.get("foto")
     if foto and foto.filename:
@@ -3089,22 +2971,17 @@ def delete_restaurante(id):
     u = r.usuario_ref
 
     try:
-        escala_ids = [e.id for e in Escala.query.with_entities(Escala.id)
-                      .filter(Escala.restaurante_id == id).all()]
+        escala_ids = [e.id for e in Escala.query.with_entities(Escala.id).filter(Escala.restaurante_id == id).all()]
 
         if escala_ids:
             db.session.execute(
-                sa_delete(TrocaSolicitacao)
-                .where(TrocaSolicitacao.origem_escala_id.in_(escala_ids))
+                sa_delete(TrocaSolicitacao).where(TrocaSolicitacao.origem_escala_id.in_(escala_ids))
             )
             db.session.execute(
-                sa_delete(Escala)
-                .where(Escala.restaurante_id == id)
+                sa_delete(Escala).where(Escala.restaurante_id == id)
             )
 
-        db.session.execute(
-            sa_delete(Lancamento).where(Lancamento.restaurante_id == id)
-        )
+        db.session.execute(sa_delete(Lancamento).where(Lancamento.restaurante_id == id))
 
         db.session.delete(r)
         if u:
@@ -3136,6 +3013,11 @@ def reset_senha_restaurante(id):
     db.session.commit()
     flash("Senha do restaurante atualizada.", "success")
     return redirect(url_for("admin_restaurantes_split"))
+
+
+# =========================
+# DOCUMENTOS / ESCALAS
+# =========================
 
 @app.route("/documentos/<int:coop_id>", methods=["GET", "POST"])
 @admin_required
@@ -3189,9 +3071,11 @@ def editar_documentos(coop_id):
         docinfo=docinfo
     )
 
+
 # =========================
-# Navegação/Export util
+# FILTRO / EXPORTAÇÃO
 # =========================
+
 @app.route("/filtrar_lancamentos")
 @admin_required
 def filtrar_lancamentos():
@@ -3201,39 +3085,9 @@ def filtrar_lancamentos():
     return redirect(f"{base}{joiner}{qs}")
 
 
-from datetime import datetime, date
-
-def _parse_date(value: str | None) -> date | None:
-    if not value:
-        return None
-    value = value.strip()
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            pass
-    return None
-
-def _dow(d: date) -> str:
-    return str(d.weekday()) if d else ""
-
-def _fmt_time(t) -> str:
-    if not t:
-        return ""
-    if hasattr(t, "strftime"):
-        try:
-            return t.strftime("%H:%M")
-        except Exception:
-            pass
-    return str(t)
-
 @app.route("/exportar_lancamentos")
 @admin_required
 def exportar_lancamentos():
-    import io
-    from collections import defaultdict
-
-    from flask import request, send_file
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, PatternFill
     from openpyxl.utils import get_column_letter
@@ -3245,10 +3099,7 @@ def exportar_lancamentos():
 
     data_inicio = _parse_date(args.get("data_inicio"))
     data_fim = _parse_date(args.get("data_fim"))
-
     dows = set(args.getlist("dow"))
-
-    from datetime import date, timedelta
 
     hoje = date.today()
     inicio_semana = hoje - timedelta(days=hoje.weekday())
@@ -3262,111 +3113,52 @@ def exportar_lancamentos():
 
     if restaurante_id:
         q = q.filter(Lancamento.restaurante_id == restaurante_id)
-
     if cooperado_id:
         q = q.filter(Lancamento.cooperado_id == cooperado_id)
-
     if data_inicio:
         q = q.filter(Lancamento.data >= data_inicio)
-
     if data_fim:
         q = q.filter(Lancamento.data <= data_fim)
 
-    lancs = (
-        q.order_by(
-            Lancamento.data.desc(),
-            Lancamento.id.desc()
-        ).all()
-    )
+    lancs = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
 
     if dows:
-        lancs = [
-            l for l in lancs
-            if l.data and str(_dow(l.data)) in dows
-        ]
+        lancs = [l for l in lancs if l.data and str(_dow(l.data)) in dows]
 
     wb = Workbook()
+    ws = wb.active
+    ws.title = "Lançamentos"
 
     bold = Font(bold=True)
     center = Alignment(horizontal="center", vertical="center")
     header_fill = PatternFill("solid", fgColor="DDDDDD")
-
     currency_fmt = "#,##0.00"
     date_fmt = "DD/MM/YYYY"
 
-    def _style_header(ws, ncols: int):
-        for col_idx in range(1, ncols + 1):
-            cell = ws.cell(row=1, column=col_idx)
-            cell.font = bold
-            cell.alignment = center
-            cell.fill = header_fill
-
-    def _autosize(ws, max_col, max_row, cap=55):
-        widths = [0] * (max_col + 1)
-        for r in range(1, max_row + 1):
-            for c in range(1, max_col + 1):
-                v = ws.cell(r, c).value
-                if v is None:
-                    continue
-                s = str(v)
-                if len(s) > widths[c]:
-                    widths[c] = len(s)
-        for c in range(1, max_col + 1):
-            ws.column_dimensions[get_column_letter(c)].width = min(max(10, widths[c] + 2), cap)
-
-    ws_det = wb.active
-    ws_det.title = "Lançamentos"
-
-    header_det = [
+    headers = [
         "Restaurante", "Periodo", "Cooperado", "Descricao",
         "Valor", "Data", "HoraInicio", "HoraFim",
         "INSS", "SEST", "Encargos", "Liquido",
     ]
-    ws_det.append(header_det)
-    _style_header(ws_det, ncols=len(header_det))
+    ws.append(headers)
 
-    totais_contrato = defaultdict(lambda: {
-        "restaurante": "", "periodo": "",
-        "bruto": 0.0, "inss": 0.0, "sest": 0.0, "enc": 0.0, "liq": 0.0,
-    })
-    totais_contrato_coop = defaultdict(lambda: {
-        "restaurante": "", "periodo": "", "cooperado": "",
-        "bruto": 0.0, "inss": 0.0, "sest": 0.0, "enc": 0.0, "liq": 0.0,
-    })
-    totais_coop = defaultdict(lambda: {
-        "cooperado": "",
-        "bruto": 0.0, "inss": 0.0, "sest": 0.0, "enc": 0.0, "liq": 0.0,
-    })
-    totais_coop_dia = defaultdict(lambda: {
-        "cooperado": "", "data": None, "restaurante": "", "periodo": "",
-        "bruto": 0.0, "inss": 0.0, "sest": 0.0, "enc": 0.0, "liq": 0.0,
-    })
-
-    total_geral_bruto = 0.0
-    total_geral_inss = 0.0
-    total_geral_sest = 0.0
-    total_geral_enc = 0.0
-    total_geral_liq = 0.0
+    for i in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=i)
+        cell.font = bold
+        cell.alignment = center
+        cell.fill = header_fill
 
     for l in lancs:
         v = float(l.valor or 0.0)
-
         inss = v * 0.04
         sest = v * 0.005
         encargos = inss + sest
         liq = v - encargos
 
-        rest_nome = l.restaurante.nome if getattr(l, "restaurante", None) else ""
-        rest_period = l.restaurante.periodo if getattr(l, "restaurante", None) else ""
-        rest_id = int(getattr(l, "restaurante_id", 0) or 0)
-
-        coop_nome = l.cooperado.nome if getattr(l, "cooperado", None) else ""
-        coop_id = int(getattr(l, "cooperado_id", 0) or 0)
-
         row = [
-            rest_nome,
-            rest_period,
-            coop_nome,
+            l.restaurante.nome if getattr(l, "restaurante", None) else "",
+            l.restaurante.periodo if getattr(l, "restaurante", None) else "",
+            l.cooperado.nome if getattr(l, "cooperado", None) else "",
             (l.descricao or ""),
             v,
             l.data,
@@ -3377,239 +3169,17 @@ def exportar_lancamentos():
             encargos,
             liq,
         ]
-        ws_det.append(row)
-        r = ws_det.max_row
+        ws.append(row)
+        r = ws.max_row
+        ws.cell(r, 5).number_format = currency_fmt
+        ws.cell(r, 6).number_format = date_fmt
+        ws.cell(r, 9).number_format = currency_fmt
+        ws.cell(r, 10).number_format = currency_fmt
+        ws.cell(r, 11).number_format = currency_fmt
+        ws.cell(r, 12).number_format = currency_fmt
 
-        ws_det.cell(row=r, column=5).number_format = currency_fmt
-        ws_det.cell(row=r, column=6).number_format = date_fmt
-        ws_det.cell(row=r, column=9).number_format = currency_fmt
-        ws_det.cell(row=r, column=10).number_format = currency_fmt
-        ws_det.cell(row=r, column=11).number_format = currency_fmt
-        ws_det.cell(row=r, column=12).number_format = currency_fmt
-
-        key_contrato = (rest_id, rest_nome, rest_period)
-        tc = totais_contrato[key_contrato]
-        tc["restaurante"] = rest_nome
-        tc["periodo"] = rest_period
-        tc["bruto"] += v
-        tc["inss"] += inss
-        tc["sest"] += sest
-        tc["enc"] += encargos
-        tc["liq"] += liq
-
-        key_contrato_coop = (rest_id, rest_nome, rest_period, coop_id, coop_nome)
-        tcc = totais_contrato_coop[key_contrato_coop]
-        tcc["restaurante"] = rest_nome
-        tcc["periodo"] = rest_period
-        tcc["cooperado"] = coop_nome
-        tcc["bruto"] += v
-        tcc["inss"] += inss
-        tcc["sest"] += sest
-        tcc["enc"] += encargos
-        tcc["liq"] += liq
-
-        key_coop = (coop_id, coop_nome)
-        tcg = totais_coop[key_coop]
-        tcg["cooperado"] = coop_nome
-        tcg["bruto"] += v
-        tcg["inss"] += inss
-        tcg["sest"] += sest
-        tcg["enc"] += encargos
-        tcg["liq"] += liq
-
-        key_coop_dia = (coop_id, coop_nome, l.data, rest_id, rest_nome, rest_period)
-        tcd = totais_coop_dia[key_coop_dia]
-        tcd["cooperado"] = coop_nome
-        tcd["data"] = l.data
-        tcd["restaurante"] = rest_nome
-        tcd["periodo"] = rest_period
-        tcd["bruto"] += v
-        tcd["inss"] += inss
-        tcd["sest"] += sest
-        tcd["enc"] += encargos
-        tcd["liq"] += liq
-
-        total_geral_bruto += v
-        total_geral_inss += inss
-        total_geral_sest += sest
-        total_geral_enc += encargos
-        total_geral_liq += liq
-
-    ws_det.freeze_panes = "A2"
-    ws_det.auto_filter.ref = f"A1:{get_column_letter(len(header_det))}{ws_det.max_row}"
-    _autosize(ws_det, max_col=len(header_det), max_row=min(ws_det.max_row, 3000))
-
-    ws_con = wb.create_sheet("Totais por Contrato")
-    header_contrato = [
-        "Restaurante", "Periodo",
-        "Total Bruto", "Total INSS", "Total SEST", "Total Encargos", "Total Líquido"
-    ]
-    ws_con.append(header_contrato)
-    _style_header(ws_con, ncols=len(header_contrato))
-
-    soma_b = soma_inss = soma_sest = soma_enc = soma_l = 0.0
-    row_idx = 2
-
-    for _, tc in sorted(
-        totais_contrato.items(),
-        key=lambda x: (x[1]["restaurante"], x[1]["periodo"])
-    ):
-        ws_con.append([
-            tc["restaurante"] or "—",
-            tc["periodo"] or "—",
-            tc["bruto"],
-            tc["inss"],
-            tc["sest"],
-            tc["enc"],
-            tc["liq"],
-        ])
-        r = row_idx
-        for col in (3, 4, 5, 6, 7):
-            ws_con.cell(row=r, column=col).number_format = currency_fmt
-
-        soma_b += tc["bruto"]
-        soma_inss += tc["inss"]
-        soma_sest += tc["sest"]
-        soma_enc += tc["enc"]
-        soma_l += tc["liq"]
-        row_idx += 1
-
-    if row_idx > 2:
-        ws_con.append(["TOTAL GERAL", "", soma_b, soma_inss, soma_sest, soma_enc, soma_l])
-        r = row_idx
-        for col in (1, 3, 4, 5, 6, 7):
-            cell = ws_con.cell(row=r, column=col)
-            cell.font = bold
-            if col != 1:
-                cell.number_format = currency_fmt
-
-    ws_con.freeze_panes = "A2"
-    ws_con.auto_filter.ref = f"A1:{get_column_letter(len(header_contrato))}{ws_con.max_row}"
-    _autosize(ws_con, max_col=len(header_contrato), max_row=ws_con.max_row)
-
-    ws_cc = wb.create_sheet("Contrato x Cooperado")
-    header_cc = [
-        "Restaurante", "Periodo", "Cooperado",
-        "Total Bruto", "Total INSS", "Total SEST", "Total Encargos", "Total Líquido"
-    ]
-    ws_cc.append(header_cc)
-    _style_header(ws_cc, ncols=len(header_cc))
-
-    row_idx = 2
-    for _, tcc in sorted(
-        totais_contrato_coop.items(),
-        key=lambda x: (x[1]["restaurante"], x[1]["periodo"], x[1]["cooperado"])
-    ):
-        ws_cc.append([
-            tcc["restaurante"] or "—",
-            tcc["periodo"] or "—",
-            tcc["cooperado"] or "—",
-            tcc["bruto"],
-            tcc["inss"],
-            tcc["sest"],
-            tcc["enc"],
-            tcc["liq"],
-        ])
-        r = row_idx
-        for col in (4, 5, 6, 7, 8):
-            ws_cc.cell(row=r, column=col).number_format = currency_fmt
-        row_idx += 1
-
-    ws_cc.freeze_panes = "A2"
-    ws_cc.auto_filter.ref = f"A1:{get_column_letter(len(header_cc))}{ws_cc.max_row}"
-    _autosize(ws_cc, max_col=len(header_cc), max_row=ws_cc.max_row)
-
-    ws_cd = wb.create_sheet("Cooperado por Dia")
-    header_cd = [
-        "Cooperado", "Data", "Restaurante", "Periodo",
-        "Total Bruto", "Total INSS", "Total SEST", "Total Encargos", "Total Líquido"
-    ]
-    ws_cd.append(header_cd)
-    _style_header(ws_cd, ncols=len(header_cd))
-
-    row_idx = 2
-    for _, tcd in sorted(
-        totais_coop_dia.items(),
-        key=lambda x: (x[1]["cooperado"], x[1]["data"] or date.min, x[1]["restaurante"], x[1]["periodo"])
-    ):
-        ws_cd.append([
-            tcd["cooperado"] or "—",
-            tcd["data"],
-            tcd["restaurante"] or "—",
-            tcd["periodo"] or "—",
-            tcd["bruto"],
-            tcd["inss"],
-            tcd["sest"],
-            tcd["enc"],
-            tcd["liq"],
-        ])
-        r = row_idx
-        ws_cd.cell(row=r, column=2).number_format = date_fmt
-        for col in (5, 6, 7, 8, 9):
-            ws_cd.cell(row=r, column=col).number_format = currency_fmt
-        row_idx += 1
-
-    ws_cd.freeze_panes = "A2"
-    ws_cd.auto_filter.ref = f"A1:{get_column_letter(len(header_cd))}{ws_cd.max_row}"
-    _autosize(ws_cd, max_col=len(header_cd), max_row=ws_cd.max_row)
-
-    ws_tc = wb.create_sheet("Totais por Cooperado")
-    header_tc = ["Cooperado", "Total Bruto", "Total INSS", "Total SEST", "Total Encargos", "Total Líquido"]
-    ws_tc.append(header_tc)
-    _style_header(ws_tc, ncols=len(header_tc))
-
-    row_idx = 2
-    for _, tcg in sorted(totais_coop.items(), key=lambda x: x[1]["cooperado"]):
-        ws_tc.append([
-            tcg["cooperado"] or "—",
-            tcg["bruto"],
-            tcg["inss"],
-            tcg["sest"],
-            tcg["enc"],
-            tcg["liq"],
-        ])
-        r = row_idx
-        for col in (2, 3, 4, 5, 6):
-            ws_tc.cell(row=r, column=col).number_format = currency_fmt
-        row_idx += 1
-
-    if row_idx > 2:
-        total_b = sum(v["bruto"] for v in totais_coop.values())
-        total_i = sum(v["inss"] for v in totais_coop.values())
-        total_s = sum(v["sest"] for v in totais_coop.values())
-        total_e = sum(v["enc"] for v in totais_coop.values())
-        total_l = sum(v["liq"] for v in totais_coop.values())
-        ws_tc.append(["TOTAL GERAL", total_b, total_i, total_s, total_e, total_l])
-        r = row_idx
-        for col in (1, 2, 3, 4, 5, 6):
-            cell = ws_tc.cell(row=r, column=col)
-            cell.font = bold
-            if col != 1:
-                cell.number_format = currency_fmt
-
-    ws_tc.freeze_panes = "A2"
-    ws_tc.auto_filter.ref = f"A1:{get_column_letter(len(header_tc))}{ws_tc.max_row}"
-    _autosize(ws_tc, max_col=len(header_tc), max_row=ws_tc.max_row)
-
-    ws_rg = wb.create_sheet("Resumo Geral")
-    ws_rg["A1"] = "Total Geral Bruto"
-    ws_rg["A2"] = "Total Geral INSS"
-    ws_rg["A3"] = "Total Geral SEST"
-    ws_rg["A4"] = "Total Geral Encargos"
-    ws_rg["A5"] = "Total Geral Líquido"
-    for a in ("A1", "A2", "A3", "A4", "A5"):
-        ws_rg[a].font = bold
-
-    ws_rg["B1"] = total_geral_bruto
-    ws_rg["B2"] = total_geral_inss
-    ws_rg["B3"] = total_geral_sest
-    ws_rg["B4"] = total_geral_enc
-    ws_rg["B5"] = total_geral_liq
-    for b in ("B1", "B2", "B3", "B4", "B5"):
-        ws_rg[b].number_format = currency_fmt
-
-    ws_rg.column_dimensions["A"].width = 24
-    ws_rg.column_dimensions["B"].width = 18
+    for c in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(c)].width = 18
 
     mem = io.BytesIO()
     wb.save(mem)
@@ -3622,9 +3192,11 @@ def exportar_lancamentos():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
+
 # =========================
-# CRUD Lançamentos (Admin)
+# CRUD LANÇAMENTOS
 # =========================
+
 @app.route("/admin/lancamentos/add", methods=["POST"])
 @admin_required
 def admin_add_lancamento():
@@ -3632,8 +3204,8 @@ def admin_add_lancamento():
     l = Lancamento(
         restaurante_id=f.get("restaurante_id", type=int),
         cooperado_id=f.get("cooperado_id", type=int),
-        descricao=f.get("descricao", "").strip(),
-        valor=f.get("valor", type=float),
+        descricao=(f.get("descricao") or "").strip(),
+        valor=f.get("valor", type=float) or 0.0,
         data=_parse_date(f.get("data")),
         hora_inicio=f.get("hora_inicio"),
         hora_fim=f.get("hora_fim"),
@@ -3644,6 +3216,7 @@ def admin_add_lancamento():
     flash("Lançamento inserido.", "success")
     return redirect(url_for("admin_lancamentos_split"))
 
+
 @app.route("/admin/lancamentos/<int:id>/edit", methods=["POST"])
 @admin_required
 def admin_edit_lancamento(id):
@@ -3651,8 +3224,8 @@ def admin_edit_lancamento(id):
     f = request.form
     l.restaurante_id = f.get("restaurante_id", type=int)
     l.cooperado_id = f.get("cooperado_id", type=int)
-    l.descricao = f.get("descricao", "").strip()
-    l.valor = f.get("valor", type=float)
+    l.descricao = (f.get("descricao") or "").strip()
+    l.valor = f.get("valor", type=float) or 0.0
     l.data = _parse_date(f.get("data"))
     l.hora_inicio = f.get("hora_inicio")
     l.hora_fim = f.get("hora_fim")
@@ -3661,7 +3234,8 @@ def admin_edit_lancamento(id):
     flash("Lançamento atualizado.", "success")
     return redirect(url_for("admin_lancamentos_split"))
 
-@app.route("/admin/lancamentos/<int:id>/delete")
+
+@app.route("/admin/lancamentos/<int:id>/delete", methods=["POST"])
 @admin_required
 def admin_delete_lancamento(id):
     l = Lancamento.query.get_or_404(id)
@@ -3674,10 +3248,14 @@ def admin_delete_lancamento(id):
     flash("Lançamento excluído.", "success")
     return redirect(url_for("admin_lancamentos_split"))
 
+
+# =========================
+# AVALIAÇÕES
+# =========================
+
 @app.route("/admin/avaliacoes", methods=["GET"])
 @admin_required
 def admin_avaliacoes():
-
     tipo_raw = (request.args.get("tipo") or "cooperado").strip().lower()
     tipo = "restaurante" if tipo_raw == "restaurante" else "cooperado"
 
@@ -3723,16 +3301,12 @@ def admin_avaliacoes():
     )
 
     filtros = []
-
     if restaurante_id:
         filtros.append(Model.restaurante_id == restaurante_id)
-
     if cooperado_id:
         filtros.append(Model.cooperado_id == cooperado_id)
-
     if di:
         filtros.append(func.date(Model.criado_em) >= di)
-
     if df:
         filtros.append(func.date(Model.criado_em) <= df)
 
@@ -3742,20 +3316,12 @@ def admin_avaliacoes():
     total = base.with_entities(func.count(Model.id)).scalar() or 0
 
     page = request.args.get("page", type=int) or 1
-    per_page = request.args.get("per_page", type=int) or 10000
-
+    per_page = request.args.get("per_page", type=int) or 100
     if per_page > 200:
         per_page = 200
 
     offset = (page - 1) * per_page
-
-    rows = (
-        base.order_by(Model.criado_em.desc())
-        .limit(per_page)
-        .offset(offset)
-        .all()
-    )
-
+    rows = base.order_by(Model.criado_em.desc()).limit(per_page).offset(offset).all()
     pages = max(1, (total + per_page - 1) // per_page)
 
     pager = SimpleNamespace(
@@ -3838,85 +3404,6 @@ def admin_avaliacoes():
             "apres": avg_or_zero(f_apres),
         })
 
-    ranking, chart_top = [], {"labels": [], "values": []}
-    if tipo == "restaurante":
-        q_rank = (
-            db.session.query(
-                Restaurante.id.label("id"),
-                Restaurante.nome.label("nome"),
-                func.count(Model.id).label("qtd"),
-                func.coalesce(func.avg(f_geral), 0.0).label("m_geral"),
-                (func.coalesce(func.avg(f_trat), 0.0) if f_trat is not None else literal(0.0)).label("m_trat"),
-                (func.coalesce(func.avg(f_amb), 0.0) if f_amb is not None else literal(0.0)).label("m_amb"),
-                (func.coalesce(func.avg(f_sup), 0.0) if f_sup is not None else literal(0.0)).label("m_sup"),
-            )
-            .join(Model, Model.restaurante_id == Restaurante.id)
-        )
-        if filtros:
-            q_rank = q_rank.filter(and_(*filtros))
-        ranking_rows = q_rank.group_by(Restaurante.id, Restaurante.nome).all()
-        ranking = [{
-            "rest_nome": r.nome, "qtd": int(r.qtd or 0),
-            "m_geral": float(r.m_geral or 0),
-            "m_trat": float(r.m_trat or 0),
-            "m_amb": float(r.m_amb or 0),
-            "m_sup": float(r.m_sup or 0),
-        } for r in ranking_rows]
-        top = sorted([x for x in ranking if x["qtd"] >= 3], key=lambda x: x["m_geral"], reverse=True)[:10]
-        chart_top = {"labels": [r["rest_nome"] for r in top], "values": [round(r["m_geral"], 2) for r in top]}
-    else:
-        q_rank = (
-            db.session.query(
-                Cooperado.id.label("id"),
-                Cooperado.nome.label("nome"),
-                func.count(Model.id).label("qtd"),
-                func.coalesce(func.avg(f_geral), 0.0).label("m_geral"),
-                (func.coalesce(func.avg(f_pont), 0.0) if f_pont is not None else literal(0.0)).label("m_pont"),
-                (func.coalesce(func.avg(f_educ), 0.0) if f_educ is not None else literal(0.0)).label("m_educ"),
-                (func.coalesce(func.avg(f_efic), 0.0) if f_efic is not None else literal(0.0)).label("m_efic"),
-                (func.coalesce(func.avg(f_apres), 0.0) if f_apres is not None else literal(0.0)).label("m_apres"),
-            )
-            .join(Model, Model.cooperado_id == Cooperado.id)
-        )
-        if filtros:
-            q_rank = q_rank.filter(and_(*filtros))
-        ranking_rows = q_rank.group_by(Cooperado.id, Cooperado.nome).all()
-        ranking = [{
-            "coop_nome": r.nome, "qtd": int(r.qtd or 0),
-            "m_geral": float(r.m_geral or 0),
-            "m_pont": float(r.m_pont or 0),
-            "m_educ": float(r.m_educ or 0),
-            "m_efic": float(r.m_efic or 0),
-            "m_apres": float(r.m_apres or 0),
-        } for r in ranking_rows]
-        top = sorted([x for x in ranking if x["qtd"] >= 3], key=lambda x: x["m_geral"], reverse=True)[:10]
-        chart_top = {"labels": [r["coop_nome"] for r in top], "values": [round(r["m_geral"], 2) for r in top]}
-
-    compat_map = {}
-    for a in avaliacoes:
-        key = (a.coop_id, a.rest_id)
-        d = compat_map.get(key)
-        if not d:
-            d = {"coop": a.coop_nome, "rest": a.rest_nome, "sum": 0.0, "count": 0}
-        d["sum"] += (a.geral or 0)
-        d["count"] += 1
-        compat_map[key] = d
-
-    compat = []
-    for d in compat_map.values():
-        avg = (d["sum"] / d["count"]) if d["count"] else 0.0
-        compat.append({"coop": d["coop"], "rest": d["rest"], "avg": avg, "count": d["count"]})
-    compat.sort(key=lambda x: (-(x["avg"] or 0), -(x["count"] or 0), x["coop"], x["rest"]))
-
-    _flt = SimpleNamespace(
-        restaurante_id=restaurante_id,
-        cooperado_id=cooperado_id,
-        data_inicio=data_inicio or "",
-        data_fim=data_fim or "",
-    )
-    preserve = request.args.to_dict(flat=True)
-    preserve.pop("page", None)
-
     cfg = get_config()
     admin_user = Usuario.query.filter_by(tipo="admin").first()
 
@@ -3927,290 +3414,31 @@ def admin_avaliacoes():
         tipo=tipo,
         avaliacoes=avaliacoes,
         kpis=kpis,
-        ranking=ranking,
-        chart_top=chart_top,
-        compat=compat,
-        _flt=_flt,
+        ranking=[],
+        chart_top={"labels": [], "values": []},
+        compat=[],
+        _flt=SimpleNamespace(
+            restaurante_id=restaurante_id,
+            cooperado_id=cooperado_id,
+            data_inicio=data_inicio or "",
+            data_fim=data_fim or "",
+        ),
         restaurantes=Restaurante.query.order_by(Restaurante.nome).all(),
         cooperados=Cooperado.query.order_by(Cooperado.nome).all(),
         pager=pager,
         page=pager.page,
         per_page=pager.per_page,
-        preserve=preserve,
+        preserve=request.args.to_dict(flat=True),
         admin=admin_user,
         salario_minimo=cfg.salario_minimo or 0.0,
     )
 
+
 @app.route("/admin/avaliacoes/export")
-@role_required("admin")
+@admin_required
 def admin_export_avaliacoes_csv():
-    from flask import flash, redirect, url_for, request
-
     flash("Exportação em CSV ainda não foi implementada.", "warning")
-
-    args = {
-        "data_inicio": request.args.get("data_inicio") or "",
-        "data_fim": request.args.get("data_fim") or "",
-        "tipo": request.args.get("tipo") or "",
-    }
-    return redirect(url_for("admin_avaliacoes", **args))
-
-# =========================
-# PORTAL RESTAURANTE
-# =========================
-@app.route("/portal/restaurante")
-@role_required("restaurante")
-def portal_restaurante():
-    from datetime import date, timedelta
-    import re
-    from werkzeug.routing import BuildError
-
-    u_id = session.get("user_id")
-    rest = Restaurante.query.filter_by(usuario_id=u_id).first()
-    if not rest:
-        return (
-            "<p style='font-family:Arial;margin:40px'>"
-            "Seu usuário não está vinculado a um estabelecimento. Avise o administrador."
-            "</p>"
-        )
-
-    # Abas/visões: 'lancar', 'escalas', 'lancamentos', 'config', 'avisos'
-    view = (request.args.get("view", "lancar") or "lancar").strip().lower()
-
-    # ---- helper mês YYYY-MM
-    def _parse_yyyy_mm_local(s: str):
-        if not s:
-            return None, None
-        m = re.fullmatch(r"(\d{4})-(\d{2})", s.strip())
-        if not m:
-            return None, None
-        y = int(m.group(1))
-        mth = int(m.group(2))
-        try:
-            di_ = date(y, mth, 1)
-            if mth == 12:
-                df_ = date(y + 1, 1, 1) - timedelta(days=1)
-            else:
-                df_ = date(y, mth + 1, 1) - timedelta(days=1)
-            return di_, df_
-        except Exception:
-            return None, None
-
-    # -------------------- LANÇAMENTOS (totais por período) --------------------
-    di = _parse_date(request.args.get("data_inicio"))
-    df = _parse_date(request.args.get("data_fim"))
-
-    # NOVO: filtro por mês (?mes=YYYY-MM)
-    mes = (request.args.get("mes") or "").strip()
-    periodo_desc = None
-    if mes:
-        di_mes, df_mes = _parse_yyyy_mm_local(mes)
-        if di_mes and df_mes:
-            di, df = di_mes, df_mes
-            periodo_desc = "mês"
-
-    if not di or not df:
-        # Sem filtro => janela semanal baseada no período do restaurante
-        wd_map = {"seg-dom": 0, "sab-sex": 5, "sex-qui": 4}  # seg=0 ... dom=6
-        start_wd = wd_map.get(getattr(rest, "periodo", None), 0)
-        hoje = date.today()
-        delta = (hoje.weekday() - start_wd) % 7
-        di_auto = hoje - timedelta(days=delta)
-        df_auto = di_auto + timedelta(days=6)
-        di = di or di_auto
-        df = df or df_auto
-        periodo_desc = periodo_desc or getattr(rest, "periodo", "seg-dom")
-    else:
-        periodo_desc = periodo_desc or "personalizado"
-
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-
-    total_bruto = 0.0
-    total_qtd = 0
-    total_entregas = 0
-
-    # 4% INSS + 0,5% SEST/SENAT (separados)
-    total_inss = 0.0
-    total_sest = 0.0
-
-    for c in cooperados:
-        q = (
-            Lancamento.query
-            .filter_by(restaurante_id=rest.id, cooperado_id=c.id)
-            .filter(Lancamento.data >= di, Lancamento.data <= df)
-            .order_by(Lancamento.data.desc(), Lancamento.id.desc())
-        )
-        c.lancamentos = q.all()
-
-        c.total_periodo = sum((l.valor or 0.0) for l in c.lancamentos)
-        c.inss_periodo = sum((l.valor or 0.0) * 0.04 for l in c.lancamentos)
-        c.sest_periodo = sum((l.valor or 0.0) * 0.005 for l in c.lancamentos)
-
-        c.encargos_periodo = c.inss_periodo + c.sest_periodo
-        c.liquido_periodo = c.total_periodo - c.encargos_periodo
-
-        total_bruto += c.total_periodo
-        total_qtd += len(c.lancamentos)
-        total_entregas += sum((l.qtd_entregas or 0) for l in c.lancamentos)
-
-        total_inss += c.inss_periodo
-        total_sest += c.sest_periodo
-
-    total_encargos = total_inss + total_sest
-    total_liquido = total_bruto - total_encargos
-
-    # -------------------- ESCALA (Quem trabalha) --------------------
-    def contrato_bate_restaurante(contrato: str, rest_nome: str) -> bool:
-        a = " ".join(_normalize_name(contrato or ""))
-        b = " ".join(_normalize_name(rest_nome or ""))
-        if not a or not b:
-            return False
-        return a == b or a in b or b in a
-
-    ref = _parse_date(request.args.get("ref")) or date.today()
-    modo = request.args.get("modo", "semana")  # 'semana' ou 'dia'
-    if modo == "dia":
-        dias_list = [ref]
-    else:
-        semana_inicio = ref - timedelta(days=ref.weekday())
-        dias_list = [semana_inicio + timedelta(days=i) for i in range(7)]
-
-    escalas_all = Escala.query.order_by(Escala.id.asc()).all()
-    eff_map = _carry_forward_contrato(escalas_all)
-
-    escalas_rest = [
-        e for e in escalas_all
-        if contrato_bate_restaurante(eff_map.get(e.id, e.contrato or ""), rest.nome)
-    ]
-    if not escalas_rest:
-        escalas_rest = [
-            e for e in escalas_all
-            if (e.contrato or "").strip() == (rest.nome or "").strip()
-        ]
-
-    agenda = {d: [] for d in dias_list}
-    seen = {d: set() for d in dias_list}  # evita duplicar
-
-    for e in escalas_rest:
-        dt = _parse_data_escala_str(e.data)  # date | None
-        wd = _weekday_from_data_str(e.data)  # 1..7 | None
-
-        for d in dias_list:
-            hit = (dt and dt == d) or (wd and wd == ((d.weekday() % 7) + 1))
-            if not hit:
-                continue
-
-            coop = Cooperado.query.get(e.cooperado_id) if e.cooperado_id else None
-            nome_fallback = (e.cooperado_nome or "").strip()
-            nome_show = (coop.nome if coop else nome_fallback) or "—"
-            contrato_eff = (eff_map.get(e.id, e.contrato or "") or "").strip()
-
-            key = (
-                (coop.id if coop else _norm(nome_show)),
-                _norm(e.turno),
-                _norm(e.horario),
-                _norm(contrato_eff),
-            )
-            if key in seen[d]:
-                break
-
-            seen[d].add(key)
-            agenda[d].append({
-                "coop": coop,
-                "cooperado_nome": nome_fallback or None,
-                "nome_planilha": nome_show,
-                "turno": (e.turno or "").strip(),
-                "horario": (e.horario or "").strip(),
-                "contrato": contrato_eff,
-                "cor": (e.cor or "").strip(),
-            })
-            break
-
-    for d in dias_list:
-        agenda[d].sort(
-            key=lambda x: (
-                (x["contrato"] or "").lower(),
-                (x.get("nome_planilha") or (x["coop"].nome if x["coop"] else "")).lower(),
-            )
-        )
-
-    # -------------------- Lista de lançamentos (aba "lancamentos") --------------------
-    lancamentos_periodo = []
-    total_lanc_valor = 0.0
-    total_lanc_entregas = 0
-
-    if view == "lancamentos":
-        q = (
-            db.session.query(Lancamento, Cooperado)
-            .join(Cooperado, Cooperado.id == Lancamento.cooperado_id)
-            .filter(
-                Lancamento.restaurante_id == rest.id,
-                Lancamento.data >= di,
-                Lancamento.data <= df,
-            )
-            .order_by(Lancamento.data.asc(), Lancamento.id.asc())
-        )
-        for lanc, coop in q.all():
-            item = {
-                "id": lanc.id,
-                "data": lanc.data.strftime("%d/%m/%Y") if lanc.data else "",
-                "hora_inicio": (
-                    lanc.hora_inicio if isinstance(lanc.hora_inicio, str)
-                    else (lanc.hora_inicio.strftime("%H:%M") if lanc.hora_inicio else "")
-                ),
-                "hora_fim": (
-                    lanc.hora_fim if isinstance(lanc.hora_fim, str)
-                    else (lanc.hora_fim.strftime("%H:%M") if lanc.hora_fim else "")
-                ),
-                "qtd_entregas": lanc.qtd_entregas or 0,
-                "valor": float(lanc.valor or 0.0),
-                "descricao": (lanc.descricao or ""),
-                "cooperado_id": coop.id,
-                "cooperado_nome": coop.nome,
-                "contrato_nome": rest.nome,
-            }
-            lancamentos_periodo.append(item)
-
-        total_lanc_valor = sum(x["valor"] for x in lancamentos_periodo)
-        total_lanc_entregas = sum(x["qtd_entregas"] for x in lancamentos_periodo)
-
-    # ---- URLs/flags para template
-    from werkzeug.routing import BuildError
-    try:
-        url_lancar_producao = url_for("lancar_producao")
-    except BuildError:
-        url_lancar_producao = "/restaurante/lancar_producao"
-
-    has_editar_lanc = ("editar_lancamento" in app.view_functions)
-
-    # -------------------- Render --------------------
-    return render_template(
-        "restaurante_dashboard.html",
-        rest=rest,
-        cooperados=cooperados,
-        filtro_inicio=di,
-        filtro_fim=df,
-        filtro_mes=(mes or ""),
-        periodo_desc=periodo_desc,
-        total_bruto=total_bruto,
-        total_inss=total_inss,
-        total_sest=total_sest,
-        total_encargos=total_encargos,
-        total_liquido=total_liquido,
-        total_qtd=total_qtd,
-        total_entregas=total_entregas,
-        view=view,
-        agenda=agenda,
-        dias_list=dias_list,
-        ref_data=ref,
-        modo=modo,
-        lancamentos_periodo=(lancamentos_periodo if view == "lancamentos" else []),
-        total_lanc_valor=total_lanc_valor,
-        total_lanc_entregas=total_lanc_entregas,
-        url_lancar_producao=url_lancar_producao,
-        has_editar_lanc=has_editar_lanc,
-    )
-
+    return redirect(url_for("admin_avaliacoes"))
 # =========================
 # Rotas de CRUD de lançamento
 # =========================
