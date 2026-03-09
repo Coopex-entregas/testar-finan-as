@@ -2,6 +2,8 @@
 
 {% block conteudo %}
 
+{% set aba_ativa = 'beneficios' %}
+
 {# -----------------------------------------
    Fallbacks
    ----------------------------------------- #}
@@ -22,7 +24,6 @@
         <span class="text-muted small">Rateio entre quem <u>não</u> recebe (isentos não pagam e não entram no divisor)</span>
       </div>
 
-      <!-- Formulário de rateio -->
       <div class="card border-0 shadow-sm rounded-3 mb-3">
         <div class="card-body">
           <p class="mb-3 text-muted">
@@ -42,7 +43,6 @@
               <small class="muted">Ex.: 18/05/2025 a 24/05/2025</small>
             </div>
 
-            <!-- Hospitalar -->
             <div class="col-12"><hr class="my-2"></div>
             <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
               <h6 class="mb-0 d-flex align-items-center gap-2">
@@ -72,7 +72,6 @@
               <small class="muted">Isentos não pagam e não entram no divisor.</small>
             </div>
 
-            <!-- Farmacêutico -->
             <div class="col-12"><hr class="my-2"></div>
             <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
               <h6 class="mb-0 d-flex align-items-center gap-2">
@@ -100,7 +99,6 @@
               </select>
             </div>
 
-            <!-- Alimentar -->
             <div class="col-12"><hr class="my-2"></div>
             <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
               <h6 class="mb-0 d-flex align-items-center gap-2">
@@ -138,7 +136,6 @@
         </div>
       </div>
 
-      <!-- Registros de benefícios recebidos -->
       <div class="card border-0 shadow-sm rounded-3">
         <div class="card-body">
 
@@ -146,7 +143,7 @@
             <h6 class="m-0 d-flex align-items-center gap-2">
               <i class="bi bi-journal-medical"></i> Registros de Benefícios Recebidos
             </h6>
-            <form method="GET" class="row g-2 align-items-end">
+            <form method="GET" action="{{ url_for('admin_beneficios_split') }}" class="row g-2 align-items-end">
               <div class="col-md-3">
                 <label class="form-label">De</label>
                 <input type="date" class="form-control form-control-sm" name="b_ini" value="{{ request.args.get('b_ini','') }}">
@@ -171,7 +168,6 @@
             </form>
           </div>
 
-          <!-- Ações em massa -->
           <form id="form-bulk-beneficios" method="POST" action="{{ url_for('excluir_beneficio_bulk') }}" class="d-flex align-items-center gap-2 mt-2">
             <input type="hidden" name="tab" value="beneficios">
             <button type="submit" class="btn btn-outline-danger btn-sm" id="btn-bulk-delete" disabled>
@@ -246,7 +242,6 @@
             </table>
           </div>
 
-          <!-- Modal: Excluir benefício (único) -->
           <div class="modal fade" id="modalExcluirBeneficio" tabindex="-1" aria-labelledby="modalExcluirBeneficioLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
               <form method="POST" class="modal-content" id="form-del-one" action="{{ url_for('excluir_beneficio_one') }}">
@@ -276,7 +271,6 @@
       </div>
     </section>
 
-    <!-- MODAIS =================================================== -->
     <div class="modal fade" id="modalEditLancamento" tabindex="-1">
       <div class="modal-dialog modal-lg">
         <form method="POST" class="modal-content">
@@ -505,266 +499,6 @@
   bindModal('modalResetSenhaCooperado', { id:'id' });
   bindModal('modalEditRestaurante',  { id:'id', nome:'nome', periodo:'periodo', usuario:'usuario' });
   bindModal('modalResetSenhaRestaurante', { id:'id' });
-
-  const rawLancCoop   = {{ (chart_data_lancamentos_coop or {'labels':[], 'values':[]}) | tojson }};
-  const rawLancCooper = {{ (chart_data_lancamentos_cooperados or {'labels':[], 'values':[]}) | tojson }};
-
-  const totalProducoesFallback = parseFloat('{{ total_producoes|default(0) }}') || 0;
-
-  const fallbackLancCoop   = { labels: ['Total'], values: [totalProducoesFallback] };
-  const fallbackLancCooper = { labels: ['Total'], values: [totalProducoesFallback] };
-
-  const dataLancCoop = (rawLancCoop?.labels?.length && rawLancCoop?.values?.length) ? rawLancCoop : fallbackLancCoop;
-  const dataLancCooperados = (rawLancCooper?.labels?.length && rawLancCooper?.values?.length) ? rawLancCooper : fallbackLancCooper;
-
-  function buildLineChart(canvasId, labels, values, label) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-
-    new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: label,
-          data: values,
-          tension: .25,
-          borderWidth: 2,
-          pointRadius: 3,
-          fill: false
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (v) => 'R$ ' + Number(v).toLocaleString('pt-BR')
-            }
-          }
-        },
-        plugins: {
-          legend: { display: true },
-          tooltip: {
-            callbacks: {
-              label: (c) => 'R$ ' + Number(c.parsed.y).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-            }
-          }
-        }
-      }
-    });
-  }
-
-  buildLineChart('chartLancCoop', dataLancCoop.labels, dataLancCoop.values, 'Lançamentos/Produções');
-  buildLineChart('chartLancCooperados', dataLancCooperados.labels, dataLancCooperados.values, 'Lançamentos/Produções');
-</script>
-
-<script>
-  const ESCALAS = {{ escalas_por_coop|default({})|tojson }};
-  const modalEsc = document.getElementById('modalEscalas');
-
-  const norm = (s) => String(s || '')
-    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    .toLowerCase().replace(/[^a-z0-9]/g, '');
-
-  function pick(obj, aliases) {
-    const keys = Object.keys(obj || {});
-    for (const name of aliases) {
-      const target = norm(name);
-      for (const k of keys) {
-        if (norm(k).includes(target)) {
-          const v = obj[k];
-          if (v !== undefined && v !== null && String(v).trim() !== '') return v;
-        }
-      }
-    }
-    return '';
-  }
-
-  function resolveCores(row) {
-    const spec = pick(row, ['cor_linha', 'cores', 'cor', 'color', 'row_color', 'linha_cor', 'bg', 'background', 'style']) || '';
-
-    function normColor(c) {
-      if (!c) return null;
-      c = String(c).trim();
-
-      if (/^[0-9A-Fa-f]{8}$/.test(c)) {
-        const a = parseInt(c.slice(0, 2), 16) / 255;
-        const r = parseInt(c.slice(2, 4), 16);
-        const g = parseInt(c.slice(4, 6), 16);
-        const b = parseInt(c.slice(6, 8), 16);
-        return `rgba(${r},${g},${b},${a.toFixed(3)})`;
-      }
-
-      if (/^[0-9A-Fa-f]{6}$/.test(c)) return `#${c}`;
-
-      if (/^#[0-9A-Fa-f]{6,8}$/.test(c)) {
-        if (c.length === 9) {
-          const a = parseInt(c.slice(1, 3), 16) / 255;
-          const r = parseInt(c.slice(3, 5), 16);
-          const g = parseInt(c.slice(5, 7), 16);
-          const b = parseInt(c.slice(7, 9), 16);
-          return `rgba(${r},${g},${b},${a.toFixed(3)})`;
-        }
-        return c;
-      }
-
-      const map = {
-        'amarelo': '#fff3cd', 'vermelho': '#f8d7da', 'verde': '#d1e7dd',
-        'azul': '#cfe2ff', 'cinza': '#e9ecef', 'laranja': '#ffe5b4',
-        'roxo': '#e0d1ff', 'rosa': '#ffd6e7'
-      };
-      const low = c.toLowerCase();
-      if (map[low]) return map[low];
-      return c;
-    }
-
-    function parseColorSpec(spec) {
-      const out = { rowBg: null, rowFg: null, colBg: [null, null, null, null], colFg: [null, null, null, null] };
-      if (!spec) return out;
-
-      if (Array.isArray(spec)) {
-        const parts = spec.map(normColor);
-        if (parts.length === 1) { out.rowBg = parts[0]; return out; }
-        if (parts.length === 2) { out.rowBg = parts[0]; out.rowFg = parts[1]; return out; }
-        if (parts.length >= 4) {
-          out.colBg = [parts[0], parts[1], parts[2], parts[3]];
-          if (parts.length >= 8) out.colFg = [parts[4], parts[5], parts[6], parts[7]];
-          return out;
-        }
-      }
-
-      if (typeof spec === 'string') {
-        try {
-          const t = spec.trim();
-          if (t.startsWith('[') || t.startsWith('{')) return parseColorSpec(JSON.parse(t));
-        } catch (_) { }
-
-        const parts = spec.split('|').map(s => normColor(s.trim())).filter(Boolean);
-        if (parts.length === 1) { out.rowBg = parts[0]; return out; }
-        if (parts.length === 2) { out.rowBg = parts[0]; out.rowFg = parts[1]; return out; }
-        if (parts.length >= 4) {
-          out.colBg = [parts[0], parts[1], parts[2], parts[3]];
-          if (parts.length >= 8) out.colFg = [parts[4], parts[5], parts[6], parts[7]];
-          return out;
-        }
-
-        out.rowBg = normColor(spec);
-        return out;
-      }
-
-      if (typeof spec === 'object') {
-        if (spec.rowBg || spec.rowFg || spec.colBg || spec.colFg) {
-          out.rowBg = normColor(spec.rowBg);
-          out.rowFg = normColor(spec.rowFg);
-          out.colBg = (spec.colBg || []).map(normColor).concat([null, null, null, null]).slice(0, 4);
-          out.colFg = (spec.colFg || []).map(normColor).concat([null, null, null, null]).slice(0, 4);
-          return out;
-        }
-
-        const bgData = normColor(spec.bgData || spec.data || spec.bg_data);
-        const bgTurno = normColor(spec.bgTurno || spec.turno || spec.bg_turno);
-        const bgHorario = normColor(spec.bgHorario || spec.horario || spec.bg_horario || spec.hora);
-        const bgContrato = normColor(spec.bgContrato || spec.contrato || spec.bg_contrato);
-
-        const fgData = normColor(spec.fgData || spec.textData);
-        const fgTurno = normColor(spec.fgTurno || spec.textTurno);
-        const fgHorario = normColor(spec.fgHorario || spec.textHorario || spec.textHora);
-        const fgContrato = normColor(spec.fgContrato || spec.textContrato);
-
-        if (bgData || bgTurno || bgHorario || bgContrato) {
-          out.colBg = [bgData, bgTurno, bgHorario, bgContrato];
-          out.colFg = [fgData, fgTurno, fgHorario, fgContrato];
-        }
-        return out;
-      }
-
-      return out;
-    }
-
-    return parseColorSpec(spec);
-  }
-
-  function fmtHorario(h) {
-    if (!h) return '';
-    let s = String(h).trim().replace(/\s*–\s*/g, '-').replace(/\s*-\s*/g, '-');
-    return s.split(/\s*\/\s*/).map(seg => seg.trim().replace(/\s*(?:-|a|as|às)\s*/i, ' às ')).join(' / ');
-  }
-
-  if (modalEsc) {
-    modalEsc.addEventListener('show.bs.modal', (ev) => {
-      const coopId = ev.relatedTarget?.dataset?.coopid;
-      const tbody = modalEsc.querySelector('#tbody-escala');
-      if (!tbody) return;
-
-      tbody.innerHTML = '';
-
-      const raw = ESCALAS[String(coopId)] || [];
-      if (!raw.length) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Nenhuma escala</td></tr>`;
-        return;
-      }
-
-      const grouped = new Map();
-
-      for (const e of raw) {
-        const data = pick(e, ['data', 'dt', 'dia', 'date']) || '';
-        const turno = pick(e, ['turno', 'periodo', 'shift']) || '';
-        const contrato = pick(e, ['contrato', 'setor', 'unidade', 'contr', 'local']) || '';
-
-        let horario = pick(e, ['horário', 'horario', 'hora', 'horas', 'turno/horario', 'escala', 'jornada']);
-        if (!horario) {
-          for (const v of Object.values(e || {})) {
-            const s = String(v ?? '').trim();
-            if (s && /\b\d{1,2}:\d{2}/.test(s)) { horario = s; break; }
-          }
-        }
-
-        const key = [data, turno, contrato].map(v => String(v).toLowerCase()).join('|');
-        const cur = grouped.get(key);
-        const val = { data, turno, contrato, horario: fmtHorario(horario), src: e };
-
-        if (!cur) grouped.set(key, val);
-        else if (!cur.horario && val.horario) grouped.set(key, val);
-      }
-
-      for (const { data, turno, contrato, horario, src } of grouped.values()) {
-        const cores = resolveCores(src);
-
-        const tr = document.createElement('tr');
-        if (cores.rowBg) tr.style.background = cores.rowBg;
-        if (cores.rowFg) tr.style.color = cores.rowFg;
-
-        tr.innerHTML = `
-          <td class="cel-data">${data}</td>
-          <td class="cel-turno">${turno}</td>
-          <td class="cel-horario">${horario || ''}</td>
-          <td class="cel-contrato">${contrato}</td>
-        `;
-
-        const cols = [
-          tr.querySelector('.cel-data'),
-          tr.querySelector('.cel-turno'),
-          tr.querySelector('.cel-horario'),
-          tr.querySelector('.cel-contrato')
-        ];
-
-        cols.forEach((td, i) => {
-          if (!td) return;
-          if (cores.colBg[i]) td.style.background = cores.colBg[i];
-          if (cores.colFg[i]) td.style.color = cores.colFg[i];
-          if (cores.colBg[i] || cores.colFg[i]) {
-            td.style.borderRadius = '6px';
-            td.style.padding = '6px 8px';
-          }
-        });
-
-        tbody.appendChild(tr);
-      }
-    });
-  }
 </script>
 
 <script>
@@ -820,16 +554,6 @@
 
     const form = sec.querySelector('#form-beneficios');
     if (form) {
-      (function ensureHiddenIds() {
-        const map = { hosp: 'hosp_valor_total', farm: 'farm_valor_total', alim: 'alim_valor_total' };
-        Object.entries(map).forEach(([p, id]) => {
-          if (!sec.querySelector(`#${id}`)) {
-            const i = sec.querySelector(`input[name="${p}_valor"]`);
-            if (i) i.id = id;
-          }
-        });
-      })();
-
       function setTotal(prefix) {
         const unit = sec.querySelector(`#${prefix}_valor_unit`);
         const bensSel = sec.querySelector(`#${prefix}_beneficiarios`);
