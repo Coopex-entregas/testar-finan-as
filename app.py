@@ -3103,54 +3103,53 @@ def reset_senha_restaurante(id):
 @app.route("/documentos/<int:coop_id>", methods=["GET", "POST"])
 @admin_required
 def editar_documentos(coop_id):
-    c = Cooperado.query.get_or_404(coop_id)
+    cooperado = Cooperado.query.get_or_404(coop_id)
+
+    def parse_date_local(s):
+        try:
+            return datetime.strptime(s, "%Y-%m-%d").date() if s else None
+        except Exception:
+            return None
 
     if request.method == "POST":
         f = request.form
-        c.cnh_numero = f.get("cnh_numero")
-        c.placa = f.get("placa")
-
-        def parse_date_local(s):
-            try:
-                return datetime.strptime(s, "%Y-%m-%d").date() if s else None
-            except Exception:
-                return None
-
-        c.cnh_validade = parse_date_local(f.get("cnh_validade"))
-        c.placa_validade = parse_date_local(f.get("placa_validade"))
-        c.ultima_atualizacao = datetime.now()
+        cooperado.cnh_numero = f.get("cnh_numero")
+        cooperado.placa = f.get("placa")
+        cooperado.cnh_validade = parse_date_local(f.get("cnh_validade"))
+        cooperado.placa_validade = parse_date_local(f.get("placa_validade"))
+        cooperado.ultima_atualizacao = datetime.now()
         db.session.commit()
         flash("Documentos atualizados.", "success")
         return redirect(url_for("admin_escalas_split"))
 
-    tpl = os.path.join("templates", "editar_documentos.html")
     hoje = date.today()
     prazo_final = date(hoje.year, 12, 31)
 
-    if os.path.exists(tpl):
-        docinfo = {
-            "prazo_final": prazo_final,
-            "dias_ate_prazo": max(0, (prazo_final - hoje).days),
-            "cnh": {
-                "numero": c.cnh_numero,
-                "validade": c.cnh_validade,
-                "prox_validade": _prox_ocorrencia_anual(c.cnh_validade),
-                "ok": (c.cnh_validade is not None and c.cnh_validade >= hoje),
-                "modo": "auto",
-            },
-            "placa": {
-                "numero": c.placa,
-                "validade": c.placa_validade,
-                "prox_validade": _prox_ocorrencia_anual(c.placa_validade),
-                "ok": (c.placa_validade is not None and c.placa_validade >= hoje),
-                "modo": "auto",
-            }
+    docinfo = {
+        "prazo_final": prazo_final,
+        "dias_ate_prazo": max(0, (prazo_final - hoje).days),
+        "cnh": {
+            "numero": cooperado.cnh_numero,
+            "validade": cooperado.cnh_validade,
+            "prox_validade": _prox_ocorrencia_anual(cooperado.cnh_validade),
+            "ok": (cooperado.cnh_validade is not None and cooperado.cnh_validade >= hoje),
+            "modo": "auto",
+        },
+        "placa": {
+            "numero": cooperado.placa,
+            "validade": cooperado.placa_validade,
+            "prox_validade": _prox_ocorrencia_anual(cooperado.placa_validade),
+            "ok": (cooperado.placa_validade is not None and cooperado.placa_validade >= hoje),
+            "modo": "auto",
         }
-        return render_template("editar_documentos.html", coop=c, c=c, docinfo=docinfo)
+    }
 
-    return (
-        f"<h3>Editar documentos — {c.nome}</h3>"
-        f"<p>Crie o arquivo <code>templates/editar_documentos.html</code>.</p>"
+    return render_template(
+        "editar_tabelas.html",
+        cooperado=cooperado,
+        coop=cooperado,
+        c=cooperado,
+        docinfo=docinfo
     )
 
 # =========================
