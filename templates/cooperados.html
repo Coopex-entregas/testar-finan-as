@@ -399,7 +399,7 @@
 
       <div class="card border-0 shadow-sm rounded-3 mb-3">
         <div class="card-body">
-          <form onsubmit="alert('O app.py atual não tem a rota add_cooperado.'); return false;" enctype="multipart/form-data" class="row g-3 align-items-end">
+          <form method="POST" action="{{ url_for('add_cooperado') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
             {% if csrf_token is defined %}
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% endif %}
@@ -742,7 +742,6 @@
         const name = mapFields[k];
         const input = form?.querySelector(`[name="${name}"]`);
         if (!input) return;
-
         const val = ds[k] ?? '';
         input.value = val;
       });
