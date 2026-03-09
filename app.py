@@ -1569,8 +1569,6 @@ class AvaliacaoRestaurante(db.Model):
         self.estrelas_geral = round(media, 1)
 
 
-register_blueprints_once(app)
-
 # ======== Helpers p/ troca: data/weekday/turno ========
 def _parse_data_escala_str(s: str) -> date | None:
     m = re.search(r'(\d{1,2})/(\d{1,2})/(\d{2,4})', str(s or ''))
