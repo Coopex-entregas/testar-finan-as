@@ -2824,6 +2824,43 @@ def admin_avisos():
     restaurantes = Restaurante.query.order_by(Restaurante.nome.asc()).all()
     return render_template("admin_avisos.html", avisos=avisos, cooperados=cooperados, restaurantes=restaurantes)
 
+@app.route("/receitas/add", methods=["POST"])
+@admin_required
+def add_receita():
+    f = request.form
+    obj = ReceitaCooperativa(
+        descricao=(f.get("descricao") or "").strip(),
+        valor_total=f.get("valor", type=float) or 0.0,
+        data=_parse_date(f.get("data")),
+    )
+    db.session.add(obj)
+    db.session.commit()
+    flash("Receita adicionada.", "success")
+    return redirect(url_for("admin_receitas_split"))
+
+
+@app.route("/receitas/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_receita(id):
+    obj = ReceitaCooperativa.query.get_or_404(id)
+    f = request.form
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor_total = f.get("valor", type=float) or 0.0
+    obj.data = _parse_date(f.get("data"))
+    db.session.commit()
+    flash("Receita atualizada.", "success")
+    return redirect(url_for("admin_receitas_split"))
+
+
+@app.route("/receitas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_receita(id):
+    obj = ReceitaCooperativa.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Receita excluída.", "success")
+    return redirect(url_for("admin_receitas_split"))
+
 # =========================================================
 # ROTAS DE AÇÃO DO PAINEL ADMIN - ADAPTADAS PARA O SPLIT
 # =========================================================
