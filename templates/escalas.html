@@ -237,7 +237,69 @@
       font-size:.75rem;
     }
 
-    /* Responsivo -------------------------------------------------------------*/
+    .section-title{
+      font-weight:700;
+      color:#1f2430;
+    }
+
+    .section-subtitle{
+      color:#6b7280;
+      font-size:.9rem;
+    }
+
+    .extra-small{
+      font-size:.75rem;
+    }
+
+    .text-muted-2{
+      color:#7b8499;
+    }
+
+    .btn-xs{
+      font-size:.75rem;
+      padding:.25rem .5rem;
+      border-radius:.5rem;
+    }
+
+    .badge-doc{
+      font-size:.72rem;
+      padding:.25rem .5rem;
+      border-radius:999px;
+    }
+
+    .badge-doc-ok{
+      background:#d1e7dd;
+      color:#0f5132;
+    }
+
+    .badge-doc-pend{
+      background:#fff3cd;
+      color:#664d03;
+    }
+
+    .badge-doc-na{
+      background:#e9ecef;
+      color:#495057;
+    }
+
+    .table-escalas thead th,
+    .table-troca thead th{
+      background:#f8f9ff;
+    }
+
+    .escala-upload-card{
+      background:linear-gradient(180deg,#fff,#f8fbff);
+    }
+
+    .escala-search-box{
+      min-width:280px;
+      max-width:360px;
+      width:100%;
+    }
+
+    .search-input{
+      background:#fff;
+    }
 
     @media (max-width: 991.98px){
       :root{ --sidebar-w:72px; }
@@ -288,10 +350,7 @@
 
       <div class="nav-section-label">Visão Geral</div>
 
-      <!-- Resumo (TAB, igual antes) -->
       <a class="nav-link-main {{ 'active' if _tab=='resumo' else '' }}"
-         
-         
          href="resumo.html"
          role="tab"
          aria-controls="resumo"
@@ -302,18 +361,16 @@
         </div>
       </a>
 
-      <!-- Avaliações (ROTA /admin/avaliacoes) -->
-    <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
-       href="{{ url_for('admin_avaliacoes') }}">
-      <div class="nav-link-left">
-        <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
-        <span class="nav-link-label">Avaliações</span>
-      </div>
-    </a>
+      <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
+         href="{{ url_for('admin_avaliacoes') }}">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
+          <span class="nav-link-label">Avaliações</span>
+        </div>
+      </a>
 
       <hr class="sidebar-divider">
 
-      <!-- FINANCEIRO (TABS, não rotas) ------------------------------------->
       <button class="nav-link-group-toggle"
               type="button"
               data-bs-toggle="collapse"
@@ -327,10 +384,7 @@
       </button>
 
       <div id="menuFinanceiro" class="collapse show nav-sublinks">
-        <!-- Lançamentos (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='lancamentos' else '' }}"
-           
-           
            href="lancamentos.html"
            role="tab"
            aria-controls="lancamentos"
@@ -339,10 +393,7 @@
           <span class="nav-link-label">Lançamentos</span>
         </a>
 
-        <!-- Receitas Coop (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='receitas' else '' }}"
-           
-           
            href="receitas.html"
            role="tab"
            aria-controls="receitas"
@@ -351,10 +402,7 @@
           <span class="nav-link-label">Receitas Coop</span>
         </a>
 
-        <!-- Despesas Coop (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='despesas' else '' }}"
-           
-           
            href="despesas.html"
            role="tab"
            aria-controls="despesas"
@@ -363,10 +411,7 @@
           <span class="nav-link-label">Despesas Coop</span>
         </a>
 
-        <!-- Receitas Cooperados (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='coop_receitas' else '' }}"
-           
-           
            href="coop_receitas.html"
            role="tab"
            aria-controls="coop_receitas"
@@ -375,10 +420,7 @@
           <span class="nav-link-label">Receitas Cooperados</span>
         </a>
 
-        <!-- Despesas Cooperados (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='coop_despesas' else '' }}"
-           
-           
            href="coop_despesas.html"
            role="tab"
            aria-controls="coop_despesas"
@@ -387,10 +429,7 @@
           <span class="nav-link-label">Despesas Cooperados</span>
         </a>
 
-        <!-- Benefícios (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='beneficios' else '' }}"
-           
-           
            href="beneficios.html"
            role="tab"
            aria-controls="beneficios"
@@ -400,7 +439,6 @@
         </a>
       </div>
 
-      <!-- CADASTROS (tabs + rotas) ------------------------------------------>
       <button class="nav-link-group-toggle"
               type="button"
               data-bs-toggle="collapse"
@@ -414,10 +452,7 @@
       </button>
 
       <div id="menuCadastros" class="collapse show nav-sublinks">
-        <!-- Cooperados (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='cooperados' else '' }}"
-           
-           
            href="cooperados.html"
            role="tab"
            aria-controls="cooperados"
@@ -426,10 +461,7 @@
           <span class="nav-link-label">Cooperados</span>
         </a>
 
-        <!-- Estabelecimentos (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='restaurantes' else '' }}"
-           
-           
            href="restaurantes.html"
            role="tab"
            aria-controls="restaurantes"
@@ -438,14 +470,12 @@
           <span class="nav-link-label">Estabelecimentos</span>
         </a>
 
-        <!-- Documentos (rota) -->
         <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
            href="{{ url_for('admin_documentos') }}">
           <i class="bi bi-folder2"></i>
           <span class="nav-link-label">Documentos</span>
         </a>
 
-        <!-- Tabelas (rota) -->
         <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
            href="{{ url_for('admin_tabelas') }}">
           <i class="bi bi-table"></i>
@@ -453,7 +483,6 @@
         </a>
       </div>
 
-      <!-- OPERAÇÃO ---------------------------------------------------------->
       <button class="nav-link-group-toggle"
               type="button"
               data-bs-toggle="collapse"
@@ -467,10 +496,7 @@
       </button>
 
       <div id="menuOperacao" class="collapse show nav-sublinks">
-        <!-- Escalas (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='escalas' else '' }}"
-           
-           
            href="escalas.html"
            role="tab"
            aria-controls="escalas"
@@ -479,7 +505,6 @@
           <span class="nav-link-label">Escalas</span>
         </a>
 
-        <!-- Avisos (rota, como já era) -->
         <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
            href="{{ url_for('admin_avisos') }}">
           <i class="bi bi-megaphone"></i>
@@ -489,11 +514,8 @@
 
       <hr class="sidebar-divider">
 
-      <!-- Config (TAB) e Sair (rota) ---------------------------------------->
       <div class="sidebar-footer">
         <a class="nav-link-main {{ 'active' if _tab=='config' else '' }}"
-           
-           
            href="config.html"
            role="tab"
            aria-controls="config"
@@ -627,11 +649,6 @@
         </thead>
         <tbody>
           {% for c in cooperados %}
-            {# ===== SOMENTE ATIVOS (fallback seguro) =====
-               - Se existir c.ativo (bool), usa.
-               - Se existir c.status, considera "ativo"/"ATIVO".
-               - Se não existir nada disso, assume ativo (para não quebrar template).
-            #}
             {% set is_ativo = (c.ativo if c.ativo is defined else ( (c.status|string|lower) in ['ativo','active'] if c.status is defined else true )) %}
             {% if is_ativo %}
               {% set lst = (escalas_por_coop[c.id] if (escalas_por_coop is defined and c.id in escalas_por_coop) else []) %}
@@ -643,7 +660,6 @@
                   data-coop-cnh="{{ (c.cnh_numero if c.cnh_numero is defined and c.cnh_numero else '')|lower }}"
                   data-coop-placa="{{ (c.placa if c.placa is defined and c.placa else '')|lower }}"
                   data-coop-ativo="1">
-                <!-- Cooperado -->
                 <td>
                   <div class="small fw-semibold text-truncate">
                     {{ c.nome }}
@@ -653,7 +669,6 @@
                   </div>
                 </td>
 
-                <!-- CNH -->
                 <td>
                   <div class="extra-small text-muted">
                     {{ c.cnh_numero if c.cnh_numero is defined and c.cnh_numero else '—' }}
@@ -668,7 +683,6 @@
                   </div>
                 </td>
 
-                <!-- Placa -->
                 <td>
                   <div class="extra-small text-muted">
                     {{ c.placa if c.placa is defined and c.placa else '—' }}
@@ -683,7 +697,6 @@
                   </div>
                 </td>
 
-                <!-- Situação Docs -->
                 <td class="text-nowrap">
                   {% if ok_cnh is not none %}
                     <span class="badge badge-doc {{ 'badge-doc-ok' if ok_cnh else 'badge-doc-pend' }} me-1">
@@ -706,27 +719,25 @@
                   {% endif %}
                 </td>
 
-                <!-- Última atualização -->
                 <td>
                   <div class="extra-small text-muted">
                     {{ c.ultima_atualizacao.strftime('%d/%m/%Y %H:%M') if c.ultima_atualizacao else '—' }}
                   </div>
                 </td>
 
-                <!-- Qtde linhas -->
                 <td class="text-center">
                   <span class="badge-soft d-inline-flex align-items-center justify-content-center px-2">
                     {{ lst|length }}
                   </span>
                 </td>
 
-                <!-- Ações -->
                 <td class="text-center">
                   <div class="d-flex flex-column flex-sm-row gap-1 justify-content-center">
                     <button class="btn btn-royal btn-xs"
                             data-bs-toggle="modal"
                             data-bs-target="#modalEscalas"
-                            data-coopid="{{ c.id }}">
+                            data-coopid="{{ c.id }}"
+                            data-coopnome="{{ c.nome }}">
                       <i class="bi bi-eye me-1"></i> Ver escala
                     </button>
                     <a class="btn btn-outline-secondary btn-xs"
@@ -938,8 +949,6 @@
 
                 <td class="text-end">
                   <div class="d-flex flex-column gap-1 align-items-end">
-
-                    <!-- ✅ AQUI: forms corrigidos (id sempre válido + volta para a mesma página) -->
                     <form method="POST"
                           action="{{ url_for('admin_aprovar_troca', id=t.id) }}"
                           onsubmit="return confirm('Confirmar aprovação desta troca?');">
@@ -963,7 +972,6 @@
                         Recusar
                       </button>
                     </form>
-
                   </div>
                 </td>
               </tr>
@@ -1499,31 +1507,32 @@
 
   buildLineChart('chartLancCoop', dataLancCoop.labels, dataLancCoop.values, 'Lançamentos/Produções');
   buildLineChart('chartLancCooperados', dataLancCooperados.labels, dataLancCooperados.values, 'Lançamentos/Produções');
-    // Contagem regressiva até 31/12 (aba Escalas)
-    const anoSpan = document.getElementById('prazoAno');
-    const diasSpan = document.getElementById('prazoDias');
 
-    function updatePrazo() {
-      const now = new Date();
-      let target = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-      if (now > target) target = new Date(now.getFullYear() + 1, 11, 31, 23, 59, 59);
+  // Contagem regressiva até 31/12 (aba Escalas)
+  const anoSpan = document.getElementById('prazoAno');
+  const diasSpan = document.getElementById('prazoDias');
 
-      const diff = target - now;
-      const dias = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  function updatePrazo() {
+    const now = new Date();
+    let target = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    if (now > target) target = new Date(now.getFullYear() + 1, 11, 31, 23, 59, 59);
 
-      if (anoSpan) anoSpan.textContent = target.getFullYear();
-      if (diasSpan) diasSpan.textContent = dias;
-    }
+    const diff = target - now;
+    const dias = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 
-    updatePrazo();
-    setInterval(updatePrazo, 60 * 1000);
-  });
+    if (anoSpan) anoSpan.textContent = target.getFullYear();
+    if (diasSpan) diasSpan.textContent = dias;
+  }
+
+  updatePrazo();
+  setInterval(updatePrazo, 60 * 1000);
 </script>
 
 <!-- ==== ESCALAS: horário & cores (robusto) ==== -->
 <script>
   const ESCALAS = {{ escalas_por_coop|default({})|tojson }};
   const modalEsc = document.getElementById('modalEscalas');
+  const modalEscalaCoopNome = document.getElementById('modalEscalaCoopNome');
 
   const norm = (s) => String(s || '')
     .normalize('NFD').replace(/\p{Diacritic}/gu, '')
@@ -1550,7 +1559,6 @@
       if (!c) return null;
       c = String(c).trim();
 
-      // AARRGGBB (8 hex sem #)
       if (/^[0-9A-Fa-f]{8}$/.test(c)) {
         const a = parseInt(c.slice(0, 2), 16) / 255;
         const r = parseInt(c.slice(2, 4), 16);
@@ -1559,10 +1567,8 @@
         return `rgba(${r},${g},${b},${a.toFixed(3)})`;
       }
 
-      // RRGGBB (6 hex sem #)
       if (/^[0-9A-Fa-f]{6}$/.test(c)) return `#${c}`;
 
-      // #RRGGBB ou #AARRGGBB
       if (/^#[0-9A-Fa-f]{6,8}$/.test(c)) {
         if (c.length === 9) {
           const a = parseInt(c.slice(1, 3), 16) / 255;
@@ -1656,10 +1662,38 @@
     return s.split(/\s*\/\s*/).map(seg => seg.trim().replace(/\s*(?:-|a|as|às)\s*/i, ' às ')).join(' / ');
   }
 
+  // filtro da tabela
+  (function(){
+    const filtro = document.getElementById('filtroCooperado');
+    const tabela = document.getElementById('tabela-escalas');
+    if (!filtro || !tabela) return;
+
+    function normaliza(txt){
+      return String(txt || '')
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    filtro.addEventListener('input', () => {
+      const q = normaliza(filtro.value);
+      tabela.querySelectorAll('tbody tr').forEach(tr => {
+        const nome  = normaliza(tr.dataset.coopNome || '');
+        const cnh   = normaliza(tr.dataset.coopCnh || '');
+        const placa = normaliza(tr.dataset.coopPlaca || '');
+        tr.style.display = (!q || nome.includes(q) || cnh.includes(q) || placa.includes(q)) ? '' : 'none';
+      });
+    });
+  })();
+
   if (modalEsc) {
     modalEsc.addEventListener('show.bs.modal', (ev) => {
       const coopId = ev.relatedTarget?.dataset?.coopid;
+      const coopNome = ev.relatedTarget?.dataset?.coopnome || 'Detalhamento da escala selecionada.';
       const tbody = modalEsc.querySelector('#tbody-escala');
+
+      if (modalEscalaCoopNome) modalEscalaCoopNome.textContent = coopNome;
       if (!tbody) return;
 
       tbody.innerHTML = '';
@@ -1734,11 +1768,10 @@
 <script>
   (function () {
     const sec = document.getElementById('beneficios');
-    if (!sec) return; // só roda nesta aba
+    if (!sec) return;
 
     const TOTAL_COOPS = {{ cooperados|length or 0 }};
 
-    // ===== Utils =====
     function valNum(inp) {
       const n = parseFloat(String(inp?.value ?? '').replace(',', '.'));
       return isFinite(n) ? n : 0;
@@ -1751,7 +1784,6 @@
     }
     function setBadge(el, txt) { if (el) el.textContent = txt; }
 
-    // ===== Prévia por tipo (hosp/farm/alim) =====
     function calcPreview(prefix) {
       const unit = sec.querySelector(`#${prefix}_valor_unit`);
       const bensSel = sec.querySelector(`#${prefix}_beneficiarios`);
@@ -1763,7 +1795,6 @@
       const bens = idsFromSelect(bensSel);
       const isen = idsFromSelect(isenSel);
 
-      // regra do seu texto: union(bens + isen) = "quem não paga"
       const uniqueNaoPagam = new Set([...bens, ...isen]);
       const numBens = bens.length;
       const numIsen = isen.length;
@@ -1785,10 +1816,8 @@
       calcPreview(p);
     });
 
-    // ===== Cálculo dos totais no submit + garantir IDs dos hidden =====
     const form = sec.querySelector('#form-beneficios');
     if (form) {
-      // garante IDs dos hidden esperados (se existir só name="")
       (function ensureHiddenIds() {
         const map = { hosp: 'hosp_valor_total', farm: 'farm_valor_total', alim: 'alim_valor_total' };
         Object.entries(map).forEach(([p, id]) => {
@@ -1815,12 +1844,11 @@
       });
     }
 
-    // ===== Seleção em massa + modal de exclusão (tabela) =====
     try {
       const tbl = sec.querySelector('#tabela-beneficios');
       const checkAll = sec.querySelector('#check_all');
       const bulkBtn = sec.querySelector('#btn-bulk-delete');
-      const modal = document.getElementById('modalExcluirBeneficio'); // modal pode ficar fora da aba
+      const modal = document.getElementById('modalExcluirBeneficio');
 
       const allChecks = () => (tbl ? tbl.querySelectorAll('tbody .chk-beneficio') : []);
       const checkedCount = () => (tbl ? tbl.querySelectorAll('tbody .chk-beneficio:checked').length : 0);
@@ -1853,7 +1881,6 @@
       toggleBulkBtn();
       updateHeaderState();
 
-      // Modal individual (exclusão)
       if (modal) {
         modal.addEventListener('show.bs.modal', function (ev) {
           const btn = ev.relatedTarget;
