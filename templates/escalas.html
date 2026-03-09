@@ -174,24 +174,6 @@
       padding:18px 22px;
     }
 
-    .content-shell{
-      max-width:1320px;
-      margin:0 auto 32px;
-    }
-
-    .page-header{
-      margin-bottom:16px;
-    }
-    .page-header h3{
-      margin:0;
-      font-size:1.35rem;
-      font-weight:600;
-    }
-    .page-header small{
-      color:var(--text-muted);
-      font-size:.85rem;
-    }
-
     .card{
       border-radius:12px;
       border:0;
@@ -230,40 +212,37 @@
       font-size:.75rem;
     }
 
+    .section-title{ font-weight:700; }
+    .section-subtitle{ color:#6b7280; font-size:.85rem; }
+    .extra-small{ font-size:.75rem; }
+    .text-muted-2{ color:#7c879f; }
+    .btn-xs{ padding:.2rem .45rem; font-size:.75rem; border-radius:.35rem; }
+
+    .badge-doc{
+      display:inline-block;
+      padding:.22rem .48rem;
+      border-radius:999px;
+      font-size:.72rem;
+      font-weight:600;
+    }
+    .badge-doc-ok{ background:#dcfce7; color:#166534; }
+    .badge-doc-pend{ background:#fee2e2; color:#991b1b; }
+    .badge-doc-na{ background:#e5e7eb; color:#374151; }
+
     @media (max-width: 991.98px){
       :root{ --sidebar-w:72px; }
-
-      .sidebar{
-        padding:18px 8px;
-      }
-      .brand-sub,
-      .brand-title,
-      .nav-section-label,
-      .nav-link-label{
-        display:none;
-      }
-      .nav-sublinks{
-        padding-left:12px;
-      }
-      .main{
-        margin-left:var(--sidebar-w);
-        padding:16px 10px;
-      }
+      .sidebar{ padding:18px 8px; }
+      .brand-sub, .brand-title, .nav-section-label, .nav-link-label{ display:none; }
+      .nav-sublinks{ padding-left:12px; }
+      .main{ margin-left:var(--sidebar-w); padding:16px 10px; }
     }
   </style>
 </head>
 <body>
 
-{% set kpis       = kpis if kpis is defined else {'qtd':0,'geral':0,'trat':0,'amb':0,'sup':0,'pont':0,'educ':0,'efic':0,'apres':0} %}
-{% set chart_top  = chart_top if chart_top is defined else {'labels':[],'values':[]} %}
-{% set ranking    = ranking if ranking is defined else [] %}
-{% set compat     = compat if compat is defined else [] %}
-{% set avaliacoes = avaliacoes if avaliacoes is defined else [] %}
-{% set _flt       = _flt if _flt is defined else namespace(restaurante_id=None, cooperado_id=None, data_inicio='', data_fim='') %}
-{% set _tab       = (tab if tab is defined else 'escalas') %}
+{% set _tab = (tab if tab is defined else 'escalas') %}
 
 <div class="layout">
-
   <aside class="sidebar">
     <div class="brand">
       <h1 class="brand-title">PAINEL COOPEX</h1>
@@ -271,7 +250,6 @@
     </div>
 
     <nav class="sidebar-nav nav flex-column">
-
       <div class="nav-section-label">Visão Geral</div>
 
       <a class="nav-link-main {{ 'active' if _tab=='resumo' else '' }}" href="{{ url_for('admin_resumo_split') }}">
@@ -281,8 +259,7 @@
         </div>
       </a>
 
-      <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
-         href="{{ url_for('admin_avaliacoes') }}">
+      <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}" href="{{ url_for('admin_avaliacoes') }}">
         <div class="nav-link-left">
           <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
           <span class="nav-link-label">Avaliações</span>
@@ -291,11 +268,7 @@
 
       <hr class="sidebar-divider">
 
-      <button class="nav-link-group-toggle"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#menuFinanceiro"
-              aria-expanded="true">
+      <button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuFinanceiro" aria-expanded="true">
         <div class="nav-link-left">
           <span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span>
           <span class="nav-link-label">Financeiro</span>
@@ -305,41 +278,26 @@
 
       <div id="menuFinanceiro" class="collapse show nav-sublinks">
         <a class="nav-sublink {{ 'active' if _tab=='lancamentos' else '' }}" href="{{ url_for('admin_lancamentos_split') }}">
-          <i class="bi bi-journal-text"></i>
-          <span class="nav-link-label">Lançamentos</span>
+          <i class="bi bi-journal-text"></i><span class="nav-link-label">Lançamentos</span>
         </a>
-
         <a class="nav-sublink {{ 'active' if _tab=='receitas' else '' }}" href="{{ url_for('admin_receitas_split') }}">
-          <i class="bi bi-credit-card"></i>
-          <span class="nav-link-label">Receitas Coop</span>
+          <i class="bi bi-credit-card"></i><span class="nav-link-label">Receitas Coop</span>
         </a>
-
         <a class="nav-sublink {{ 'active' if _tab=='despesas' else '' }}" href="{{ url_for('admin_despesas_split') }}">
-          <i class="bi bi-cart-dash"></i>
-          <span class="nav-link-label">Despesas Coop</span>
+          <i class="bi bi-cart-dash"></i><span class="nav-link-label">Despesas Coop</span>
         </a>
-
         <a class="nav-sublink {{ 'active' if _tab=='coop_receitas' else '' }}" href="{{ url_for('admin_coop_receitas_split') }}">
-          <i class="bi bi-wallet2"></i>
-          <span class="nav-link-label">Receitas Cooperados</span>
+          <i class="bi bi-wallet2"></i><span class="nav-link-label">Receitas Cooperados</span>
         </a>
-
         <a class="nav-sublink {{ 'active' if _tab=='coop_despesas' else '' }}" href="{{ url_for('admin_coop_despesas_split') }}">
-          <i class="bi bi-bag-dash"></i>
-          <span class="nav-link-label">Despesas Cooperados</span>
+          <i class="bi bi-bag-dash"></i><span class="nav-link-label">Despesas Cooperados</span>
         </a>
-
         <a class="nav-sublink {{ 'active' if _tab=='beneficios' else '' }}" href="{{ url_for('admin_beneficios_split') }}">
-          <i class="bi bi-heart-pulse"></i>
-          <span class="nav-link-label">Benefícios</span>
+          <i class="bi bi-heart-pulse"></i><span class="nav-link-label">Benefícios</span>
         </a>
       </div>
 
-      <button class="nav-link-group-toggle"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#menuCadastros"
-              aria-expanded="true">
+      <button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuCadastros" aria-expanded="true">
         <div class="nav-link-left">
           <span class="nav-link-icon"><i class="bi bi-people"></i></span>
           <span class="nav-link-label">Cadastros</span>
@@ -349,33 +307,20 @@
 
       <div id="menuCadastros" class="collapse show nav-sublinks">
         <a class="nav-sublink {{ 'active' if _tab=='cooperados' else '' }}" href="{{ url_for('admin_cooperados_split') }}">
-          <i class="bi bi-person-badge"></i>
-          <span class="nav-link-label">Cooperados</span>
+          <i class="bi bi-person-badge"></i><span class="nav-link-label">Cooperados</span>
         </a>
-
         <a class="nav-sublink {{ 'active' if _tab=='restaurantes' else '' }}" href="{{ url_for('admin_restaurantes_split') }}">
-          <i class="bi bi-shop-window"></i>
-          <span class="nav-link-label">Estabelecimentos</span>
+          <i class="bi bi-shop-window"></i><span class="nav-link-label">Estabelecimentos</span>
         </a>
-
-        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
-           href="{{ url_for('admin_documentos') }}">
-          <i class="bi bi-folder2"></i>
-          <span class="nav-link-label">Documentos</span>
+        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}" href="{{ url_for('admin_documentos') }}">
+          <i class="bi bi-folder2"></i><span class="nav-link-label">Documentos</span>
         </a>
-
-        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
-           href="{{ url_for('admin_tabelas') }}">
-          <i class="bi bi-table"></i>
-          <span class="nav-link-label">Tabelas</span>
+        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}" href="{{ url_for('admin_tabelas') }}">
+          <i class="bi bi-table"></i><span class="nav-link-label">Tabelas</span>
         </a>
       </div>
 
-      <button class="nav-link-group-toggle"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#menuOperacao"
-              aria-expanded="true">
+      <button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuOperacao" aria-expanded="true">
         <div class="nav-link-left">
           <span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span>
           <span class="nav-link-label">Operação</span>
@@ -385,14 +330,10 @@
 
       <div id="menuOperacao" class="collapse show nav-sublinks">
         <a class="nav-sublink {{ 'active' if _tab=='escalas' else '' }}" href="{{ url_for('admin_escalas_split') }}">
-          <i class="bi bi-calendar-week"></i>
-          <span class="nav-link-label">Escalas</span>
+          <i class="bi bi-calendar-week"></i><span class="nav-link-label">Escalas</span>
         </a>
-
-        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
-           href="{{ url_for('admin_avisos') }}">
-          <i class="bi bi-megaphone"></i>
-          <span class="nav-link-label">Avisos</span>
+        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}" href="{{ url_for('admin_avisos') }}">
+          <i class="bi bi-megaphone"></i><span class="nav-link-label">Avisos</span>
         </a>
       </div>
 
@@ -413,12 +354,11 @@
           </div>
         </a>
       </div>
-
     </nav>
   </aside>
 
   <main class="main">
-    <section class="tab-pane fade show active" id="escalas" role="tabpanel">
+    <section id="escalas" role="tabpanel">
       <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 align-items-lg-center mb-3">
         <div>
           <h5 class="mb-0 section-title">Gestão de Escalas</h5>
@@ -441,19 +381,16 @@
           <div class="flex-grow-1">
             <h6 class="mb-1 section-title">Upload da Escala (.xlsx)</h6>
             <small class="section-subtitle">
-              Envie a planilha oficial de escalas. A associação do cooperado é feita por login (quando existir) ou por nome,
-              ignorando acentos.
+              Envie a planilha oficial de escalas. A associação do cooperado é feita por login (quando existir) ou por nome, ignorando acentos.
             </small>
 
             <form method="POST"
                   action="{{ url_for('admin_upload_tabela') }}"
                   enctype="multipart/form-data"
                   class="row g-2 align-items-end mt-2">
-
               {% if csrf_token is defined %}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               {% endif %}
-
               <input type="hidden" name="titulo" value="Escala">
 
               <div class="col-md-6">
@@ -463,8 +400,8 @@
                 <input type="file"
                        class="form-control form-control-sm"
                        id="arquivo_escala"
-                       name="file"
-                       accept=".xlsx"
+                       name="arquivo"
+                       accept=".xlsx,.xls,.csv"
                        required>
               </div>
 
@@ -604,12 +541,15 @@
 
                     <td class="text-center">
                       <div class="d-flex flex-column flex-sm-row gap-1 justify-content-center">
-                        <button class="btn btn-royal btn-xs"
+                        <button type="button"
+                                class="btn btn-royal btn-xs"
                                 data-bs-toggle="modal"
                                 data-bs-target="#modalEscalas"
-                                data-coopid="{{ c.id }}">
+                                data-coopid="{{ c.id }}"
+                                data-coopnome="{{ c.nome }}">
                           <i class="bi bi-eye me-1"></i> Ver escala
                         </button>
+
                         <a class="btn btn-outline-secondary btn-xs"
                            href="{{ url_for('editar_documentos', coop_id=c.id) }}">
                           <i class="bi bi-pen me-1"></i> Documentos
@@ -668,69 +608,15 @@
                   {% set coop2_nome = (destinatario.nome if destinatario else t.destinatario_nome)|default('—', true) %}
                   {% set coop2_id   = (destinatario.id   if destinatario else t.destinatario_id)|default('—', true) %}
 
-                  {% if origem and origem.data is defined %}
-                    {% set origem_data = origem.data %}
-                  {% elif t.origem_data is defined %}
-                    {% set origem_data = t.origem_data %}
-                  {% else %}
-                    {% set origem_data = '—' %}
-                  {% endif %}
+                  {% set origem_data = origem.data if origem and origem.data is defined else (t.origem_data if t.origem_data is defined else '—') %}
+                  {% set origem_turno = origem.turno if origem and origem.turno is defined else (t.origem_turno if t.origem_turno is defined else '—') %}
+                  {% set origem_horario = origem.horario if origem and origem.horario is defined else (t.origem_horario if t.origem_horario is defined else '—') %}
+                  {% set origem_contrato = origem.contrato if origem and origem.contrato is defined else (t.origem_contrato if t.origem_contrato is defined else '—') %}
 
-                  {% if origem and origem.turno is defined %}
-                    {% set origem_turno = origem.turno %}
-                  {% elif t.origem_turno is defined %}
-                    {% set origem_turno = t.origem_turno %}
-                  {% else %}
-                    {% set origem_turno = '—' %}
-                  {% endif %}
-
-                  {% if origem and origem.horario is defined %}
-                    {% set origem_horario = origem.horario %}
-                  {% elif t.origem_horario is defined %}
-                    {% set origem_horario = t.origem_horario %}
-                  {% else %}
-                    {% set origem_horario = '—' %}
-                  {% endif %}
-
-                  {% if origem and origem.contrato is defined %}
-                    {% set origem_contrato = origem.contrato %}
-                  {% elif t.origem_contrato is defined %}
-                    {% set origem_contrato = t.origem_contrato %}
-                  {% else %}
-                    {% set origem_contrato = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_data is defined and t.destino_data %}
-                    {% set destino_data = t.destino_data %}
-                  {% elif t.destino and t.destino.data is defined %}
-                    {% set destino_data = t.destino.data %}
-                  {% else %}
-                    {% set destino_data = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_turno is defined and t.destino_turno %}
-                    {% set destino_turno = t.destino_turno %}
-                  {% elif t.destino and t.destino.turno is defined %}
-                    {% set destino_turno = t.destino.turno %}
-                  {% else %}
-                    {% set destino_turno = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_horario is defined and t.destino_horario %}
-                    {% set destino_horario = t.destino_horario %}
-                  {% elif t.destino and t.destino.horario is defined %}
-                    {% set destino_horario = t.destino.horario %}
-                  {% else %}
-                    {% set destino_horario = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_contrato is defined and t.destino_contrato %}
-                    {% set destino_contrato = t.destino_contrato %}
-                  {% elif t.destino and t.destino.contrato is defined %}
-                    {% set destino_contrato = t.destino.contrato %}
-                  {% else %}
-                    {% set destino_contrato = '—' %}
-                  {% endif %}
+                  {% set destino_data = t.destino_data if t.destino_data is defined and t.destino_data else (t.destino.data if t.destino and t.destino.data is defined else '—') %}
+                  {% set destino_turno = t.destino_turno if t.destino_turno is defined and t.destino_turno else (t.destino.turno if t.destino and t.destino.turno is defined else '—') %}
+                  {% set destino_horario = t.destino_horario if t.destino_horario is defined and t.destino_horario else (t.destino.horario if t.destino and t.destino.horario is defined else '—') %}
+                  {% set destino_contrato = t.destino_contrato if t.destino_contrato is defined and t.destino_contrato else (t.destino.contrato if t.destino and t.destino.contrato is defined else '—') %}
 
                   <tr>
                     <td>
@@ -852,61 +738,15 @@
                   {% set coop2_nome = (destinatario.nome if destinatario else t.destinatario_nome)|default('—', true) %}
                   {% set coop2_id   = (destinatario.id   if destinatario else t.destinatario_id)|default('—', true) %}
 
-                  {% if origem and origem.data is defined %}
-                    {% set origem_data = origem.data %}
-                  {% elif t.origem_data is defined %}
-                    {% set origem_data = t.origem_data %}
-                  {% else %}
-                    {% set origem_data = '—' %}
-                  {% endif %}
+                  {% set origem_data = origem.data if origem and origem.data is defined else (t.origem_data if t.origem_data is defined else '—') %}
+                  {% set origem_turno = origem.turno if origem and origem.turno is defined else (t.origem_turno if t.origem_turno is defined else '—') %}
+                  {% set origem_horario = origem.horario if origem and origem.horario is defined else (t.origem_horario if t.origem_horario is defined else '—') %}
+                  {% set origem_contrato = origem.contrato if origem and origem.contrato is defined else (t.origem_contrato if t.origem_contrato is defined else '—') %}
 
-                  {% if origem and origem.turno is defined %}
-                    {% set origem_turno = origem.turno %}
-                  {% elif t.origem_turno is defined %}
-                    {% set origem_turno = t.origem_turno %}
-                  {% else %}
-                    {% set origem_turno = '—' %}
-                  {% endif %}
-
-                  {% if origem and origem.horario is defined %}
-                    {% set origem_horario = origem.horario %}
-                  {% elif t.origem_horario is defined %}
-                    {% set origem_horario = t.origem_horario %}
-                  {% else %}
-                    {% set origem_horario = '—' %}
-                  {% endif %}
-
-                  {% if origem and origem.contrato is defined %}
-                    {% set origem_contrato = origem.contrato %}
-                  {% elif t.origem_contrato is defined %}
-                    {% set origem_contrato = t.origem_contrato %}
-                  {% else %}
-                    {% set origem_contrato = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_data is defined and t.destino_data %}
-                    {% set destino_data = t.destino_data %}
-                  {% else %}
-                    {% set destino_data = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_turno is defined and t.destino_turno %}
-                    {% set destino_turno = t.destino_turno %}
-                  {% else %}
-                    {% set destino_turno = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_horario is defined and t.destino_horario %}
-                    {% set destino_horario = t.destino_horario %}
-                  {% else %}
-                    {% set destino_horario = '—' %}
-                  {% endif %}
-
-                  {% if t.destino_contrato is defined and t.destino_contrato %}
-                    {% set destino_contrato = t.destino_contrato %}
-                  {% else %}
-                    {% set destino_contrato = '—' %}
-                  {% endif %}
+                  {% set destino_data = t.destino_data if t.destino_data is defined and t.destino_data else '—' %}
+                  {% set destino_turno = t.destino_turno if t.destino_turno is defined and t.destino_turno else '—' %}
+                  {% set destino_horario = t.destino_horario if t.destino_horario is defined and t.destino_horario else '—' %}
+                  {% set destino_contrato = t.destino_contrato if t.destino_contrato is defined and t.destino_contrato else '—' %}
 
                   <tr>
                     <td>
@@ -1018,54 +858,13 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <script>
-  document.addEventListener('click', function (e) {
-    if (e.target.closest('.btn-del')) {
-      if (!confirm('Tem certeza que deseja excluir?')) e.preventDefault();
-    }
-  });
-
-  function bindModal(modalId, mapFields) {
-    const el = document.getElementById(modalId);
-    if (!el) return;
-
-    el.addEventListener('show.bs.modal', (ev) => {
-      const btn = ev.relatedTarget;
-      const form = el.querySelector('form');
-      const ds = btn?.dataset || {};
-
-      if (form && ds.url) form.setAttribute('action', ds.url);
-
-      Object.keys(mapFields).forEach((k) => {
-        const name = mapFields[k];
-        const input = form?.querySelector(`[name="${name}"]`);
-        if (!input) return;
-
-        const val = ds[k] ?? '';
-        if (input.tagName === 'SELECT') {
-          [...input.options].forEach((o) => (o.selected = (String(o.value) === String(val))));
-        } else {
-          input.value = val;
-        }
-      });
-    });
-  }
-
-  bindModal('modalEditLancamento',   { id:'id', restaurante:'restaurante_id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data', hora_inicio:'hora_inicio', hora_fim:'hora_fim' });
-  bindModal('modalEditReceita',      { id:'id', descricao:'descricao', valor:'valor', data:'data' });
-  bindModal('modalEditDespesa',      { id:'id', descricao:'descricao', valor:'valor', data:'data' });
-  bindModal('modalEditReceitaCoop',  { id:'id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data' });
-  bindModal('modalEditDespesaCoop',  { id:'id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data' });
-  bindModal('modalEditCooperado',    { id:'id', nome:'nome', usuario:'usuario' });
-  bindModal('modalResetSenhaCooperado', { id:'id' });
-  bindModal('modalEditRestaurante',  { id:'id', nome:'nome', periodo:'periodo', usuario:'usuario' });
-  bindModal('modalResetSenhaRestaurante', { id:'id' });
-
   document.addEventListener('DOMContentLoaded', () => {
     const anoSpan = document.getElementById('prazoAno');
     const diasSpan = document.getElementById('prazoDias');
+    const filtro = document.getElementById('filtroCooperado');
+    const rows = Array.from(document.querySelectorAll('#tabela-escalas tbody tr[data-coop-ativo="1"]'));
 
     function updatePrazo() {
       const now = new Date();
@@ -1080,7 +879,20 @@
     }
 
     updatePrazo();
-    setInterval(updatePrazo, 60 * 1000);
+    setInterval(updatePrazo, 60000);
+
+    if (filtro) {
+      filtro.addEventListener('input', () => {
+        const q = filtro.value.trim().toLowerCase();
+        rows.forEach(tr => {
+          const nome = tr.dataset.coopNome || '';
+          const cnh = tr.dataset.coopCnh || '';
+          const placa = tr.dataset.coopPlaca || '';
+          const ok = !q || nome.includes(q) || cnh.includes(q) || placa.includes(q);
+          tr.style.display = ok ? '' : 'none';
+        });
+      });
+    }
   });
 </script>
 
@@ -1218,8 +1030,13 @@
 
   if (modalEsc) {
     modalEsc.addEventListener('show.bs.modal', (ev) => {
-      const coopId = ev.relatedTarget?.dataset?.coopid;
+      const btn = ev.relatedTarget;
+      const coopId = btn?.dataset?.coopid;
+      const coopNome = btn?.dataset?.coopnome || 'Detalhamento da escala selecionada.';
       const tbody = modalEsc.querySelector('#tbody-escala');
+      const subt = modalEsc.querySelector('#modalEscalaCoopNome');
+
+      if (subt) subt.textContent = coopNome;
       if (!tbody) return;
 
       tbody.innerHTML = '';
