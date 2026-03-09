@@ -2376,7 +2376,71 @@ def _admin_dashboard_context(active_tab="resumo"):
         "receitas_coop": receitas_cooperativa,
         "despesas_coop": despesas_cooperativa,
     }
+    def _tokenize(s: str):
+        return [x.strip() for x in re.split(r"[;,]", s or "") if x.strip()]
 
+    def _d(s):
+        if not s:
+            return None
+        s = s.strip()
+        try:
+            if "/" in s:
+                d_, m_, y_ = s.split("/")
+                return date(int(y_), int(m_), int(d_))
+            y_, m_, d_ = s.split("-")
+            return date(int(y_), int(m_), int(d_))
+        except Exception:
+            return None
+
+    b_ini = _d(request.args.get("b_ini"))
+    b_fim = _d(request.args.get("b_fim"))
+    coop_filter = request.args.get("coop_benef_id", type=int)
+
+    q_benef = BeneficioRegistro.query
+
+    if b_ini and b_fim:
+        q_benef = q_benef.filter(
+            BeneficioRegistro.data_inicial <= b_fim,
+            BeneficioRegistro.data_final >= b_ini,
+        )
+    elif b_ini:
+        q_benef = q_benef.filter(BeneficioRegistro.data_final >= b_ini)
+    elif b_fim:
+        q_benef = q_benef.filter(BeneficioRegistro.data_inicial <= b_fim)
+
+    historico_beneficios = q_benef.order_by(BeneficioRegistro.id.desc()).all()
+
+    beneficios_view = []
+    for b in historico_beneficios:
+        nomes = _tokenize(b.recebedores_nomes or "")
+        ids = _tokenize(b.recebedores_ids or "")
+
+        recs = []
+        for i, nome in enumerate(nomes):
+            rid = None
+            if i < len(ids) and str(ids[i]).isdigit():
+                try:
+                    rid = int(ids[i])
+                except Exception:
+                    rid = None
+
+            if coop_filter and (rid is not None) and (rid != coop_filter):
+                continue
+
+            recs.append({"id": rid, "nome": nome})
+
+        if coop_filter and not recs:
+            continue
+
+        beneficios_view.append({
+            "id": b.id,
+            "data_inicial": b.data_inicial,
+            "data_final": b.data_final,
+            "data_lancamento": b.data_lancamento,
+            "tipo": b.tipo,
+            "valor_total": b.valor_total or 0.0,
+            "recebedores": recs,
+        })
 
 def _ctx_receitas_cooperados():
     ctx = _admin_dashboard_context("receitas")
@@ -2442,6 +2506,12 @@ def admin_coop_receitas_split():
 @admin_required
 def admin_coop_despesas_split():
     return render_template("coop_despesas.html", **_ctx_despesas_cooperativa())
+
+@app.get("/admin/beneficios")
+@admin_required
+def admin_beneficios_split():
+    ctx = _admin_dashboard_context("beneficios")
+    return render_template("beneficios.html", **ctx)
 
 
 @app.get("/admin/cooperados")
