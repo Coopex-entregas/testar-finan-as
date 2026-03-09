@@ -2711,7 +2711,7 @@ def admin_dashboard():
     current_date = date.today()
     data_limite = date(current_date.year, 12, 31)
 
-    return render_template(
+        return render_template(
         "admin_escalas.html",
         tab=active_tab,
         total_producoes=total_producoes,
@@ -2728,14 +2728,10 @@ def admin_dashboard():
         despesas_coop=despesas_coop,
         cooperados=escala_ctx["cooperados"],
         restaurantes=escala_ctx["restaurantes"],
-        cooperados=cooperados,
-        restaurantes=restaurantes,
         beneficios_view=beneficios_view,
         historico_beneficios=historico_beneficios,
         current_date=escala_ctx["current_date"],
         data_limite=escala_ctx["data_limite"],
-        current_date=current_date,
-        data_limite=data_limite,
         admin=admin_user,
         docinfo_map=docinfo_map,
         escalas_por_coop=escala_ctx["escalas_por_coop"],
@@ -2743,11 +2739,6 @@ def admin_dashboard():
         qtd_escalas_map=escala_ctx["qtd_escalas_map"],
         qtd_escalas_sem_cadastro=escala_ctx["qtd_escalas_sem_cadastro"],
         status_doc_por_coop=escala_ctx["status_doc_por_coop"],
-        escalas_por_coop=esc_by_int,
-        escalas_por_coop_json=esc_by_str,
-        qtd_escalas_map=qtd_escalas_map,
-        qtd_escalas_sem_cadastro=qtd_sem_cadastro,
-        status_doc_por_coop=status_doc_por_coop,
         chart_data_lancamentos_coop=chart_data_lancamentos_coop,
         chart_data_lancamentos_cooperados=chart_data_lancamentos_cooperados,
         folha_inicio=folha_inicio,
