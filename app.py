@@ -2824,9 +2824,9 @@ def admin_avisos():
     restaurantes = Restaurante.query.order_by(Restaurante.nome.asc()).all()
     return render_template("admin_avisos.html", avisos=avisos, cooperados=cooperados, restaurantes=restaurantes)
 
-# =========================
-# Ações do painel admin (necessárias para os HTMLs split)
-# =========================
+# =========================================================
+# ROTAS DE AÇÃO DO PAINEL ADMIN - ADAPTADAS PARA O SPLIT
+# =========================================================
 
 @app.route("/config/update", methods=["POST"])
 @admin_required
@@ -2893,6 +2893,91 @@ def add_cooperado():
     return redirect(url_for("admin_cooperados_split"))
 
 
+@app.route("/cooperados/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_cooperado(id):
+    c = Cooperado.query.get_or_404(id)
+    f = request.form
+
+    c.nome = (f.get("nome") or "").strip()
+    c.usuario_ref.usuario = (f.get("usuario") or "").strip()
+    c.telefone = (f.get("telefone") or "").strip()
+
+    foto = request.files.get("foto")
+    if foto and foto.filename:
+        _save_foto_to_db(c, foto, is_cooperado=True)
+
+    c.ultima_atualizacao = datetime.now()
+    db.session.commit()
+    flash("Cooperado atualizado.", "success")
+    return redirect(url_for("admin_cooperados_split"))
+
+
+@app.route("/cooperados/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_cooperado(id):
+    c = Cooperado.query.get_or_404(id)
+    u = c.usuario_ref
+
+    try:
+        escala_ids = [eid for (eid,) in db.session.query(Escala.id)
+                      .filter(Escala.cooperado_id == id).all()]
+
+        if escala_ids:
+            db.session.execute(
+                sa_delete(TrocaSolicitacao)
+                .where(TrocaSolicitacao.origem_escala_id.in_(escala_ids))
+            )
+            db.session.execute(
+                sa_delete(Escala)
+                .where(Escala.id.in_(escala_ids))
+            )
+
+        db.session.execute(
+            sa_delete(TrocaSolicitacao)
+            .where(or_(
+                TrocaSolicitacao.solicitante_id == id,
+                TrocaSolicitacao.destino_id == id
+            ))
+        )
+
+        db.session.execute(
+            sa_delete(AvaliacaoCooperado).where(AvaliacaoCooperado.cooperado_id == id)
+        )
+        db.session.execute(
+            sa_delete(AvaliacaoRestaurante).where(AvaliacaoRestaurante.cooperado_id == id)
+        )
+
+        db.session.execute(
+            sa_delete(Lancamento).where(Lancamento.cooperado_id == id)
+        )
+
+        db.session.execute(
+            sa_delete(ReceitaCooperado).where(ReceitaCooperado.cooperado_id == id)
+        )
+        db.session.execute(
+            sa_delete(DespesaCooperado).where(DespesaCooperado.cooperado_id == id)
+        )
+
+        db.session.execute(
+            sa_delete(AvisoLeitura).where(AvisoLeitura.cooperado_id == id)
+        )
+
+        db.session.delete(c)
+        if u:
+            db.session.delete(u)
+
+        db.session.commit()
+        flash("Cooperado excluído.", "success")
+
+    except IntegrityError as e:
+        db.session.rollback()
+        current_app.logger.exception(e)
+        flash("Não foi possível excluir: existem vínculos ativos.", "danger")
+
+    return redirect(url_for("admin_cooperados_split"))
+
+
 @app.route("/cooperados/<int:id>/reset_senha", methods=["POST"])
 @admin_required
 def reset_senha_cooperado(id):
@@ -2929,11 +3014,7 @@ def add_restaurante():
     db.session.add(u)
     db.session.flush()
 
-    r = Restaurante(
-        nome=nome,
-        periodo=periodo,
-        usuario_id=u.id,
-    )
+    r = Restaurante(nome=nome, periodo=periodo, usuario_id=u.id)
     db.session.add(r)
     db.session.flush()
 
@@ -2942,6 +3023,64 @@ def add_restaurante():
 
     db.session.commit()
     flash("Estabelecimento cadastrado.", "success")
+    return redirect(url_for("admin_restaurantes_split"))
+
+
+@app.route("/restaurantes/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_restaurante(id):
+    r = Restaurante.query.get_or_404(id)
+    f = request.form
+
+    r.nome = f.get("nome", "").strip()
+    r.periodo = f.get("periodo", "seg-dom")
+    r.usuario_ref.usuario = f.get("usuario", "").strip()
+
+    foto = request.files.get("foto")
+    if foto and foto.filename:
+        _save_foto_to_db(r, foto, is_cooperado=False)
+
+    db.session.commit()
+    flash("Estabelecimento atualizado.", "success")
+    return redirect(url_for("admin_restaurantes_split"))
+
+
+@app.route("/restaurantes/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_restaurante(id):
+    r = Restaurante.query.get_or_404(id)
+    u = r.usuario_ref
+
+    try:
+        escala_ids = [e.id for e in Escala.query.with_entities(Escala.id)
+                      .filter(Escala.restaurante_id == id).all()]
+
+        if escala_ids:
+            db.session.execute(
+                sa_delete(TrocaSolicitacao)
+                .where(TrocaSolicitacao.origem_escala_id.in_(escala_ids))
+            )
+            db.session.execute(
+                sa_delete(Escala)
+                .where(Escala.restaurante_id == id)
+            )
+
+        db.session.execute(
+            sa_delete(Lancamento).where(Lancamento.restaurante_id == id)
+        )
+
+        db.session.delete(r)
+        if u:
+            db.session.delete(u)
+
+        db.session.commit()
+        flash("Estabelecimento excluído.", "success")
+
+    except IntegrityError as e:
+        db.session.rollback()
+        current_app.logger.exception(e)
+        flash("Não foi possível excluir: existem vínculos ativos.", "danger")
+
     return redirect(url_for("admin_restaurantes_split"))
 
 
@@ -2960,7 +3099,6 @@ def reset_senha_restaurante(id):
     db.session.commit()
     flash("Senha do restaurante atualizada.", "success")
     return redirect(url_for("admin_restaurantes_split"))
-
 
 # =========================
 # Navegação/Export util
