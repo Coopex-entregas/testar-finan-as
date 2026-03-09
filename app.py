@@ -1574,34 +1574,148 @@ def _cooperado_atual() -> Cooperado | None:
 portal_bp = Blueprint("portal", __name__, url_prefix="/portal")
 
 def _get_admin_escala_context():
-    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
-    restaurantes = Restaurante.query.order_by(Restaurante.nome.asc()).all()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
 
-    # ===== COPIE AQUI, SEM ALTERAR A LÓGICA, O TRECHO DO admin_dashboard()
-    # ===== QUE MONTA ESTES DADOS:
-    #
-    # esc_by_int
-    # esc_by_str
-    # qtd_escalas_map
-    # qtd_sem_cadastro
-    # status_doc_por_coop
-    # trocas_pendentes
-    # trocas_historico
-    # trocas_historico_flat
-    # current_date
-    # data_limite
-    #
-    # Use exatamente as variáveis que já existem hoje no seu admin_dashboard.
+    # documentos OK?
+    docinfo_map = {c.id: _build_docinfo(c) for c in cooperados}
+    status_doc_por_coop = {
+        c.id: {
+            "cnh_ok": docinfo_map[c.id]["cnh"]["ok"],
+            "placa_ok": docinfo_map[c.id]["placa"]["ok"],
+        }
+        for c in cooperados
+    }
 
-    # EXEMPLO DE RETORNO:
+    # -------- Escalas agrupadas e contagem por cooperado ----------
+    escalas_all = Escala.query.order_by(Escala.id.asc()).all()
+
+    esc_by_int: dict[int, list] = defaultdict(list)
+    esc_by_str: dict[str, list] = defaultdict(list)
+
+    for e in escalas_all:
+        k_int = e.cooperado_id if e.cooperado_id is not None else 0  # 0 = sem cadastro
+        esc_item = {
+            "data": e.data,
+            "turno": e.turno,
+            "horario": e.horario,
+            "contrato": e.contrato,
+            "cor": e.cor,
+            "nome_planilha": e.cooperado_nome,
+        }
+        esc_by_int[k_int].append(esc_item)
+        esc_by_str[str(k_int)].append(esc_item)
+
+    cont_rows = dict(
+        db.session.query(Escala.cooperado_id, func.count(Escala.id))
+        .group_by(Escala.cooperado_id)
+        .all()
+    )
+    qtd_escalas_map = {c.id: int(cont_rows.get(c.id, 0)) for c in cooperados}
+    qtd_sem_cadastro = int(cont_rows.get(None, 0))
+
+    # ======== Trocas no admin ========
+    def _escala_desc(e):
+        return _escala_label(e) if e else ""
+
+    def _split_turno_horario(s: str) -> tuple[str, str]:
+        if not s:
+            return "", ""
+        parts = [p.strip() for p in s.split("•")]
+        if len(parts) == 2:
+            return parts[0], parts[1]
+        return s.strip(), ""
+
+    def _linha_from_escala(e: Escala, saiu: str, entrou: str) -> dict:
+        return {
+            "dia": _escala_label(e).split(" • ")[0],
+            "turno_horario": " • ".join(
+                [x for x in [(e.turno or "").strip(), (e.horario or "").strip()] if x]
+            ),
+            "contrato": (e.contrato or "").strip(),
+            "saiu": saiu,
+            "entrou": entrou,
+        }
+
+    trocas_all = TrocaSolicitacao.query.order_by(TrocaSolicitacao.id.desc()).all()
+    trocas_pendentes: list[dict] = []
+    trocas_historico: list[dict] = []
+    trocas_historico_flat: list[dict] = []
+
+    for t in trocas_all:
+        solicitante = Cooperado.query.get(t.solicitante_id)
+        destinatario = Cooperado.query.get(t.destino_id)
+        orig = Escala.query.get(t.origem_escala_id)
+
+        linhas_afetadas = _parse_linhas_from_msg(t.mensagem) if t.status == "aprovada" else []
+
+        item = {
+            "id": t.id,
+            "status": t.status,
+            "mensagem": t.mensagem,
+            "criada_em": t.criada_em,
+            "aplicada_em": t.aplicada_em,
+            "solicitante": solicitante,
+            "destinatario": destinatario,
+            "origem": orig,
+            "origem_data": _escala_label(orig).split(" • ")[0] if orig else "",
+            "origem_turno": (orig.turno or "").strip() if orig else "",
+            "origem_horario": (orig.horario or "").strip() if orig else "",
+            "origem_contrato": (orig.contrato or "").strip() if orig else "",
+            "destino_data": "",
+            "destino_turno": "",
+            "destino_horario": "",
+            "destino_contrato": "",
+        }
+
+        if t.status == "aprovada" and linhas_afetadas:
+            itens = []
+            for r_ in linhas_afetadas:
+                turno_txt, horario_txt = _split_turno_horario(r_.get("turno_horario", ""))
+                itens.append(
+                    {
+                        "data": r_.get("dia", ""),
+                        "turno": turno_txt,
+                        "horario": horario_txt,
+                        "contrato": r_.get("contrato", ""),
+                        "saiu_nome": r_.get("saiu", ""),
+                        "entrou_nome": r_.get("entrou", ""),
+                    }
+                )
+                trocas_historico_flat.append(
+                    {
+                        "data": r_.get("dia", ""),
+                        "turno": turno_txt,
+                        "horario": horario_txt,
+                        "contrato": r_.get("contrato", ""),
+                        "saiu_nome": r_.get("saiu", ""),
+                        "entrou_nome": r_.get("entrou", ""),
+                        "aplicada_em": t.aplicada_em,
+                    }
+                )
+
+            item["itens"] = itens
+
+            if itens:
+                item["destino_data"] = itens[0].get("data", "")
+                item["destino_turno"] = itens[0].get("turno", "")
+                item["destino_horario"] = itens[0].get("horario", "")
+                item["destino_contrato"] = itens[0].get("contrato", "")
+
+        (trocas_pendentes if t.status == "pendente" else trocas_historico).append(item)
+
+    current_date = date.today()
+    data_limite = date(current_date.year, 12, 31)
+
     return {
         "cooperados": cooperados,
         "restaurantes": restaurantes,
+        "docinfo_map": docinfo_map,
+        "status_doc_por_coop": status_doc_por_coop,
         "escalas_por_coop": esc_by_int,
         "escalas_por_coop_json": esc_by_str,
         "qtd_escalas_map": qtd_escalas_map,
         "qtd_escalas_sem_cadastro": qtd_sem_cadastro,
-        "status_doc_por_coop": status_doc_por_coop,
         "trocas_pendentes": trocas_pendentes,
         "trocas_historico": trocas_historico,
         "trocas_historico_flat": trocas_historico_flat,
@@ -1612,8 +1726,24 @@ def _get_admin_escala_context():
 @app.route("/admin/escalas", methods=["GET"])
 @admin_required
 def admin_escalas():
-    ctx = _get_admin_escala_context()
-    return render_template("admin_escalas.html", **ctx)
+    escala_ctx = _get_admin_escala_context()
+
+    return render_template(
+        "admin_escalas.html",
+        cooperados=escala_ctx["cooperados"],
+        restaurantes=escala_ctx["restaurantes"],
+        docinfo_map=escala_ctx["docinfo_map"],
+        status_doc_por_coop=escala_ctx["status_doc_por_coop"],
+        escalas_por_coop=escala_ctx["escalas_por_coop"],
+        escalas_por_coop_json=escala_ctx["escalas_por_coop_json"],
+        qtd_escalas_map=escala_ctx["qtd_escalas_map"],
+        qtd_escalas_sem_cadastro=escala_ctx["qtd_escalas_sem_cadastro"],
+        trocas_pendentes=escala_ctx["trocas_pendentes"],
+        trocas_historico=escala_ctx["trocas_historico"],
+        trocas_historico_flat=escala_ctx["trocas_historico_flat"],
+        current_date=escala_ctx["current_date"],
+        data_limite=escala_ctx["data_limite"],
+    )
 
 @portal_bp.get("/avisos", endpoint="portal_cooperado_avisos")
 @role_required("cooperado")
