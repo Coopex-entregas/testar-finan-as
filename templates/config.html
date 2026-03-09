@@ -470,7 +470,7 @@
                   Troque o usuário e, se quiser, defina uma nova senha. Se deixar senha em branco, mantém a atual.
                 </p>
 
-                <form method="POST" action="{{ url_for('alterar_admin') }}" class="row g-2">
+                <form method="POST" action="{{ url_for('update_config') }}" class="row g-2">
                   <div class="col-12">
                     <label class="form-label">Usuário do admin</label>
                     <input class="form-control" name="usuario" value="{{ admin_user.usuario if admin_user else '' }}" required>
