@@ -2825,13 +2825,6 @@ def admin_avisos():
     return render_template("admin_avisos.html", avisos=avisos, cooperados=cooperados, restaurantes=restaurantes)
 
 
-@app.get("/admin/config")
-@admin_required
-def admin_config_split():
-    ctx = _admin_dashboard_context("config")
-    return render_template("config.html", **ctx)
-
-
 # =========================
 # Navegação/Export util
 # =========================
