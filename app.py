@@ -2680,6 +2680,36 @@ def alterar_admin():
     flash("Conta do administrador atualizada.", "success")
     return redirect(url_for("admin_config_split"))
 
+@app.route("/restaurante/alterar_senha", methods=["POST"])
+@role_required("restaurante")
+def rest_alterar_senha():
+    u_id = session.get("user_id")
+    rest = Restaurante.query.filter_by(usuario_id=u_id).first()
+    if not rest or not rest.usuario_ref:
+        flash("Restaurante não encontrado.", "danger")
+        return redirect(url_for("portal_restaurante", view="config"))
+
+    senha_atual = request.form.get("senha_atual", "") or ""
+    nova_senha = request.form.get("nova_senha", "") or ""
+    confirmar_senha = request.form.get("confirmar_senha", "") or ""
+
+    if not rest.usuario_ref.check_password(senha_atual):
+        flash("Senha atual incorreta.", "warning")
+        return redirect(url_for("portal_restaurante", view="config"))
+
+    if not nova_senha or not confirmar_senha:
+        flash("Preencha a nova senha e a confirmação.", "warning")
+        return redirect(url_for("portal_restaurante", view="config"))
+
+    if nova_senha != confirmar_senha:
+        flash("As senhas não conferem.", "warning")
+        return redirect(url_for("portal_restaurante", view="config"))
+
+    rest.usuario_ref.set_password(nova_senha)
+    db.session.commit()
+    flash("Senha alterada com sucesso.", "success")
+    return redirect(url_for("portal_restaurante", view="config"))
+
 
 # =========================
 # CRUD - Cooperados
