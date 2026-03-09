@@ -28,10 +28,7 @@
       overflow-x:hidden;
     }
 
-    .layout{
-      display:flex;
-      min-height:100vh;
-    }
+    .layout{ display:flex; min-height:100vh; }
 
     .sidebar{
       position:fixed;
@@ -204,14 +201,6 @@
       color:#3c4460;
     }
 
-    .badge-soft{
-      background:#eef2ff;
-      color:#223;
-      border-radius:999px;
-      padding:.15rem .55rem;
-      font-size:.75rem;
-    }
-
     @media (max-width: 991.98px){
       :root{ --sidebar-w:72px; }
 
@@ -236,7 +225,7 @@
 </head>
 <body>
 
-{% set _tab = (tab if tab is defined else 'coop_receitas') %}
+{% set _tab = (tab if tab is defined else 'receitas') %}
 
 <div class="layout">
 
@@ -267,11 +256,7 @@
 
       <hr class="sidebar-divider">
 
-      <button class="nav-link-group-toggle"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#menuFinanceiro"
-              aria-expanded="true">
+      <button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuFinanceiro" aria-expanded="true">
         <div class="nav-link-left">
           <span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span>
           <span class="nav-link-label">Financeiro</span>
@@ -311,11 +296,7 @@
         </a>
       </div>
 
-      <button class="nav-link-group-toggle"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#menuCadastros"
-              aria-expanded="true">
+      <button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuCadastros" aria-expanded="true">
         <div class="nav-link-left">
           <span class="nav-link-icon"><i class="bi bi-people"></i></span>
           <span class="nav-link-label">Cadastros</span>
@@ -334,24 +315,18 @@
           <span class="nav-link-label">Estabelecimentos</span>
         </a>
 
-        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
-           href="{{ url_for('admin_documentos') }}">
+        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}" href="{{ url_for('admin_documentos') }}">
           <i class="bi bi-folder2"></i>
           <span class="nav-link-label">Documentos</span>
         </a>
 
-        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
-           href="{{ url_for('admin_tabelas') }}">
+        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}" href="{{ url_for('admin_tabelas') }}">
           <i class="bi bi-table"></i>
           <span class="nav-link-label">Tabelas</span>
         </a>
       </div>
 
-      <button class="nav-link-group-toggle"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#menuOperacao"
-              aria-expanded="true">
+      <button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuOperacao" aria-expanded="true">
         <div class="nav-link-left">
           <span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span>
           <span class="nav-link-label">Operação</span>
@@ -365,8 +340,7 @@
           <span class="nav-link-label">Escalas</span>
         </a>
 
-        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
-           href="{{ url_for('admin_avisos') }}">
+        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}" href="{{ url_for('admin_avisos') }}">
           <i class="bi bi-megaphone"></i>
           <span class="nav-link-label">Avisos</span>
         </a>
@@ -389,77 +363,39 @@
           </div>
         </a>
       </div>
-
     </nav>
   </aside>
 
   <main class="main">
-
-    <section id="coop_receitas" role="tabpanel">
-      {% set total_receitas_coop_table = (receitas_coop|sum(attribute='valor')) if receitas_coop else 0 %}
-      {% set qtd_registros = receitas_coop|length if receitas_coop else 0 %}
+    <section id="receitas" role="tabpanel">
+      {% set total_receitas = (receitas|sum(attribute='valor_total')) if receitas else 0 %}
+      {% set qtd_registros = receitas|length if receitas else 0 %}
 
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
         <h5 class="m-0 d-flex align-items-center gap-2">
-          <i class="bi bi-cash-coin"></i> Receitas para Cooperados
+          <i class="bi bi-credit-card"></i> Receitas da Cooperativa
         </h5>
         <div class="d-flex flex-wrap gap-2">
           <span class="badge bg-light text-dark border">Registros: <b>{{ qtd_registros }}</b></span>
-          <span class="badge bg-success-subtle text-success border">Total: <b>R$ {{ '%.2f'|format(total_receitas_coop_table) }}</b></span>
+          <span class="badge bg-success-subtle text-success border">Total: <b>R$ {{ '%.2f'|format(total_receitas) }}</b></span>
         </div>
       </div>
 
       <div class="card border-0 shadow-sm rounded-3 mb-3">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-            <h6 class="m-0"><i class="bi bi-funnel"></i> Filtrar</h6>
-          </div>
+          <h6 class="m-0 mb-2"><i class="bi bi-plus-circle"></i> Adicionar Receita</h6>
 
-          <form method="GET" action="{{ url_for('admin_coop_receitas_split') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
-              <label class="form-label">Data Início</label>
-              <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Data Fim</label>
-              <input type="date" class="form-control form-control-sm" name="data_fim" value="{{ request.args.get('data_fim','') }}">
-            </div>
-            <div class="col-md-3">
-              <button class="btn btn-royal btn-sm w-100" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-            </div>
-            <div class="col-md-3 d-none d-md-block"></div>
-          </form>
-        </div>
-      </div>
-
-      <div class="card border-0 shadow-sm rounded-3 mb-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h6 class="m-0"><i class="bi bi-plus-circle"></i> Adicionar Receita</h6>
-            <span class="text-muted small">Selecione o cooperado e informe os dados.</span>
-          </div>
-
-          <form method="POST" action="{{ url_for('add_receita_coop') }}" class="row g-2 align-items-end mt-2">
+          <form method="POST" action="{{ url_for('add_receita') }}" class="row g-2 align-items-end mt-2">
             {% if csrf_token is defined %}
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% endif %}
 
-            <div class="col-md-3">
-              <label class="form-label">Cooperado</label>
-              <select class="form-select form-select-sm" name="cooperado_id" required>
-                <option value="" disabled selected>Selecione o Cooperado</option>
-                {% for coop in cooperados %}
-                  <option value="{{ coop.id }}">{{ coop.nome }}</option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <div class="col-md-3">
+            <div class="col-md-5">
               <label class="form-label">Descrição</label>
               <input type="text" class="form-control form-control-sm" name="descricao" placeholder="Descrição" required>
             </div>
 
-            <div class="col-md-2">
+            <div class="col-md-3">
               <label class="form-label">Valor (R$)</label>
               <div class="input-group input-group-sm">
                 <span class="input-group-text">R$</span>
@@ -489,34 +425,31 @@
               <thead class="table-light">
                 <tr class="text-nowrap">
                   <th style="width:120px">Data</th>
-                  <th style="width:260px">Cooperado</th>
                   <th>Descrição</th>
-                  <th class="text-end" style="width:160px">Valor</th>
+                  <th class="text-end" style="width:170px">Valor</th>
                   <th class="text-center" style="width:160px">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {% for rc in receitas_coop %}
+                {% for r in receitas %}
                   <tr>
-                    <td>{{ rc.data.strftime('%d/%m/%Y') if rc.data else '-' }}</td>
-                    <td class="text-break">{{ rc.cooperado.nome }}</td>
-                    <td class="text-break">{{ rc.descricao }}</td>
-                    <td class="text-end">R$ {{ "%.2f"|format(rc.valor) }}</td>
+                    <td>{{ r.data.strftime('%d/%m/%Y') if r.data else '-' }}</td>
+                    <td class="text-break">{{ r.descricao }}</td>
+                    <td class="text-end">R$ {{ '%.2f'|format(r.valor_total) }}</td>
                     <td class="text-center text-nowrap">
                       <button class="btn btn-warning btn-sm"
                               type="button"
                               data-bs-toggle="modal"
-                              data-bs-target="#modalEditReceitaCoop"
-                              data-id="{{ rc.id }}"
-                              data-cooperado="{{ rc.cooperado.id }}"
-                              data-descricao="{{ rc.descricao }}"
-                              data-valor="{{ rc.valor }}"
-                              data-data="{{ rc.data.strftime('%Y-%m-%d') if rc.data else '' }}"
-                              data-url="{{ url_for('edit_receita_coop', id=rc.id) }}">
+                              data-bs-target="#modalEditReceita"
+                              data-id="{{ r.id }}"
+                              data-descricao="{{ r.descricao }}"
+                              data-valor="{{ r.valor_total }}"
+                              data-data="{{ r.data.strftime('%Y-%m-%d') if r.data else '' }}"
+                              data-url="{{ url_for('edit_receita', id=r.id) }}">
                         <i class="bi bi-pencil"></i>
                       </button>
 
-                      <form action="{{ url_for('delete_receita_coop', id=rc.id) }}"
+                      <form action="{{ url_for('delete_receita', id=r.id) }}"
                             method="POST"
                             class="d-inline"
                             onsubmit="return confirm('Tem certeza que deseja excluir esta receita?');">
@@ -530,13 +463,13 @@
                     </td>
                   </tr>
                 {% else %}
-                  <tr><td colspan="5" class="text-center text-muted">Nenhuma receita</td></tr>
+                  <tr><td colspan="4" class="text-center text-muted">Nenhuma receita</td></tr>
                 {% endfor %}
               </tbody>
               <tfoot>
                 <tr class="table-light">
-                  <th colspan="3" class="text-end">Total</th>
-                  <th class="text-end">R$ {{ '%.2f'|format(total_receitas_coop_table) }}</th>
+                  <th colspan="2" class="text-end">Total</th>
+                  <th class="text-end">R$ {{ '%.2f'|format(total_receitas) }}</th>
                   <th></th>
                 </tr>
               </tfoot>
@@ -544,93 +477,77 @@
           </div>
         </div>
       </div>
+    </section>
+  </main>
+</div>
 
-      <div class="modal fade" id="modalEditReceitaCoop" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-          <form method="POST" class="modal-content">
-            {% if csrf_token is defined %}
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% endif %}
-            <div class="modal-header">
-              <h5 class="modal-title">Editar Receita do Cooperado</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body row g-2 px-3">
-              <input type="hidden" name="id">
+<div class="modal fade" id="modalEditReceita" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" class="modal-content" id="formEditReceita">
+      {% if csrf_token is defined %}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% endif %}
 
-              <div class="col-12">
-                <label class="form-label">Cooperado</label>
-                <select class="form-select" name="cooperado_id" required>
-                  {% for coop in cooperados %}
-                    <option value="{{ coop.id }}">{{ coop.nome }}</option>
-                  {% endfor %}
-                </select>
-              </div>
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Receita</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
 
-              <div class="col-12">
-                <label class="form-label">Descrição</label>
-                <input type="text" class="form-control" name="descricao" required>
-              </div>
+      <div class="modal-body row g-2 px-3">
+        <input type="hidden" name="id" id="editReceitaId">
 
-              <div class="col-12">
-                <label class="form-label">Valor</label>
-                <input type="number" step="0.01" class="form-control" name="valor" required>
-              </div>
+        <div class="col-12">
+          <label class="form-label">Descrição</label>
+          <input type="text" class="form-control" name="descricao" id="editReceitaDescricao" required>
+        </div>
 
-              <div class="col-12">
-                <label class="form-label">Data</label>
-                <input type="date" class="form-control" name="data" required>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-royal" type="submit">
-                <i class="bi bi-save"></i> Salvar
-              </button>
-            </div>
-          </form>
+        <div class="col-12">
+          <label class="form-label">Valor</label>
+          <input type="number" step="0.01" class="form-control" name="valor" id="editReceitaValor" required>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Data</label>
+          <input type="date" class="form-control" name="data" id="editReceitaData" required>
         </div>
       </div>
 
-    </section>
-  </main>
+      <div class="modal-footer">
+        <button class="btn btn-royal" type="submit">
+          <i class="bi bi-save"></i> Salvar
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  function bindModal(modalId, mapFields) {
-    const el = document.getElementById(modalId);
-    if (!el) return;
+document.addEventListener('DOMContentLoaded', function () {
+  const modal = document.getElementById('modalEditReceita');
+  if (!modal) return;
 
-    el.addEventListener('show.bs.modal', (ev) => {
-      const btn = ev.relatedTarget;
-      const form = el.querySelector('form');
-      const ds = btn?.dataset || {};
+  modal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    if (!button) return;
 
-      if (form && ds.url) form.setAttribute('action', ds.url);
+    const form = document.getElementById('formEditReceita');
+    form.action = button.getAttribute('data-url') || '';
 
-      Object.keys(mapFields).forEach((k) => {
-        const name = mapFields[k];
-        const input = form?.querySelector(`[name="${name}"]`);
-        if (!input) return;
+    document.getElementById('editReceitaId').value =
+      button.getAttribute('data-id') || '';
 
-        const val = ds[k] ?? '';
-        if (input.tagName === 'SELECT') {
-          [...input.options].forEach((o) => (o.selected = (String(o.value) === String(val))));
-        } else {
-          input.value = val;
-        }
-      });
-    });
-  }
+    document.getElementById('editReceitaDescricao').value =
+      button.getAttribute('data-descricao') || '';
 
-  bindModal('modalEditReceitaCoop', {
-    id: 'id',
-    cooperado: 'cooperado_id',
-    descricao: 'descricao',
-    valor: 'valor',
-    data: 'data'
+    document.getElementById('editReceitaValor').value =
+      button.getAttribute('data-valor') || '';
+
+    document.getElementById('editReceitaData').value =
+      button.getAttribute('data-data') || '';
   });
+});
 </script>
 </body>
 </html>
