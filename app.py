@@ -2132,60 +2132,17 @@ def sso_entrar():
     
 
 # =========================
-# ADMIN DASHBOARD SPLIT
+# Admin Dashboard
 # =========================
 
-from flask import (
-    jsonify, request, render_template, redirect,
-    url_for, flash, current_app, send_file, session
-)
+from flask import jsonify, request, render_template, redirect, url_for, flash, current_app, send_file, session
 from sqlalchemy import func, inspect, and_, or_, literal
-from sqlalchemy.exc import (
-    SQLAlchemyError, OperationalError, ProgrammingError,
-    IntegrityError
-)
-from sqlalchemy import delete as sa_delete
-from datetime import datetime, date, timedelta
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, ProgrammingError, IntegrityError
+from datetime import date, datetime, timedelta
 from collections import defaultdict, namedtuple
 from types import SimpleNamespace
 import io
 import re
-
-
-# =========================
-# HELPERS
-# =========================
-
-def _parse_date(value: str | None) -> date | None:
-    if not value:
-        return None
-    value = value.strip()
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            pass
-    return None
-
-
-def _dow(d: date) -> str:
-    return str(d.weekday()) if d else ""
-
-
-def _fmt_time(t) -> str:
-    if not t:
-        return ""
-    if hasattr(t, "strftime"):
-        try:
-            return t.strftime("%H:%M")
-        except Exception:
-            pass
-    return str(t)
-
-
-# =========================
-# STATUS COOPERADO
-# =========================
 
 @app.post("/admin/cooperados/<int:id>/toggle-status")
 @admin_required
@@ -2200,17 +2157,20 @@ def toggle_status_cooperado(id):
         if not hasattr(user, "ativo"):
             return jsonify(
                 ok=False,
-                error="Campo 'ativo' ausente no modelo. Atualize o models.py e faça deploy."
+                error="Campo 'ativo' ausente no modelo. Atualize o models.py (Usuario.ativo) e faça deploy."
             ), 500
 
         try:
             insp = inspect(db.engine)
             table = getattr(Usuario, "__tablename__", None)
+            if not table:
+                return jsonify(ok=False, error="Não foi possível identificar a tabela do modelo Usuario."), 500
+
             cols = {c["name"] for c in insp.get_columns(table)}
             if "ativo" not in cols:
                 return jsonify(
                     ok=False,
-                    error=f"Coluna 'ativo' ausente no banco (tabela: {table}). Faça a migração.",
+                    error=f"Coluna 'ativo' ausente no banco. Faça a migração/ALTER TABLE em produção (tabela: {table}).",
                     table=table
                 ), 409
         except Exception:
@@ -2224,16 +2184,12 @@ def toggle_status_cooperado(id):
         db.session.rollback()
         return jsonify(
             ok=False,
-            error="Falha ao salvar: provável falta da coluna 'ativo' no banco."
+            error="Falha ao salvar: provável falta da coluna 'ativo' no banco. Faça migração/ALTER TABLE."
         ), 409
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify(ok=False, error="Falha ao salvar no banco"), 500
 
-
-# =========================
-# CONTEXTO DO ADMIN
-# =========================
 
 def _admin_dashboard_context(active_tab="resumo"):
     import time
@@ -2281,16 +2237,9 @@ def _admin_dashboard_context(active_tab="resumo"):
             dows_int = []
 
         if dows_int:
-            dow_map = {
-                1: 1,
-                2: 2,
-                3: 3,
-                4: 4,
-                5: 5,
-                6: 6,
-                7: 0,
-            }
+            dow_map = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 0}
             db_dows = [dow_map[d] for d in dows_int if d in dow_map]
+
             if db_dows:
                 q = q.filter(db.extract("dow", Lancamento.data).in_(db_dows))
 
@@ -2367,8 +2316,8 @@ def _admin_dashboard_context(active_tab="resumo"):
     ).all()
 
     total_receitas_coop = sum((r.valor or 0.0) for r in receitas_coop)
-    total_despesas_coop = sum((d.valor or 0.0) for d in despesas_coop if not getattr(d, "eh_adiantamento", False))
-    total_adiantamentos_coop = sum((d.valor or 0.0) for d in despesas_coop if getattr(d, "eh_adiantamento", False))
+    total_despesas_coop = sum((d.valor or 0.0) for d in despesas_coop if not d.eh_adiantamento)
+    total_adiantamentos_coop = sum((d.valor or 0.0) for d in despesas_coop if d.eh_adiantamento)
 
     cfg = get_config()
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
@@ -2419,8 +2368,8 @@ def _admin_dashboard_context(active_tab="resumo"):
 
     def _fmt_label(k: str) -> str:
         parts = k.split("-")
-        if len(parts) == 2:
-            year, month = parts
+        if len(parts) == 2 and parts[0] and parts[1]:
+            year, month = parts[0], parts[1]
             return f"{month}/{year[-2:]}"
         return k
 
@@ -2430,6 +2379,277 @@ def _admin_dashboard_context(active_tab="resumo"):
     chart_data_lancamentos_cooperados = chart_data_lancamentos_coop
 
     admin_user = Usuario.query.filter_by(tipo="admin").first()
+
+    folha_por_coop = []
+    folha_inicio = None
+    folha_fim = None
+
+    if active_tab == "folha":
+        folha_inicio = _parse_date(args.get("folha_inicio")) or (date.today() - timedelta(days=30))
+        folha_fim = _parse_date(args.get("folha_fim")) or date.today()
+
+        INSS_ALIQ_FOLHA = 0.04
+        SEST_ALIQ_FOLHA = 0.005
+
+        FolhaItem = namedtuple(
+            "FolhaItem",
+            "cooperado lancamentos receitas despesas bruto inss sest encargos outras_desp liquido"
+        )
+
+        for c in cooperados:
+            l = (
+                Lancamento.query.filter(
+                    Lancamento.cooperado_id == c.id,
+                    Lancamento.data >= folha_inicio,
+                    Lancamento.data <= folha_fim,
+                )
+                .order_by(Lancamento.data.asc(), Lancamento.id.asc())
+                .all()
+            )
+            r = (
+                ReceitaCooperado.query.filter(
+                    ReceitaCooperado.cooperado_id == c.id,
+                    ReceitaCooperado.data >= folha_inicio,
+                    ReceitaCooperado.data <= folha_fim,
+                )
+                .order_by(ReceitaCooperado.data.asc(), ReceitaCooperado.id.asc())
+                .all()
+            )
+            d = (
+                DespesaCooperado.query.filter(
+                    (DespesaCooperado.cooperado_id == c.id) | (DespesaCooperado.cooperado_id.is_(None)),
+                    DespesaCooperado.data_inicio <= folha_fim,
+                    DespesaCooperado.data_fim >= folha_inicio,
+                )
+                .order_by(DespesaCooperado.data_inicio.asc(), DespesaCooperado.id.asc())
+                .all()
+            )
+
+            bruto_lanc = sum((x.valor or 0) for x in l)
+            inss = round(bruto_lanc * INSS_ALIQ_FOLHA, 2)
+            sest = round(bruto_lanc * SEST_ALIQ_FOLHA, 2)
+            encargos = round(inss + sest, 2)
+            outras_desp = sum((x.valor or 0) for x in d)
+            bruto_total = bruto_lanc + sum((x.valor or 0) for x in r)
+            liquido = round(bruto_total - encargos - outras_desp, 2)
+
+            for x in l:
+                x.conta_inss = True
+                x.isento_benef = False
+                x.inss = round((x.valor or 0) * INSS_ALIQ_FOLHA, 2)
+                x.sest = round((x.valor or 0) * SEST_ALIQ_FOLHA, 2)
+                x.encargos = round((x.inss or 0) + (x.sest or 0), 2)
+
+            folha_por_coop.append(
+                FolhaItem(
+                    cooperado=c,
+                    lancamentos=l,
+                    receitas=r,
+                    despesas=d,
+                    bruto=round(bruto_total, 2),
+                    inss=inss,
+                    sest=sest,
+                    encargos=encargos,
+                    outras_desp=round(outras_desp, 2),
+                    liquido=liquido,
+                )
+            )
+
+    def _tokenize(s: str):
+        return [x.strip() for x in re.split(r"[;,]", s or "") if x.strip()]
+
+    def _d(s):
+        if not s:
+            return None
+        s = s.strip()
+        try:
+            if "/" in s:
+                d_, m_, y_ = s.split("/")
+                return date(int(y_), int(m_), int(d_))
+            y_, m_, d_ = s.split("-")
+            return date(int(y_), int(m_), int(d_))
+        except Exception:
+            return None
+
+    b_ini = _d(request.args.get("b_ini"))
+    b_fim = _d(request.args.get("b_fim"))
+    coop_filter = request.args.get("coop_benef_id", type=int)
+
+    q_benef = BeneficioRegistro.query
+
+    if b_ini and b_fim:
+        q_benef = q_benef.filter(
+            BeneficioRegistro.data_inicial <= b_fim,
+            BeneficioRegistro.data_final >= b_ini,
+        )
+    elif b_ini:
+        q_benef = q_benef.filter(BeneficioRegistro.data_final >= b_ini)
+    elif b_fim:
+        q_benef = q_benef.filter(BeneficioRegistro.data_inicial <= b_fim)
+
+    historico_beneficios = q_benef.order_by(BeneficioRegistro.id.desc()).all()
+
+    beneficios_view = []
+    for b in historico_beneficios:
+        nomes = _tokenize(b.recebedores_nomes or "")
+        ids = _tokenize(b.recebedores_ids or "")
+
+        recs = []
+        for i, nome in enumerate(nomes):
+            rid = None
+            if i < len(ids) and str(ids[i]).isdigit():
+                try:
+                    rid = int(ids[i])
+                except Exception:
+                    rid = None
+
+            if coop_filter and (rid is not None) and (rid != coop_filter):
+                continue
+
+            recs.append({"id": rid, "nome": nome})
+
+        if coop_filter and not recs:
+            continue
+
+        beneficios_view.append({
+            "id": b.id,
+            "data_inicial": b.data_inicial,
+            "data_final": b.data_final,
+            "data_lancamento": b.data_lancamento,
+            "tipo": b.tipo,
+            "valor_total": b.valor_total or 0.0,
+            "recebedores": recs,
+        })
+
+    def _escala_desc(e):
+        return _escala_label(e) if e else ""
+
+    def _split_turno_horario(s: str):
+        if not s:
+            return "", ""
+        parts = [p.strip() for p in s.split("•")]
+        if len(parts) == 2:
+            return parts[0], parts[1]
+        return s.strip(), ""
+
+    def _linha_from_escala(e, saiu: str, entrou: str):
+        return {
+            "dia": _escala_label(e).split(" • ")[0],
+            "turno_horario": " • ".join([x for x in [(e.turno or "").strip(), (e.horario or "").strip()] if x]),
+            "contrato": (e.contrato or "").strip(),
+            "saiu": saiu,
+            "entrou": entrou,
+        }
+
+    trocas_all = TrocaSolicitacao.query.order_by(TrocaSolicitacao.id.desc()).all()
+    trocas_pendentes = []
+    trocas_historico = []
+    trocas_historico_flat = []
+
+    for t in trocas_all:
+        solicitante = Cooperado.query.get(t.solicitante_id)
+        destinatario = Cooperado.query.get(t.destino_id)
+        orig = Escala.query.get(t.origem_escala_id)
+
+        linhas_afetadas = _parse_linhas_from_msg(t.mensagem) if t.status == "aprovada" else []
+
+        if t.status == "aprovada" and not linhas_afetadas and orig and solicitante and destinatario:
+            linhas_afetadas.append(_linha_from_escala(orig, saiu=solicitante.nome, entrou=destinatario.nome))
+
+            wd_o = _weekday_from_data_str(orig.data)
+            buck_o = _turno_bucket(orig.turno, orig.horario)
+            candidatas = Escala.query.filter_by(cooperado_id=destinatario.id).all()
+            best = None
+            for e in candidatas:
+                if _weekday_from_data_str(e.data) == wd_o and _turno_bucket(e.turno, e.horario) == buck_o:
+                    if (orig.contrato or "").strip().lower() == (e.contrato or "").strip().lower():
+                        best = e
+                        break
+                    if best is None:
+                        best = e
+            if best:
+                linhas_afetadas.append(_linha_from_escala(best, saiu=destinatario.nome, entrou=solicitante.nome))
+
+        destino_data = ""
+        destino_turno = ""
+        destino_horario = ""
+        destino_contrato = ""
+
+        if t.status == "aprovada" and linhas_afetadas and solicitante and destinatario:
+            linha_dest = None
+            for r_ in linhas_afetadas:
+                if r_.get("saiu") == destinatario.nome and r_.get("entrou") == solicitante.nome:
+                    linha_dest = r_
+                    break
+            if linha_dest:
+                destino_data = linha_dest.get("dia", "")
+                turno_txt, horario_txt = _split_turno_horario(linha_dest.get("turno_horario", ""))
+                destino_turno = turno_txt
+                destino_horario = horario_txt
+                destino_contrato = linha_dest.get("contrato", "")
+
+        if not destino_data and orig and destinatario:
+            wd_o = _weekday_from_data_str(orig.data)
+            buck_o = _turno_bucket(orig.turno, orig.horario)
+            candidatas = Escala.query.filter_by(cooperado_id=destinatario.id).all()
+            best = None
+            for e in candidatas:
+                if _weekday_from_data_str(e.data) == wd_o and _turno_bucket(e.turno, e.horario) == buck_o:
+                    if (orig.contrato or "").strip().lower() == (e.contrato or "").strip().lower():
+                        best = e
+                        break
+                    if best is None:
+                        best = e
+            if best:
+                destino_data = best.data
+                destino_turno = (best.turno or "").strip()
+                destino_horario = (best.horario or "").strip()
+                destino_contrato = (best.contrato or "").strip()
+
+        item = {
+            "id": t.id,
+            "status": t.status,
+            "mensagem": t.mensagem,
+            "criada_em": t.criada_em,
+            "aplicada_em": t.aplicada_em,
+            "solicitante": solicitante,
+            "destinatario": destinatario,
+            "origem": orig,
+            "destino": destinatario,
+            "origem_desc": _escala_desc(orig),
+            "origem_weekday": _weekday_from_data_str(orig.data) if orig else None,
+            "origem_turno_bucket": _turno_bucket(orig.turno if orig else None, orig.horario if orig else None),
+            "destino_data": destino_data,
+            "destino_turno": destino_turno,
+            "destino_horario": destino_horario,
+            "destino_contrato": destino_contrato,
+            "linhas_afetadas": linhas_afetadas,
+        }
+
+        if t.status == "aprovada" and linhas_afetadas:
+            itens = []
+            for r_ in linhas_afetadas:
+                turno_txt, horario_txt = _split_turno_horario(r_.get("turno_horario", ""))
+                itens.append({
+                    "data": r_.get("dia", ""),
+                    "turno": turno_txt,
+                    "horario": horario_txt,
+                    "contrato": r_.get("contrato", ""),
+                    "saiu_nome": r_.get("saiu", ""),
+                    "entrou_nome": r_.get("entrou", ""),
+                })
+                trocas_historico_flat.append({
+                    "data": r_.get("dia", ""),
+                    "turno": turno_txt,
+                    "horario": horario_txt,
+                    "contrato": r_.get("contrato", ""),
+                    "saiu_nome": r_.get("saiu", ""),
+                    "entrou_nome": r_.get("entrou", ""),
+                    "aplicada_em": t.aplicada_em,
+                })
+            item["itens"] = itens
+
+        (trocas_pendentes if t.status == "pendente" else trocas_historico).append(item)
 
     current_date = date.today()
     data_limite = date(current_date.year, 12, 31)
@@ -2456,6 +2676,8 @@ def _admin_dashboard_context(active_tab="resumo"):
         "despesas_coop": despesas_coop,
         "cooperados": cooperados,
         "restaurantes": restaurantes,
+        "beneficios_view": beneficios_view,
+        "historico_beneficios": historico_beneficios,
         "current_date": current_date,
         "data_limite": data_limite,
         "admin": admin_user,
@@ -2467,8 +2689,621 @@ def _admin_dashboard_context(active_tab="resumo"):
         "status_doc_por_coop": status_doc_por_coop,
         "chart_data_lancamentos_coop": chart_data_lancamentos_coop,
         "chart_data_lancamentos_cooperados": chart_data_lancamentos_cooperados,
+        "folha_inicio": folha_inicio,
+        "folha_fim": folha_fim,
+        "folha_por_coop": folha_por_coop,
+        "trocas_pendentes": trocas_pendentes,
+        "trocas_historico": trocas_historico,
+        "trocas_historico_flat": trocas_historico_flat,
     }
 
+
+# =========================
+# Rotas split do painel admin
+# =========================
+
+@app.route("/admin", methods=["GET"])
+@admin_required
+def admin_dashboard():
+    return redirect(url_for("admin_resumo_split"))
+
+@app.get("/admin/resumo")
+@admin_required
+def admin_resumo_split():
+    return render_template("resumo.html", **_admin_dashboard_context("resumo"))
+
+@app.get("/admin/lancamentos")
+@admin_required
+def admin_lancamentos_split():
+    return render_template("lancamentos.html", **_admin_dashboard_context("lancamentos"))
+
+@app.get("/admin/receitas")
+@admin_required
+def admin_receitas_split():
+    return render_template("receitas.html", **_admin_dashboard_context("receitas"))
+
+@app.get("/admin/despesas")
+@admin_required
+def admin_despesas_split():
+    return render_template("despesas.html", **_admin_dashboard_context("despesas"))
+
+@app.get("/admin/coop_receitas")
+@admin_required
+def admin_coop_receitas_split():
+    return render_template("coop_receitas.html", **_admin_dashboard_context("coop_receitas"))
+
+@app.get("/admin/coop_despesas")
+@admin_required
+def admin_coop_despesas_split():
+    return render_template("coop_despesas.html", **_admin_dashboard_context("coop_despesas"))
+
+@app.get("/admin/beneficios")
+@admin_required
+def admin_beneficios_split():
+    return render_template("beneficios.html", **_admin_dashboard_context("beneficios"))
+
+@app.get("/admin/cooperados")
+@admin_required
+def admin_cooperados_split():
+    return render_template("cooperados.html", **_admin_dashboard_context("cooperados"))
+
+@app.get("/admin/restaurantes")
+@admin_required
+def admin_restaurantes_split():
+    return render_template("restaurantes.html", **_admin_dashboard_context("restaurantes"))
+
+@app.get("/admin/escalas")
+@admin_required
+def admin_escalas_split():
+    return render_template("escalas.html", **_admin_dashboard_context("escalas"))
+
+@app.get("/admin/config")
+@admin_required
+def admin_config_split():
+    return render_template("config.html", **_admin_dashboard_context("config"))
+
+@app.route("/admin/avisos", methods=["GET", "POST"], endpoint="admin_avisos")
+@admin_required
+def admin_avisos():
+    avisos = Aviso.query.order_by(Aviso.fixado.desc(), Aviso.criado_em.desc()).all()
+    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
+    restaurantes = Restaurante.query.order_by(Restaurante.nome.asc()).all()
+    return render_template("admin_avisos.html", avisos=avisos, cooperados=cooperados, restaurantes=restaurantes)
+
+
+# =========================
+# Ações admin - config
+# =========================
+
+@app.route("/config/update", methods=["POST"])
+@admin_required
+def update_config():
+    cfg = get_config()
+    cfg.salario_minimo = request.form.get("salario_minimo", type=float) or 0.0
+    db.session.commit()
+    flash("Configuração atualizada.", "success")
+    return redirect(url_for("admin_config_split"))
+
+@app.route("/admin/alterar_admin", methods=["POST"])
+@admin_required
+def alterar_admin():
+    admin = Usuario.query.filter_by(tipo="admin").first()
+    admin.usuario = request.form.get("usuario", admin.usuario).strip()
+    nova = request.form.get("nova_senha", "")
+    confirmar = request.form.get("confirmar_senha", "")
+
+    if nova or confirmar:
+        if nova != confirmar:
+            flash("As senhas não conferem.", "warning")
+            return redirect(url_for("admin_config_split"))
+        admin.set_password(nova)
+
+    db.session.commit()
+    flash("Conta do administrador atualizada.", "success")
+    return redirect(url_for("admin_config_split"))
+
+
+# =========================
+# Cooperados
+# =========================
+
+@app.route("/cooperados/add", methods=["POST"])
+@admin_required
+def add_cooperado():
+    f = request.form
+    nome = (f.get("nome") or "").strip()
+    usuario_login = (f.get("usuario") or "").strip()
+    senha = f.get("senha") or ""
+    telefone = (f.get("telefone") or "").strip()
+    foto = request.files.get("foto")
+
+    if Usuario.query.filter_by(usuario=usuario_login).first():
+        flash("Usuário já existente.", "warning")
+        return redirect(url_for("admin_cooperados_split"))
+
+    u = Usuario(usuario=usuario_login, tipo="cooperado", senha_hash="")
+    u.set_password(senha)
+    db.session.add(u)
+    db.session.flush()
+
+    c = Cooperado(
+        nome=nome,
+        usuario_id=u.id,
+        telefone=telefone,
+        ultima_atualizacao=datetime.now(),
+    )
+    db.session.add(c)
+    db.session.flush()
+
+    if foto and foto.filename:
+        _save_foto_to_db(c, foto, is_cooperado=True)
+
+    db.session.commit()
+    flash("Cooperado cadastrado.", "success")
+    return redirect(url_for("admin_cooperados_split"))
+
+@app.route("/cooperados/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_cooperado(id):
+    c = Cooperado.query.get_or_404(id)
+    f = request.form
+
+    c.nome = (f.get("nome") or "").strip()
+    c.usuario_ref.usuario = (f.get("usuario") or "").strip()
+    c.telefone = (f.get("telefone") or "").strip()
+
+    foto = request.files.get("foto")
+    if foto and foto.filename:
+        _save_foto_to_db(c, foto, is_cooperado=True)
+
+    c.ultima_atualizacao = datetime.now()
+    db.session.commit()
+    flash("Cooperado atualizado.", "success")
+    return redirect(url_for("admin_cooperados_split"))
+
+@app.route("/cooperados/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_cooperado(id):
+    c = Cooperado.query.get_or_404(id)
+    u = c.usuario_ref
+
+    try:
+        escala_ids = [eid for (eid,) in db.session.query(Escala.id).filter(Escala.cooperado_id == id).all()]
+
+        if escala_ids:
+            db.session.execute(sa_delete(TrocaSolicitacao).where(TrocaSolicitacao.origem_escala_id.in_(escala_ids)))
+            db.session.execute(sa_delete(Escala).where(Escala.id.in_(escala_ids)))
+
+        db.session.execute(sa_delete(TrocaSolicitacao).where(or_(
+            TrocaSolicitacao.solicitante_id == id,
+            TrocaSolicitacao.destino_id == id
+        )))
+        db.session.execute(sa_delete(AvaliacaoCooperado).where(AvaliacaoCooperado.cooperado_id == id))
+        db.session.execute(sa_delete(AvaliacaoRestaurante).where(AvaliacaoRestaurante.cooperado_id == id))
+        db.session.execute(sa_delete(Lancamento).where(Lancamento.cooperado_id == id))
+        db.session.execute(sa_delete(ReceitaCooperado).where(ReceitaCooperado.cooperado_id == id))
+        db.session.execute(sa_delete(DespesaCooperado).where(DespesaCooperado.cooperado_id == id))
+        db.session.execute(sa_delete(AvisoLeitura).where(AvisoLeitura.cooperado_id == id))
+
+        db.session.delete(c)
+        if u:
+            db.session.delete(u)
+
+        db.session.commit()
+        flash("Cooperado excluído.", "success")
+
+    except IntegrityError as e:
+        db.session.rollback()
+        current_app.logger.exception(e)
+        flash("Não foi possível excluir: existem vínculos ativos.", "danger")
+
+    return redirect(url_for("admin_cooperados_split"))
+
+@app.route("/cooperados/<int:id>/reset_senha", methods=["POST"])
+@admin_required
+def reset_senha_cooperado(id):
+    c = Cooperado.query.get_or_404(id)
+    ns = request.form.get("nova_senha") or ""
+    cs = request.form.get("confirmar_senha") or ""
+
+    if ns != cs:
+        flash("As senhas não conferem.", "warning")
+        return redirect(url_for("admin_cooperados_split"))
+
+    c.usuario_ref.set_password(ns)
+    db.session.commit()
+    flash("Senha do cooperado atualizada.", "success")
+    return redirect(url_for("admin_cooperados_split"))
+
+
+# =========================
+# Restaurantes
+# =========================
+
+@app.route("/restaurantes/add", methods=["POST"])
+@admin_required
+def add_restaurante():
+    f = request.form
+    nome = f.get("nome", "").strip()
+    periodo = f.get("periodo", "seg-dom")
+    usuario_login = f.get("usuario", "").strip()
+    senha = f.get("senha", "")
+    foto = request.files.get("foto")
+
+    if Usuario.query.filter_by(usuario=usuario_login).first():
+        flash("Usuário já existente.", "warning")
+        return redirect(url_for("admin_restaurantes_split"))
+
+    u = Usuario(usuario=usuario_login, tipo="restaurante", senha_hash="")
+    u.set_password(senha)
+    db.session.add(u)
+    db.session.flush()
+
+    r = Restaurante(nome=nome, periodo=periodo, usuario_id=u.id)
+    db.session.add(r)
+    db.session.flush()
+
+    if foto and foto.filename:
+        _save_foto_to_db(r, foto, is_cooperado=False)
+
+    db.session.commit()
+    flash("Estabelecimento cadastrado.", "success")
+    return redirect(url_for("admin_restaurantes_split"))
+
+@app.route("/restaurantes/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_restaurante(id):
+    r = Restaurante.query.get_or_404(id)
+    f = request.form
+
+    r.nome = f.get("nome", "").strip()
+    r.periodo = f.get("periodo", "seg-dom")
+    r.usuario_ref.usuario = f.get("usuario", "").strip()
+
+    foto = request.files.get("foto")
+    if foto and foto.filename:
+        _save_foto_to_db(r, foto, is_cooperado=False)
+
+    db.session.commit()
+    flash("Estabelecimento atualizado.", "success")
+    return redirect(url_for("admin_restaurantes_split"))
+
+@app.route("/restaurantes/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_restaurante(id):
+    r = Restaurante.query.get_or_404(id)
+    u = r.usuario_ref
+
+    try:
+        escala_ids = [e.id for e in Escala.query.with_entities(Escala.id).filter(Escala.restaurante_id == id).all()]
+
+        if escala_ids:
+            db.session.execute(sa_delete(TrocaSolicitacao).where(TrocaSolicitacao.origem_escala_id.in_(escala_ids)))
+            db.session.execute(sa_delete(Escala).where(Escala.restaurante_id == id))
+
+        db.session.execute(sa_delete(Lancamento).where(Lancamento.restaurante_id == id))
+
+        db.session.delete(r)
+        if u:
+            db.session.delete(u)
+
+        db.session.commit()
+        flash("Estabelecimento excluído.", "success")
+
+    except IntegrityError as e:
+        db.session.rollback()
+        current_app.logger.exception(e)
+        flash("Não foi possível excluir: existem vínculos ativos.", "danger")
+
+    return redirect(url_for("admin_restaurantes_split"))
+
+@app.route("/restaurantes/<int:id>/reset_senha", methods=["POST"])
+@admin_required
+def reset_senha_restaurante(id):
+    r = Restaurante.query.get_or_404(id)
+    ns = request.form.get("nova_senha") or ""
+    cs = request.form.get("confirmar_senha") or ""
+
+    if ns != cs:
+        flash("As senhas não conferem.", "warning")
+        return redirect(url_for("admin_restaurantes_split"))
+
+    r.usuario_ref.set_password(ns)
+    db.session.commit()
+    flash("Senha do restaurante atualizada.", "success")
+    return redirect(url_for("admin_restaurantes_split"))
+
+
+# =========================
+# Documentos do cooperado
+# =========================
+
+@app.route("/documentos/<int:coop_id>", methods=["GET", "POST"])
+@admin_required
+def editar_documentos(coop_id):
+    cooperado = Cooperado.query.get_or_404(coop_id)
+
+    def parse_date_local(s):
+        try:
+            return datetime.strptime(s, "%Y-%m-%d").date() if s else None
+        except Exception:
+            return None
+
+    if request.method == "POST":
+        f = request.form
+        cooperado.cnh_numero = f.get("cnh_numero")
+        cooperado.placa = f.get("placa")
+        cooperado.cnh_validade = parse_date_local(f.get("cnh_validade"))
+        cooperado.placa_validade = parse_date_local(f.get("placa_validade"))
+        cooperado.ultima_atualizacao = datetime.now()
+        db.session.commit()
+        flash("Documentos atualizados.", "success")
+        return redirect(url_for("admin_escalas_split"))
+
+    hoje = date.today()
+    prazo_final = date(hoje.year, 12, 31)
+
+    docinfo = {
+        "prazo_final": prazo_final,
+        "dias_ate_prazo": max(0, (prazo_final - hoje).days),
+        "cnh": {
+            "numero": cooperado.cnh_numero,
+            "validade": cooperado.cnh_validade,
+            "prox_validade": _prox_ocorrencia_anual(cooperado.cnh_validade),
+            "ok": (cooperado.cnh_validade is not None and cooperado.cnh_validade >= hoje),
+            "modo": "auto",
+        },
+        "placa": {
+            "numero": cooperado.placa,
+            "validade": cooperado.placa_validade,
+            "prox_validade": _prox_ocorrencia_anual(cooperado.placa_validade),
+            "ok": (cooperado.placa_validade is not None and cooperado.placa_validade >= hoje),
+            "modo": "auto",
+        }
+    }
+
+    return render_template(
+        "editar_tabelas.html",
+        cooperado=cooperado,
+        coop=cooperado,
+        c=cooperado,
+        docinfo=docinfo
+    )
+
+
+# =========================
+# Receitas da cooperativa -> receitas.html
+# =========================
+
+@app.route("/receitas/add", methods=["POST"])
+@admin_required
+def add_receita():
+    f = request.form
+    obj = ReceitaCooperativa(
+        descricao=(f.get("descricao") or "").strip(),
+        valor_total=f.get("valor", type=float) or 0.0,
+        data=_parse_date(f.get("data")),
+    )
+    db.session.add(obj)
+    db.session.commit()
+    flash("Receita adicionada.", "success")
+    return redirect(url_for("admin_receitas_split"))
+
+@app.route("/receitas/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_receita(id):
+    obj = ReceitaCooperativa.query.get_or_404(id)
+    f = request.form
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor_total = f.get("valor", type=float) or 0.0
+    obj.data = _parse_date(f.get("data"))
+    db.session.commit()
+    flash("Receita atualizada.", "success")
+    return redirect(url_for("admin_receitas_split"))
+
+@app.route("/receitas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_receita(id):
+    obj = ReceitaCooperativa.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Receita excluída.", "success")
+    return redirect(url_for("admin_receitas_split"))
+
+
+# =========================
+# Despesas da cooperativa -> despesas.html
+# =========================
+
+@app.route("/despesas/add", methods=["POST"])
+@admin_required
+def add_despesa():
+    f = request.form
+    obj = DespesaCooperativa(
+        descricao=(f.get("descricao") or "").strip(),
+        valor=f.get("valor", type=float) or 0.0,
+        data=_parse_date(f.get("data")),
+    )
+    db.session.add(obj)
+    db.session.commit()
+    flash("Despesa adicionada.", "success")
+    return redirect(url_for("admin_despesas_split"))
+
+@app.route("/despesas/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_despesa(id):
+    obj = DespesaCooperativa.query.get_or_404(id)
+    f = request.form
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor = f.get("valor", type=float) or 0.0
+    obj.data = _parse_date(f.get("data"))
+    db.session.commit()
+    flash("Despesa atualizada.", "success")
+    return redirect(url_for("admin_despesas_split"))
+
+@app.route("/despesas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_despesa(id):
+    obj = DespesaCooperativa.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Despesa excluída.", "success")
+    return redirect(url_for("admin_despesas_split"))
+
+
+# =========================
+# Receitas dos cooperados -> coop_receitas.html
+# =========================
+
+@app.route("/coop_receitas/add", methods=["POST"])
+@admin_required
+def add_receita_coop():
+    f = request.form
+    obj = ReceitaCooperado(
+        cooperado_id=f.get("cooperado_id", type=int),
+        descricao=(f.get("descricao") or "").strip(),
+        valor=f.get("valor", type=float) or 0.0,
+        data=_parse_date(f.get("data")),
+    )
+    db.session.add(obj)
+    db.session.commit()
+    flash("Receita do cooperado adicionada.", "success")
+    return redirect(url_for("admin_coop_receitas_split"))
+
+@app.route("/coop_receitas/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_receita_coop(id):
+    obj = ReceitaCooperado.query.get_or_404(id)
+    f = request.form
+    obj.cooperado_id = f.get("cooperado_id", type=int)
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor = f.get("valor", type=float) or 0.0
+    obj.data = _parse_date(f.get("data"))
+    db.session.commit()
+    flash("Receita do cooperado atualizada.", "success")
+    return redirect(url_for("admin_coop_receitas_split"))
+
+@app.route("/coop_receitas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_receita_coop(id):
+    obj = ReceitaCooperado.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Receita do cooperado excluída.", "success")
+    return redirect(url_for("admin_coop_receitas_split"))
+
+
+# =========================
+# Despesas dos cooperados -> coop_despesas.html
+# =========================
+
+@app.route("/coop_despesas/add", methods=["POST"])
+@admin_required
+def add_despesa_coop():
+    f = request.form
+    obj = DespesaCooperado(
+        cooperado_id=f.get("cooperado_id", type=int),
+        descricao=(f.get("descricao") or "").strip(),
+        valor=f.get("valor", type=float) or 0.0,
+        data=_parse_date(f.get("data")),
+        data_inicio=_parse_date(f.get("data_inicio")) or _parse_date(f.get("data")),
+        data_fim=_parse_date(f.get("data_fim")) or _parse_date(f.get("data")),
+        eh_adiantamento=bool(f.get("eh_adiantamento")),
+    )
+    db.session.add(obj)
+    db.session.commit()
+    flash("Despesa do cooperado adicionada.", "success")
+    return redirect(url_for("admin_coop_despesas_split"))
+
+@app.route("/coop_despesas/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_despesa_coop(id):
+    obj = DespesaCooperado.query.get_or_404(id)
+    f = request.form
+    obj.cooperado_id = f.get("cooperado_id", type=int)
+    obj.descricao = (f.get("descricao") or "").strip()
+    obj.valor = f.get("valor", type=float) or 0.0
+    obj.data = _parse_date(f.get("data"))
+    obj.data_inicio = _parse_date(f.get("data_inicio")) or _parse_date(f.get("data"))
+    obj.data_fim = _parse_date(f.get("data_fim")) or _parse_date(f.get("data"))
+    obj.eh_adiantamento = bool(f.get("eh_adiantamento"))
+    db.session.commit()
+    flash("Despesa do cooperado atualizada.", "success")
+    return redirect(url_for("admin_coop_despesas_split"))
+
+@app.route("/coop_despesas/<int:id>/delete", methods=["POST"])
+@admin_required
+def delete_despesa_coop(id):
+    obj = DespesaCooperado.query.get_or_404(id)
+    db.session.delete(obj)
+    db.session.commit()
+    flash("Despesa do cooperado excluída.", "success")
+    return redirect(url_for("admin_coop_despesas_split"))
+
+
+# =========================
+# Lançamentos
+# =========================
+
+@app.route("/admin/lancamentos/add", methods=["POST"])
+@admin_required
+def admin_add_lancamento():
+    f = request.form
+    l = Lancamento(
+        restaurante_id=f.get("restaurante_id", type=int),
+        cooperado_id=f.get("cooperado_id", type=int),
+        descricao=f.get("descricao", "").strip(),
+        valor=f.get("valor", type=float),
+        data=_parse_date(f.get("data")),
+        hora_inicio=f.get("hora_inicio"),
+        hora_fim=f.get("hora_fim"),
+        qtd_entregas=f.get("qtd_entregas", type=int),
+    )
+    db.session.add(l)
+    db.session.commit()
+    flash("Lançamento inserido.", "success")
+    return redirect(url_for("admin_lancamentos_split"))
+
+@app.route("/admin/lancamentos/<int:id>/edit", methods=["POST"])
+@admin_required
+def admin_edit_lancamento(id):
+    l = Lancamento.query.get_or_404(id)
+    f = request.form
+    l.restaurante_id = f.get("restaurante_id", type=int)
+    l.cooperado_id = f.get("cooperado_id", type=int)
+    l.descricao = f.get("descricao", "").strip()
+    l.valor = f.get("valor", type=float)
+    l.data = _parse_date(f.get("data"))
+    l.hora_inicio = f.get("hora_inicio")
+    l.hora_fim = f.get("hora_fim")
+    l.qtd_entregas = f.get("qtd_entregas", type=int)
+    db.session.commit()
+    flash("Lançamento atualizado.", "success")
+    return redirect(url_for("admin_lancamentos_split"))
+
+@app.route("/admin/lancamentos/<int:id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_lancamento(id):
+    l = Lancamento.query.get_or_404(id)
+    db.session.execute(sa_delete(AvaliacaoCooperado).where(AvaliacaoCooperado.lancamento_id == id))
+    db.session.execute(sa_delete(AvaliacaoRestaurante).where(AvaliacaoRestaurante.lancamento_id == id))
+    db.session.delete(l)
+    db.session.commit()
+    flash("Lançamento excluído.", "success")
+    return redirect(url_for("admin_lancamentos_split"))
+
+
+# =========================
+# Util
+# =========================
+
+@app.route("/filtrar_lancamentos")
+@admin_required
+def filtrar_lancamentos():
+    qs = request.query_string.decode("utf-8")
+    base = url_for("admin_lancamentos_split")
+    joiner = "?" if qs else ""
+    return redirect(f"{base}{joiner}{qs}")
 
 # =========================
 # ROTAS SPLIT
