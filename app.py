@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 # ============ Stdlib ============
+import click
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import os, io, csv, re, json, time, difflib, unicodedata
 from datetime import datetime, date, timedelta, time as dtime
@@ -1567,12 +1568,6 @@ class AvaliacaoRestaurante(db.Model):
         self.media_ponderada = round(media, 2)
         self.estrelas_geral = round(media, 1)
 
-
-  # --- Registro do blueprint 'portal' (uma única vez, após definir TODAS as rotas dele)
-# --- Registro do blueprint 'portal' (depois de definir TODAS as rotas do blueprint)
-def register_blueprints_once(app):
-    if "portal" not in app.blueprints:
-        app.register_blueprint(portal_bp)
 
 register_blueprints_once(app)
 
