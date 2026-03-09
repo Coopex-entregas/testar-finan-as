@@ -4844,7 +4844,7 @@ def upload_escala():
     if not linhas_novas:
         app.logger.warning(f"[ESCALAS] Nenhuma linha importada. header_row={header_row_idx} headers_norm={headers_norm}")
         flash("Nada importado: nenhum registro válido encontrado. Verifique a linha dos cabeçalhos e os nomes das colunas.", "warning")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return redirect(url_for("admin_escalas"))
 
     # ------- SUBSTITUIÇÃO TOTAL -------
     try:
@@ -4878,7 +4878,7 @@ def upload_escala():
         app.logger.exception("Erro ao importar a escala")
         flash(f"Erro ao importar a escala: {e}", "danger")
 
-    return redirect(url_for("admin_dashboard", tab="escalas"))
+    redirect(url_for("admin_escalas"))
 
 
 # =========================
@@ -6195,7 +6195,7 @@ def documentos_publicos():
 def baixar_documento(doc_id):
     doc = Documento.query.get_or_404(doc_id)
     # === NOVO: resolve caminho persistente pelo nome salvo ===
-    path = resolve_document_path(doc.arquivo_nome)
+    path = resolve_documento_path(doc.arquivo_nome)
     if not path or not os.path.exists(path):
         abort(404)
     # força download (independente do tipo)
