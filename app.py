@@ -2712,7 +2712,7 @@ def admin_dashboard():
     data_limite = date(current_date.year, 12, 31)
 
     return render_template(
-        "admin_dashboard.html",
+        "admin_escalas.html",
         tab=active_tab,
         total_producoes=total_producoes,
         total_inss=total_inss,
