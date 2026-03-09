@@ -290,8 +290,6 @@
 
       <!-- Resumo (TAB, igual antes) -->
       <a class="nav-link-main {{ 'active' if _tab=='resumo' else '' }}"
-         
-         
          href="resumo.html"
          role="tab"
          aria-controls="resumo"
@@ -303,13 +301,13 @@
       </a>
 
       <!-- Avaliações (ROTA /admin/avaliacoes) -->
-    <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
-       href="{{ url_for('admin_avaliacoes') }}">
-      <div class="nav-link-left">
-        <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
-        <span class="nav-link-label">Avaliações</span>
-      </div>
-    </a>
+      <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
+         href="{{ url_for('admin_avaliacoes') }}">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
+          <span class="nav-link-label">Avaliações</span>
+        </div>
+      </a>
 
       <hr class="sidebar-divider">
 
@@ -329,8 +327,6 @@
       <div id="menuFinanceiro" class="collapse show nav-sublinks">
         <!-- Lançamentos (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='lancamentos' else '' }}"
-           
-           
            href="lancamentos.html"
            role="tab"
            aria-controls="lancamentos"
@@ -341,8 +337,6 @@
 
         <!-- Receitas Coop (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='receitas' else '' }}"
-           
-           
            href="receitas.html"
            role="tab"
            aria-controls="receitas"
@@ -353,8 +347,6 @@
 
         <!-- Despesas Coop (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='despesas' else '' }}"
-           
-           
            href="despesas.html"
            role="tab"
            aria-controls="despesas"
@@ -365,8 +357,6 @@
 
         <!-- Receitas Cooperados (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='coop_receitas' else '' }}"
-           
-           
            href="coop_receitas.html"
            role="tab"
            aria-controls="coop_receitas"
@@ -377,8 +367,6 @@
 
         <!-- Despesas Cooperados (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='coop_despesas' else '' }}"
-           
-           
            href="coop_despesas.html"
            role="tab"
            aria-controls="coop_despesas"
@@ -389,8 +377,6 @@
 
         <!-- Benefícios (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='beneficios' else '' }}"
-           
-           
            href="beneficios.html"
            role="tab"
            aria-controls="beneficios"
@@ -416,8 +402,6 @@
       <div id="menuCadastros" class="collapse show nav-sublinks">
         <!-- Cooperados (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='cooperados' else '' }}"
-           
-           
            href="cooperados.html"
            role="tab"
            aria-controls="cooperados"
@@ -428,8 +412,6 @@
 
         <!-- Estabelecimentos (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='restaurantes' else '' }}"
-           
-           
            href="restaurantes.html"
            role="tab"
            aria-controls="restaurantes"
@@ -469,8 +451,6 @@
       <div id="menuOperacao" class="collapse show nav-sublinks">
         <!-- Escalas (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='escalas' else '' }}"
-           
-           
            href="escalas.html"
            role="tab"
            aria-controls="escalas"
@@ -492,8 +472,6 @@
       <!-- Config (TAB) e Sair (rota) ---------------------------------------->
       <div class="sidebar-footer">
         <a class="nav-link-main {{ 'active' if _tab=='config' else '' }}"
-           
-           
            href="config.html"
            role="tab"
            aria-controls="config"
@@ -519,7 +497,7 @@
 <!-- Main -->
 <main class="main">
   <div class="tab-content">
-<section class="tab-pane fade show active" id="config" role="tabpanel">
+    <section class="tab-pane fade show active" id="config" role="tabpanel">
       <div class="content-shell">
         <div class="page-header">
           <h3><i class="bi bi-gear"></i> Configurações</h3>
@@ -877,25 +855,25 @@
 
   buildLineChart('chartLancCoop', dataLancCoop.labels, dataLancCoop.values, 'Lançamentos/Produções');
   buildLineChart('chartLancCooperados', dataLancCooperados.labels, dataLancCooperados.values, 'Lançamentos/Produções');
-    // Contagem regressiva até 31/12 (aba Escalas)
-    const anoSpan = document.getElementById('prazoAno');
-    const diasSpan = document.getElementById('prazoDias');
 
-    function updatePrazo() {
-      const now = new Date();
-      let target = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-      if (now > target) target = new Date(now.getFullYear() + 1, 11, 31, 23, 59, 59);
+  // Contagem regressiva até 31/12 (aba Escalas)
+  const anoSpan = document.getElementById('prazoAno');
+  const diasSpan = document.getElementById('prazoDias');
 
-      const diff = target - now;
-      const dias = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  function updatePrazo() {
+    const now = new Date();
+    let target = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    if (now > target) target = new Date(now.getFullYear() + 1, 11, 31, 23, 59, 59);
 
-      if (anoSpan) anoSpan.textContent = target.getFullYear();
-      if (diasSpan) diasSpan.textContent = dias;
-    }
+    const diff = target - now;
+    const dias = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 
-    updatePrazo();
-    setInterval(updatePrazo, 60 * 1000);
-  });
+    if (anoSpan) anoSpan.textContent = target.getFullYear();
+    if (diasSpan) diasSpan.textContent = dias;
+  }
+
+  updatePrazo();
+  setInterval(updatePrazo, 60 * 1000);
 </script>
 
 <!-- ==== ESCALAS: horário & cores (robusto) ==== -->
