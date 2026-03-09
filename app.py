@@ -4621,25 +4621,23 @@ def ratear_beneficios():
     flash("Benefício registrado/Rateado.", "success")
     return redirect(url_for("admin_dashboard", tab="beneficios"))
 
-# =========================
-# Escalas — Upload (substituição TOTAL sempre)
-# =========================
 @app.route("/escalas/upload", methods=["POST"])
 @admin_required
 def upload_escala():
     from datetime import datetime, date
-    import os, re as _re, unicodedata as _u, difflib as _dif
+    import os
+    import re as _re
+    import unicodedata as _u
+    import difflib as _dif
 
     file = request.files.get("file")
     if not file or not file.filename.lower().endswith(".xlsx"):
         flash("Envie um arquivo .xlsx válido.", "warning")
         return redirect(url_for("admin_escalas"))
 
-    # salva o arquivo (o nome não influencia a lógica)
     path = os.path.join(UPLOAD_DIR, secure_filename(file.filename))
     file.save(path)
 
-    # abre com openpyxl
     try:
         import openpyxl
     except Exception:
@@ -4653,7 +4651,6 @@ def upload_escala():
         flash(f"Erro ao abrir a planilha: {e}", "danger")
         return redirect(url_for("admin_escalas"))
 
-    # ------- helpers -------
     def _norm_local(s: str) -> str:
         s = _u.normalize("NFD", str(s or "").strip().lower())
         s = "".join(ch for ch in s if _u.category(ch) != "Mn")
@@ -4666,40 +4663,276 @@ def upload_escala():
 
     def to_css_color_local(v: str) -> str:
         t = str(v or "").strip()
-        if not t: return ""
+        if not t:
+            return ""
+
         if _re.fullmatch(r"[0-9a-fA-F]{8}", t):
             a = int(t[0:2], 16) / 255.0
-            r = int(t[2:4], 16); g = int(t[4:6], 16); b = int(t[6:8], 16)
+            r = int(t[2:4], 16)
+            g = int(t[4:6], 16)
+            b = int(t[6:8], 16)
             return f"rgba({r},{g},{b},{a:.3f})"
+
         if _re.fullmatch(r"[0-9a-fA-F]{6}", t):
             return f"#{t}"
+
         if _re.fullmatch(r"#?[0-9a-fA-F]{6,8}", t):
-            if not t.startswith("#"): t = f"#{t}"
+            if not t.startswith("#"):
+                t = f"#{t}"
             if len(t) == 9:
                 a = int(t[1:3], 16) / 255.0
-                r = int(t[3:5], 16); g = int(t[5:7], 16); b = int(t[7:9], 16)
+                r = int(t[3:5], 16)
+                g = int(t[5:7], 16)
+                b = int(t[7:9], 16)
                 return f"rgba({r},{g},{b},{a:.3f})"
             return t
+
         m = _re.fullmatch(r"\s*(\d{1,3})\s*[,;]\s*(\d{1,3})\s*[,;]\s*(\d{1,3})\s*", t)
         if m:
             r, g, b = [max(0, min(255, int(x))) for x in m.groups()]
             return f"rgb({r},{g},{b})"
-        mapa = {"azul":"blue","vermelho":"red","verde":"green","amarelo":"yellow",
-                "cinza":"gray","preto":"black","branco":"white","laranja":"orange","roxo":"purple"}
+
+        mapa = {
+            "azul": "blue",
+            "vermelho": "red",
+            "verde": "green",
+            "amarelo": "yellow",
+            "cinza": "gray",
+            "preto": "black",
+            "branco": "white",
+            "laranja": "orange",
+            "roxo": "purple",
+        }
         return mapa.get(t.lower(), t)
 
     def fmt_data_cell(v) -> str:
-        if v is None or str(v).strip() == "": return ""
-        if isinstance(v, datetime): return v.date().strftime("%d/%m/%Y")
-        if isinstance(v, date):     return v.strftime("%d/%m/%Y")
+        if v is None or str(v).strip() == "":
+            return ""
+
+        if isinstance(v, datetime):
+            return v.date().strftime("%d/%m/%Y")
+
+        if isinstance(v, date):
+            return v.strftime("%d/%m/%Y")
+
         s = str(v).strip()
         m = _re.fullmatch(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", s)
         if m:
             y, mth, d = map(int, m.groups())
-            try: return date(y, mth, d).strftime("%d/%m/%Y")
-            except Exception: return s
+            try:
+                return date(y, mth, d).strftime("%d/%m/%Y")
+            except Exception:
+                return s
+
         return s
 
+    def _score_header_row(cells):
+        aliases = [
+            "data", "dia", "data do plantao",
+            "turno",
+            "horario", "horário", "hora", "periodo", "período",
+            "contrato", "restaurante", "unidade", "local",
+            "login", "usuario", "usuário", "username", "user", "nome de usuario", "nome de usuário",
+            "nome", "nome do cooperado", "cooperado", "motoboy", "entregador",
+            "cor", "cores", "cor da celula", "cor celula",
+        ]
+        aliases_norm = {_norm_local(a) for a in aliases}
+        score = 0
+        seen = set()
+
+        for c in cells:
+            key = _norm_local(str(getattr(c, "value", "") or ""))
+            if not key:
+                continue
+
+            score += 1
+            for a in aliases_norm:
+                if a and (a == key or a in key or key in a):
+                    if (key, a) not in seen:
+                        score += 2
+                        seen.add((key, a))
+
+        return score
+
+    header_row_idx = 1
+    best_score = -1
+    last_row_to_check = min(ws.max_row, 10)
+
+    for i in range(1, last_row_to_check + 1):
+        row_cells = list(ws[i])
+        s = _score_header_row(row_cells)
+        if s > best_score:
+            best_score = s
+            header_row_idx = i
+
+    headers_norm = {
+        _norm_local(str(c.value or "")): j
+        for j, c in enumerate(ws[header_row_idx], start=1)
+    }
+
+    def find_col(*aliases):
+        al = [_norm_local(a) for a in aliases]
+
+        for a in al:
+            if a in headers_norm:
+                return headers_norm[a]
+
+        for k_norm, j in headers_norm.items():
+            for a in al:
+                if a and a in k_norm:
+                    return j
+
+        return None
+
+    col_data = find_col("data", "dia", "data do plantao")
+    col_turno = find_col("turno")
+    col_horario = find_col("horario", "horário", "hora", "periodo", "período")
+    col_contrato = find_col("contrato", "restaurante", "unidade", "local")
+    col_login = find_col("login", "usuario", "usuário", "username", "user", "nome de usuario", "nome de usuário")
+    col_nome = find_col("nome", "nome do cooperado", "cooperado", "motoboy", "entregador")
+    col_cor = find_col("cor", "cores", "cor da celula", "cor celula")
+
+    app.logger.info(f"[ESCALAS] header_row={header_row_idx} headers_norm={headers_norm}")
+
+    if not col_login and not col_nome:
+        flash("Não encontrei a coluna de LOGIN nem a de NOME do cooperado na planilha.", "danger")
+        app.logger.warning(
+            f"[ESCALAS] Falha header: headers_norm={headers_norm} (linha {header_row_idx})"
+        )
+        return redirect(url_for("admin_escalas"))
+
+    restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+
+    def match_restaurante_id(contrato_txt: str) -> int | None:
+        a = _norm_local(contrato_txt)
+        if not a:
+            return None
+
+        for r in restaurantes:
+            b = _norm_local(r.nome)
+            if a == b or a in b or b in a:
+                return r.id
+
+        try:
+            nomes_norm = [_norm_local(r.nome) for r in restaurantes]
+            close = _dif.get_close_matches(a, nomes_norm, n=1, cutoff=0.87)
+            if close:
+                alvo = close[0]
+                for r in restaurantes:
+                    if _norm_local(r.nome) == alvo:
+                        return r.id
+        except Exception:
+            pass
+
+        return None
+
+    def match_cooperado_by_login(login_txt: str) -> Cooperado | None:
+        key = _norm_login_local(login_txt)
+        if not key:
+            return None
+
+        for c in cooperados:
+            login = getattr(c, "usuario_ref", None)
+            login_val = getattr(login, "usuario", "") if login else ""
+            if _norm_login_local(login_val) == key:
+                return c
+
+        return None
+
+    linhas_novas = []
+    total_linhas_planilha = 0
+    start_row = header_row_idx + 1
+
+    for i in range(start_row, ws.max_row + 1):
+        login_txt = str(ws.cell(i, col_login).value).strip() if col_login else ""
+        nome_txt = str(ws.cell(i, col_nome).value).strip() if col_nome else ""
+
+        if not login_txt and not nome_txt:
+            vals = [
+                (ws.cell(i, col_data).value if col_data else None),
+                (ws.cell(i, col_turno).value if col_turno else None),
+                (ws.cell(i, col_horario).value if col_horario else None),
+                (ws.cell(i, col_contrato).value if col_contrato else None),
+            ]
+            if all((v is None or str(v).strip() == "") for v in vals):
+                continue
+
+        total_linhas_planilha += 1
+
+        data_v = ws.cell(i, col_data).value if col_data else None
+        turno_v = ws.cell(i, col_turno).value if col_turno else None
+        horario_v = ws.cell(i, col_horario).value if col_horario else None
+        contrato_v = ws.cell(i, col_contrato).value if col_contrato else None
+        cor_v = ws.cell(i, col_cor).value if col_cor else None
+
+        contrato_txt = str(contrato_v).strip() if contrato_v is not None else ""
+        rest_id = match_restaurante_id(contrato_txt)
+
+        coop_match = match_cooperado_by_login(login_txt) if login_txt else None
+        if not coop_match and nome_txt:
+            coop_match = _match_cooperado_by_name(nome_txt, cooperados)
+
+        nome_fallback = nome_txt or login_txt
+
+        linhas_novas.append({
+            "cooperado_id": coop_match.id if coop_match else None,
+            "cooperado_nome": None if coop_match else nome_fallback,
+            "data": fmt_data_cell(data_v),
+            "turno": str(turno_v).strip() if turno_v is not None else "",
+            "horario": str(horario_v).strip() if horario_v is not None else "",
+            "contrato": contrato_txt,
+            "cor": to_css_color_local(cor_v),
+            "restaurante_id": rest_id,
+        })
+
+    if not linhas_novas:
+        app.logger.warning(
+            f"[ESCALAS] Nenhuma linha importada. header_row={header_row_idx} headers_norm={headers_norm}"
+        )
+        flash(
+            "Nada importado: nenhum registro válido encontrado. Verifique a linha dos cabeçalhos e os nomes das colunas.",
+            "warning",
+        )
+        return redirect(url_for("admin_escalas"))
+
+    try:
+        from sqlalchemy import text as sa_text, delete as sa_delete
+
+        if _is_sqlite():
+            db.session.execute(sa_delete(TrocaSolicitacao))
+            db.session.execute(sa_delete(Escala))
+        else:
+            db.session.execute(sa_text("TRUNCATE TABLE escalas RESTART IDENTITY CASCADE"))
+
+        for row in linhas_novas:
+            db.session.add(Escala(**row))
+
+        ids_reconhecidos = {
+            int(r["cooperado_id"])
+            for r in linhas_novas
+            if r.get("cooperado_id")
+        }
+
+        for cid in ids_reconhecidos:
+            c = Cooperado.query.get(cid)
+            if c:
+                c.ultima_atualizacao = datetime.now()
+
+        db.session.commit()
+        flash(
+            f"Escala substituída com sucesso. {len(linhas_novas)} linha(s) importada(s) (de {total_linhas_planilha}).",
+            "success",
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception("Erro ao importar a escala")
+        flash(f"Erro ao importar a escala: {e}", "danger")
+        return redirect(url_for("admin_escalas"))
+
+    return redirect(url_for("admin_escalas"))
+    
     # ------- cabeçalhos (detecção automática) -------
     def _score_header_row(cells):
         aliases = [
