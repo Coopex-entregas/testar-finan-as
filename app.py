@@ -2819,6 +2819,14 @@ def admin_escalas_split():
     ctx = _admin_dashboard_context("escalas")
     return render_template("escalas.html", **ctx)
 
+@app.route("/admin/avisos", methods=["GET", "POST"], endpoint="admin_avisos")
+@admin_required
+def admin_avisos():
+    avisos = Aviso.query.order_by(Aviso.fixado.desc(), Aviso.criado_em.desc()).all()
+    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
+    restaurantes = Restaurante.query.order_by(Restaurante.nome.asc()).all()
+    return render_template("admin_avisos.html", avisos=avisos, cooperados=cooperados, restaurantes=restaurantes)
+
 
 @app.get("/admin/config")
 @admin_required
