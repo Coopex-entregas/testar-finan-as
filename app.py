@@ -112,16 +112,20 @@ def _build_db_uri() -> str:
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
+# CHAVE DE SESSÃO
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "coopex-chave-local-123456")
+app.secret_key = app.config["SECRET_KEY"]
+
+# BANCO
 URI = _build_db_uri()
 
-# 🚫 Guard: impede cair em SQLite em produção se DATABASE_URL não existir
+# trava sqlite em produção
 if "sqlite" in URI and os.environ.get("FLASK_ENV") == "production":
     raise RuntimeError("DATABASE_URL ausente em produção")
 
-# ===== Pool dimensionado por worker =====
+# POOL
 workers = int(os.environ.get("WEB_CONCURRENCY", "1") or "1")
 threads = int(os.environ.get("GTHREADS", "1") or "1")
-
 req_concurrency = max(1, workers * threads)
 target_total = int(os.environ.get("DB_TARGET_CONNS", "40") or "40")
 per_worker_target = max(5, min(target_total // max(1, workers), 15))
