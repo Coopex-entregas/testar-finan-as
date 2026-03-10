@@ -57,9 +57,16 @@ from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 # ============ App / Diretórios ============
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# uploads locais do app
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
-DOCS_DIR   = os.path.join(UPLOAD_DIR, "docs")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# legado/local
+DOCS_DIR = os.path.join(UPLOAD_DIR, "docs")
 os.makedirs(DOCS_DIR, exist_ok=True)
+
+STATIC_TABLES = os.path.join(UPLOAD_DIR, "tabelas")
+os.makedirs(STATIC_TABLES, exist_ok=True)
 
 # Persistência real (Render Disk)
 PERSIST_ROOT = os.environ.get("PERSIST_ROOT", "/var/data")
@@ -67,16 +74,12 @@ if not os.path.isdir(PERSIST_ROOT):
     PERSIST_ROOT = os.path.join(BASE_DIR, "data")
 os.makedirs(PERSIST_ROOT, exist_ok=True)
 
+# persistentes
 TABELAS_DIR = os.path.join(PERSIST_ROOT, "tabelas")
 os.makedirs(TABELAS_DIR, exist_ok=True)
 
-STATIC_TABLES = os.path.join(BASE_DIR, "static", "uploads", "tabelas")
-os.makedirs(STATIC_TABLES, exist_ok=True)
-
-# 🔹 Documentos (persistente em disco)
 DOCS_PERSIST_DIR = os.path.join(PERSIST_ROOT, "docs")
 os.makedirs(DOCS_PERSIST_DIR, exist_ok=True)
-
 
 
 def _merge_qs(url: str, extra: dict[str, str]) -> str:
