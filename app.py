@@ -1776,6 +1776,8 @@ def admin_escalas():
 # =========================
 # LANÇAMENTOS — CONTEXTO PRÓPRIO
 # =========================
+from datetime import date, timedelta
+
 def _get_admin_lancamentos_context():
     args = request.args
 
@@ -1784,21 +1786,51 @@ def _get_admin_lancamentos_context():
     considerar_periodo = bool(args.get("considerar_periodo"))
     dows = set(args.getlist("dow"))
 
-    data_inicio = _parse_date(args.get("data_inicio"))
-    data_fim = _parse_date(args.get("data_fim"))
+    data_inicio_raw = (args.get("data_inicio") or "").strip()
+    data_fim_raw = (args.get("data_fim") or "").strip()
+
+    data_inicio = _parse_date(data_inicio_raw)
+    data_fim = _parse_date(data_fim_raw)
+
+    hoje = date.today()
+    inicio_semana = hoje - timedelta(days=hoje.weekday())   # segunda
+    fim_semana = inicio_semana + timedelta(days=6)          # domingo
+
+    tem_filtro = any([
+        restaurante_id,
+        cooperado_id,
+        considerar_periodo,
+        dows,
+        data_inicio_raw,
+        data_fim_raw,
+    ])
 
     q = Lancamento.query
 
     if restaurante_id:
         q = q.filter(Lancamento.restaurante_id == restaurante_id)
+
     if cooperado_id:
         q = q.filter(Lancamento.cooperado_id == cooperado_id)
-    if data_inicio:
-        q = q.filter(Lancamento.data >= data_inicio)
-    if data_fim:
-        q = q.filter(Lancamento.data <= data_fim)
 
-    lanc_base = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
+    # se não houver filtro, carrega só a semana atual
+    if not tem_filtro:
+        q = q.filter(Lancamento.data >= inicio_semana)
+        q = q.filter(Lancamento.data <= fim_semana)
+        filtro_automatico_semana = True
+        data_inicio_padrao = inicio_semana.strftime("%Y-%m-%d")
+        data_fim_padrao = fim_semana.strftime("%Y-%m-%d")
+    else:
+        if data_inicio:
+            q = q.filter(Lancamento.data >= data_inicio)
+        if data_fim:
+            q = q.filter(Lancamento.data <= data_fim)
+
+        filtro_automatico_semana = False
+        data_inicio_padrao = data_inicio_raw
+        data_fim_padrao = data_fim_raw
+
+    lanc_base = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).limit(300).all()
 
     if dows:
         lancamentos = [l for l in lanc_base if l.data and _dow(l.data) in dows]
@@ -1864,6 +1896,9 @@ def _get_admin_lancamentos_context():
         "chart_data_lancamentos_cooperados": chart_data_lancamentos_cooperados,
         "admin_user": admin_user,
         "salario_minimo": cfg.salario_minimo or 0.0,
+        "data_inicio_padrao": data_inicio_padrao,
+        "data_fim_padrao": data_fim_padrao,
+        "filtro_automatico_semana": filtro_automatico_semana,
     }
 
 
@@ -1889,6 +1924,9 @@ def admin_lancamentos():
         chart_data_lancamentos_cooperados=ctx["chart_data_lancamentos_cooperados"],
         admin_user=ctx["admin_user"],
         salario_minimo=ctx["salario_minimo"],
+        data_inicio_padrao=ctx["data_inicio_padrao"],
+        data_fim_padrao=ctx["data_fim_padrao"],
+        filtro_automatico_semana=ctx["filtro_automatico_semana"],
     )
 
 
