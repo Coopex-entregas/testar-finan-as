@@ -2028,35 +2028,39 @@ async function loadAvisosFromRoute(href){
 
     if (!res.ok) throw new Error(res.status);
 
-    if (cards.length){
-  cards.forEach(c => {
-    const clone = document.importNode(c, true);
+    const html = await res.text();
+    const dom = new DOMParser().parseFromString(html, 'text/html');
 
-    if (!clone.classList.contains('aviso-card')) {
-      clone.classList.add('card', 'card-body', 'my-2', 'aviso-card');
-      if (clone.classList.contains('unread')) {
-        clone.setAttribute('data-lido', '0');
-      } else if (!clone.hasAttribute('data-lido')) {
-        clone.setAttribute('data-lido', '1');
-      }
-    }
-
-    cont.appendChild(clone);
-  });
+    const origem = dom.querySelector('#avisosListContainer');
+    const cards = origem
+      ? Array.from(origem.querySelectorAll('.aviso-card'))
+      : Array.from(dom.querySelectorAll('.aviso-card'));
 
     const cont = document.getElementById('avisosListContainer');
     if (!cont) return;
 
     cont.innerHTML = '';
 
-    if (cards.length){
-      cards.forEach(c => cont.appendChild(document.importNode(c, true)));
+    if (cards.length > 0){
+      cards.forEach(c => {
+        const clone = document.importNode(c, true);
+
+        if (!clone.classList.contains('aviso-card')) {
+          clone.classList.add('card', 'card-body', 'my-2', 'aviso-card');
+        }
+
+        if (!clone.hasAttribute('data-lido')) {
+          clone.setAttribute('data-lido', clone.classList.contains('lido') ? '1' : '0');
+        }
+
+        cont.appendChild(clone);
+      });
 
       avisosWired = false;
       cont.dataset.bound = '';
       initAvisos();
 
-      const unreadLocal = cards.filter(c => c.getAttribute('data-lido') === '0').length;
+      const unreadLocal = cont.querySelectorAll('.aviso-card[data-lido="0"]').length;
       setAvisosBadge(unreadLocal, { showToast:false });
       pollAvisos();
     } else {
@@ -2509,10 +2513,12 @@ function wireAvalLanc(){
   const modalEl = document.getElementById('modalAvalLanc');
   if (!tbody || !modalEl) return;
 
-  const modal = new bootstrap.Modal(modalEl);
   const form = document.getElementById('formAvalLanc');
   const info = document.getElementById('avLancInfo');
   const inputLancId = document.getElementById('avLancId');
+  if (!form || !info || !inputLancId) return;
+
+  const modal = new bootstrap.Modal(modalEl);
 
   function initStarsInModal(){
     modalEl.querySelectorAll('.rating-group').forEach(g=>{
@@ -2526,11 +2532,14 @@ function wireAvalLanc(){
     if (!btn) return;
 
     const tr = btn.closest('tr');
+    if (!tr) return;
+
     const lancId = tr.dataset.id;
     const getUrl = tr.dataset.getavurl;
+    if (!lancId || !getUrl) return;
 
     inputLancId.value = lancId;
-    info.textContent = `${tr.cells[0].textContent.trim()} • ${tr.dataset.coopnome}`;
+    info.textContent = `${tr.cells[0]?.textContent.trim() || ''} • ${tr.dataset.coopnome || ''}`;
 
     modalEl.querySelectorAll('input[name^="av_"]').forEach(i=>i.value='');
     const ta = modalEl.querySelector('textarea[name="av_comentario"]');
@@ -2572,6 +2581,8 @@ function wireAvalLanc(){
     if (!tr) return;
 
     const postUrl = tr.dataset.avurl;
+    if (!postUrl) return;
+
     const fd = new FormData(form);
     autoGeral();
 
@@ -2641,11 +2652,13 @@ function wireTabelaViewer(){
   const modalEl = document.getElementById('modalTabela');
   if (!modalEl) return;
 
-  const modal = new bootstrap.Modal(modalEl);
   const lbl = document.getElementById('modalTabelaLabel');
   const frame = document.getElementById('modalFrame');
   const baixar = document.getElementById('modalBaixar');
   const novaAba = document.getElementById('modalAbrirNovaAba');
+  if (!lbl || !frame || !baixar || !novaAba) return;
+
+  const modal = new bootstrap.Modal(modalEl);
 
   document.getElementById('tabelasContainer')?.addEventListener('click', (ev)=>{
     const card = ev.target.closest('.doc-row');
@@ -2716,7 +2729,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const initial = startView();
   showSection(initial);
   hideLancOverlay();
-
   startAvisosPolling();
 });
 
