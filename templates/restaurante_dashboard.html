@@ -1759,7 +1759,7 @@ function prefetch(href){
 }
 
 // ========================
-// TOAST & BADGE DE AVISOS
+// TOAST / BADGE / ÁUDIO DE AVISOS
 // ========================
 let toastAvisosInst = null;
 let avisosWired = false;
@@ -1780,21 +1780,22 @@ function ensureToastInstance(){
 
 function setAvisosBadge(n, opts){
   const o = Object.assign({ showToast:false }, (opts || {}));
+  const total = Number(n || 0);
 
   const b = document.getElementById('badgeAvisos');
   if (b){
-    b.style.display = n > 0 ? 'inline-flex' : 'none';
-    b.textContent = String(n);
+    b.style.display = total > 0 ? 'inline-flex' : 'none';
+    b.textContent = String(total);
   }
 
   const tCnt = document.getElementById('toastCount');
-  if (tCnt) tCnt.textContent = String(n);
+  if (tCnt) tCnt.textContent = String(total);
 
   const badgeTitulo = document.getElementById('badgeTitulo');
   if (badgeTitulo){
-    if (n > 0){
+    if (total > 0){
       badgeTitulo.className = 'badge text-bg-danger ms-2';
-      badgeTitulo.textContent = `${n} não lido(s)`;
+      badgeTitulo.textContent = `${total} não lido(s)`;
     } else {
       badgeTitulo.className = 'badge text-bg-success ms-2';
       badgeTitulo.textContent = 'Tudo lido';
@@ -1805,14 +1806,11 @@ function setAvisosBadge(n, opts){
 
   const t = ensureToastInstance();
   if (t){
-    if (n > 0) t.show();
+    if (total > 0) t.show();
     else t.hide();
   }
 }
 
-// ========================
-// ÁUDIO DE AVISOS
-// ========================
 function tryPlayAvisoSound(){
   const a = document.getElementById('audioAvisos');
   if (!a) return;
@@ -1917,72 +1915,81 @@ async function pollAvisos(){
 
 function initAvisos(){
   if (avisosWired) return;
+
+  const avisosContainer = document.getElementById('avisosListContainer');
+  if (!avisosContainer) return;
+
   avisosWired = true;
 
   const toastOKEl = document.getElementById('toastOK');
   const toastOK = toastOKEl ? new bootstrap.Toast(toastOKEl) : null;
-  const avisosContainer = document.getElementById('avisosListContainer');
-
-  if (!avisosContainer) return;
 
   function getUnread(){
-    return document.querySelectorAll('.aviso-card[data-lido="0"]').length;
+    return document.querySelectorAll('#avisosListContainer .aviso-card[data-lido="0"]').length;
   }
 
   function refreshAvisosLocal(){
     setAvisosBadge(getUnread(), { showToast:false });
   }
 
-  document.getElementById('toggleNaoLidos')?.addEventListener('change', (e) => {
-    const only = e.target.checked;
-    document.querySelectorAll('.aviso-card').forEach(card => {
-      const lido = card.getAttribute('data-lido') === '1';
-      card.style.display = (only && lido) ? 'none' : '';
-    });
-  });
-
-  avisosContainer.addEventListener('click', async (ev) => {
-    const btn = ev.target.closest('[data-acao="marcar-lido"]');
-    if (!btn) return;
-
-    const url = btn.getAttribute('data-url');
-    const card = btn.closest('.aviso-card');
-
-    try{
-      const resp = await fetch(url, {
-        method:'POST',
-        credentials:'same-origin',
-        headers:{
-          'X-Requested-With':'XMLHttpRequest'
-        }
+  const toggle = document.getElementById('toggleNaoLidos');
+  if (toggle && !toggle.dataset.bound){
+    toggle.dataset.bound = '1';
+    toggle.addEventListener('change', (e) => {
+      const only = e.target.checked;
+      document.querySelectorAll('#avisosListContainer .aviso-card').forEach(card => {
+        const lido = card.getAttribute('data-lido') === '1';
+        card.style.display = (only && lido) ? 'none' : '';
       });
+    });
+  }
 
-      if (!resp.ok){
-        alert('Falha ao marcar como lido.');
-        return;
-      }
+  if (!avisosContainer.dataset.bound){
+    avisosContainer.dataset.bound = '1';
 
-      if (card){
-        card.setAttribute('data-lido', '1');
-        card.classList.add('lido');
+    avisosContainer.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('[data-acao="marcar-lido"]');
+      if (!btn) return;
 
-        const meta = card.querySelector('.text-muted.small');
-        if (meta){
-          const html = meta.innerHTML
-            .replace(/•\s*<span class="text-danger">Não lido<\/span>/i, '')
-            .replace(/•\s*<span class="text-success">Lido<\/span>/i, '');
-          meta.innerHTML = html + ' • <span class="text-success">Lido</span>';
+      const url = btn.getAttribute('data-url');
+      const card = btn.closest('.aviso-card');
+
+      try{
+        const resp = await fetch(url, {
+          method:'POST',
+          credentials:'same-origin',
+          headers:{
+            'X-Requested-With':'XMLHttpRequest'
+          }
+        });
+
+        if (!resp.ok){
+          alert('Falha ao marcar como lido.');
+          return;
         }
-      }
 
-      btn.remove();
-      refreshAvisosLocal();
-      toastOK?.show();
-      pollAvisos();
-    } catch (e){
-      alert('Erro de rede ao marcar aviso como lido.');
-    }
-  });
+        if (card){
+          card.setAttribute('data-lido', '1');
+          card.classList.add('lido');
+
+          const meta = card.querySelector('.text-muted.small');
+          if (meta){
+            const html = meta.innerHTML
+              .replace(/•\s*<span class="text-danger">Não lido<\/span>/i, '')
+              .replace(/•\s*<span class="text-success">Lido<\/span>/i, '');
+            meta.innerHTML = html + ' • <span class="text-success">Lido</span>';
+          }
+        }
+
+        btn.remove();
+        refreshAvisosLocal();
+        toastOK?.show();
+        pollAvisos();
+      } catch (e){
+        alert('Erro de rede ao marcar aviso como lido.');
+      }
+    });
+  }
 
   refreshAvisosLocal();
 
@@ -1994,12 +2001,23 @@ function initAvisos(){
 
 async function loadAvisosFromRoute(href){
   try{
-    const res = await fetch(href, { credentials:'same-origin' });
+    const res = await fetch(href, {
+      credentials:'same-origin',
+      cache:'no-store',
+      headers:{
+        'X-Requested-With':'XMLHttpRequest'
+      }
+    });
+
     if (!res.ok) throw new Error(res.status);
 
     const html = await res.text();
     const dom = new DOMParser().parseFromString(html, 'text/html');
-    const cards = [...dom.querySelectorAll('.aviso-card')];
+    const origem = dom.querySelector('#avisosListContainer');
+    const cards = origem
+      ? [...origem.querySelectorAll('.aviso-card')]
+      : [...dom.querySelectorAll('.aviso-card')];
+
     const cont = document.getElementById('avisosListContainer');
     if (!cont) return;
 
@@ -2009,13 +2027,14 @@ async function loadAvisosFromRoute(href){
       cards.forEach(c => cont.appendChild(document.importNode(c, true)));
 
       avisosWired = false;
+      cont.dataset.bound = '';
       initAvisos();
 
       const unreadLocal = cards.filter(c => c.getAttribute('data-lido') === '0').length;
       setAvisosBadge(unreadLocal, { showToast:false });
       pollAvisos();
     } else {
-      cont.innerHTML = '<div class="card card-body"><div class="text-muted"><i class="bi bi-inbox me-1"></i> Nenhum aviso disponível.</div></div>';
+      cont.innerHTML = '<div class="card card-body text-muted"><i class="bi bi-inbox me-1"></i> Nenhum aviso disponível.</div>';
       setAvisosBadge(0, { showToast:false });
       pollAvisos();
     }
@@ -2649,9 +2668,7 @@ document.getElementById('sideNav')?.addEventListener('click', async (e)=>{
 
   if (t === 'avisos'){
     const href = a.getAttribute('href');
-    if (href) {
-      await loadAvisosFromRoute(href);
-    }
+    if (href) await loadAvisosFromRoute(href);
   }
 
   if (t === 'avisos' || t === 'tabelas'){
