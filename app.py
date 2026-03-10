@@ -112,55 +112,6 @@ def _build_db_uri() -> str:
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-
-# =========================
-# Compat: Restaurante Avisos (evita 404 no front)
-# =========================
-@app.get("/api/rest/avisos/unread_count")
-@role_required("restaurante")
-def api_rest_avisos_unread_count():
-    def _nocache(resp):
-        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        return resp
-
-    u_id = session.get("user_id")
-    if not u_id:
-        return _nocache(jsonify(ok=False, unread=0, count=0)), 401
-
-    rest = Restaurante.query.filter_by(usuario_id=u_id).first()
-    if not rest:
-        return _nocache(jsonify(ok=False, unread=0, count=0)), 404
-
-    try:
-        try:
-            avisos = list(get_avisos_for_restaurante(rest))
-        except NameError:
-            avisos = (
-                Aviso.query
-                .filter(Aviso.ativo.is_(True))
-                .filter(or_(Aviso.tipo == "global", Aviso.tipo == "restaurante"))
-                .order_by(Aviso.fixado.desc(), Aviso.criado_em.desc())
-                .all()
-            )
-
-        lidos_ids = {
-            row[0]
-            for row in db.session.query(AvisoLeitura.aviso_id)
-            .filter_by(restaurante_id=rest.id)
-            .all()
-        }
-
-        unread = sum(1 for a in avisos if a.id not in lidos_ids)
-
-        return _nocache(jsonify(ok=True, unread=int(unread), count=int(unread))), 200
-    except Exception:
-        db.session.rollback()
-        return _nocache(jsonify(ok=False, unread=0, count=0)), 500
-
-app.secret_key = os.environ.get("SECRET_KEY", "coopex-secret")
-
-URI = _build_db_uri()
-
 # 🚫 Guard: impede cair em SQLite em produção se DATABASE_URL não existir
 if "sqlite" in URI and os.environ.get("FLASK_ENV") == "production":
     raise RuntimeError("DATABASE_URL ausente em produção")
@@ -1394,6 +1345,40 @@ def _assert_cooperado_ativo(cooperado_id: int):
     if not c:
         abort(400, description="Cooperado inativo ou inexistente.")
     return c
+
+@app.get("/api/rest/avisos/unread_count")
+@role_required("restaurante")
+def api_rest_avisos_unread_count():
+    def _nocache(resp):
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return resp
+
+    u_id = session.get("user_id")
+    if not u_id:
+        return _nocache(jsonify(ok=False, unread=0, count=0)), 401
+
+    rest = Restaurante.query.filter_by(usuario_id=u_id).first()
+    if not rest:
+        return _nocache(jsonify(ok=False, unread=0, count=0)), 403
+
+    try:
+        avisos = get_avisos_for_restaurante(rest)
+    except NameError:
+        avisos = (
+            Aviso.query
+            .filter(Aviso.ativo.is_(True))
+            .filter(or_(Aviso.tipo == "global", Aviso.tipo == "restaurante"))
+            .order_by(Aviso.fixado.desc(), Aviso.criado_em.desc())
+            .all()
+        )
+
+    lidos_ids = {
+        a_id for (a_id,) in db.session.query(AvisoLeitura.aviso_id)
+        .filter(AvisoLeitura.restaurante_id == rest.id).all()
+    }
+
+    unread = sum(1 for a in avisos if a.id not in lidos_ids)
+    return _nocache(jsonify(ok=True, unread=unread, count=unread)), 200
 
 # ========= ROTA: /docs/<nome> (abre inline PDF; baixa outros tipos) =========
 @app.get("/docs/<path:nome>")
