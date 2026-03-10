@@ -7,6 +7,7 @@ import os, io, csv, re, json, time, difflib, unicodedata
 from datetime import datetime, date, timedelta, time as dtime
 from collections import defaultdict, namedtuple
 from functools import wraps
+from pathlib import Path
 from types import SimpleNamespace
 
 # MIME types (fixes p/ Office)
@@ -6925,9 +6926,6 @@ try:
 except NameError:
     BASE_DIR = Path(__file__).resolve().parent
 
-# SEMPRE neste local:
-TABELAS_DIR = str(Path(BASE_DIR) / "static" / "uploads" / "tabelas")
-
 # Requer no app principal:
 # - db (SQLAlchemy)
 # - modelos: Tabela(id, titulo, descricao?, arquivo_url, arquivo_nome?, enviado_em)
@@ -6938,7 +6936,7 @@ TABELAS_DIR = str(Path(BASE_DIR) / "static" / "uploads" / "tabelas")
 # Helpers
 # ---------------------------------------------------------------------------
 def _tabelas_base_dir() -> Path:
-    p = Path(TABELAS_DIR)
+    p = Path(TABELAS_DIR)   # TABELAS_DIR já definido no topo como /var/data/tabelas
     p.mkdir(parents=True, exist_ok=True)
     return p
 
