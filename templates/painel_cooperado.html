@@ -1048,42 +1048,101 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<!-- Toast de avisos + som -->
-<script>
+<!-- <script>
 document.addEventListener("DOMContentLoaded", function () {
   const toastEl = document.getElementById("toastAvisos");
   const audio = document.getElementById("avisoSound");
-  const unreadCount = parseInt({{ unread|tojson }});
+  const countEl = document.getElementById("toastCount");
+  const endpoint = toastEl?.getAttribute("data-unread-endpoint") || "/avisos/unread_count";
+
   if (!toastEl || !audio) return;
 
-  audio.muted = false; audio.volume = 1.0;
-  const toast = new bootstrap.Toast(toastEl, { autohide:false });
+  const toast = new bootstrap.Toast(toastEl, { autohide: false });
 
-  function renderCount(c){ const el = document.getElementById('toastCount'); if (el) el.textContent = String(c); }
-  function ensureToast(c){ renderCount(c); if (c>0) toast.show(); else toast.hide(); }
+  let prev = Number({{ unread|tojson }}) || 0;
+  let audioPending = false;
+  let audioUnlocked = false;
+  let loginToastShown = false;
 
-  // Mostra se já tem não lidos
-  ensureToast(unreadCount);
-  if (unreadCount>0){ audio.currentTime=0; audio.play().catch(()=>{}); }
+  function renderCount(c) {
+    if (countEl) countEl.textContent = String(c);
+  }
 
-  // Poll simples
-  const endpoint = toastEl.getAttribute('data-unread-endpoint') || '/avisos/unread_count';
-  let prev = unreadCount;
-  async function checkUnread(){
-    try{
-      const resp = await fetch(endpoint, { headers:{'Accept':'application/json'}, cache:'no-store', credentials:'same-origin' });
+  function showToast(c) {
+    renderCount(c);
+    if (c > 0) toast.show();
+    else toast.hide();
+  }
+
+  async function playSound() {
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+      audioPending = false;
+    } catch (e) {
+      audioPending = true;
+    }
+  }
+
+  async function unlockAudioOnce() {
+    if (audioUnlocked) return;
+    try {
+      audio.muted = true;
+      audio.currentTime = 0;
+      await audio.play();
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+      audioUnlocked = true;
+
+      if (audioPending) {
+        playSound();
+      }
+    } catch (e) {}
+  }
+
+  ["click", "touchstart", "keydown"].forEach(evt => {
+    window.addEventListener(evt, unlockAudioOnce, { once: true, passive: true });
+  });
+
+  // Ao entrar no painel
+  showToast(prev);
+  if (prev > 0 && !loginToastShown) {
+    loginToastShown = true;
+    playSound();
+  }
+
+  async function checkUnread() {
+    try {
+      const resp = await fetch(endpoint, {
+        headers: { "Accept": "application/json" },
+        cache: "no-store",
+        credentials: "same-origin"
+      });
       if (!resp.ok) return;
+
       const data = await resp.json();
       const c = Number(data.unread ?? data.count ?? 0) || 0;
-      ensureToast(c);
-      if ((prev===0 && c>0) || c>prev){ try{ audio.currentTime=0; await audio.play(); }catch{} }
+
+      showToast(c);
+
+      if (prev === null) {
+        prev = c;
+        return;
+      }
+
+      if ((prev === 0 && c > 0) || c > prev) {
+        playSound();
+      }
+
       prev = c;
-    }catch{}
+    } catch (e) {}
   }
+
+  checkUnread();
   setInterval(checkUnread, 8000);
 });
 </script>
-
 <!-- Troca de escala (enviar) -->
 <script>
 const COOPS_FINAL = {{ cooperados_json | default([]) | tojson }};
