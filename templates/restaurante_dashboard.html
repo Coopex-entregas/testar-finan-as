@@ -1751,11 +1751,14 @@ function prefetch(href){
 // ========================
 // TOAST & BADGE DE AVISOS (CORRIGIDO: SEM PISCAR)
 // ========================
-let toastAvisosInst=null;
+let toastAvisosInst = null;
+
 function ensureToastInstance(){
-  const el=document.getElementById('toastAvisos');
-  if(!el) return null;
-  if(!toastAvisosInst) toastAvisosInst = new bootstrap.Toast(el,{autohide:false});
+  const el = document.getElementById('toastAvisos');
+  if (!el) return null;
+  if (!toastAvisosInst) {
+    toastAvisosInst = new bootstrap.Toast(el, { autohide: false });
+  }
   return toastAvisosInst;
 }
 
@@ -1765,21 +1768,33 @@ function ensureToastInstance(){
  * - showToast=true : abre se n>0 / fecha se n==0
  */
 function setAvisosBadge(n, opts){
-  const o = Object.assign({showToast:false}, (opts||{}));
+  const o = Object.assign({ showToast: false }, (opts || {}));
 
-  const b=document.getElementById('badgeAvisos');
-  if(b){
-    b.style.display = n>0 ? 'inline-flex':'none';
-    b.textContent=n;
+  const b = document.getElementById('badgeAvisos');
+  if (b){
+    b.style.display = n > 0 ? 'inline-flex' : 'none';
+    b.textContent = String(n);
   }
-  const tCnt=document.getElementById('toastCount');
-  if(tCnt) tCnt.textContent=n;
 
-  if(!o.showToast) return;
+  const tCnt = document.getElementById('toastCount');
+  if (tCnt) tCnt.textContent = String(n);
 
-  const t=ensureToastInstance();
-  if(t){
-    if(n>0) t.show();
+  const badgeTitulo = document.getElementById('badgeTitulo');
+  if (badgeTitulo){
+    if (n > 0){
+      badgeTitulo.className = 'badge text-bg-danger ms-2';
+      badgeTitulo.textContent = `${n} não lido(s)`;
+    } else {
+      badgeTitulo.className = 'badge text-bg-success ms-2';
+      badgeTitulo.textContent = 'Tudo lido';
+    }
+  }
+
+  if (!o.showToast) return;
+
+  const t = ensureToastInstance();
+  if (t){
+    if (n > 0) t.show();
     else t.hide();
   }
 }
@@ -1792,17 +1807,17 @@ let __audioAvisosPending = false;
 
 function tryPlayAvisoSound(){
   const a = document.getElementById('audioAvisos');
-  if(!a) return;
+  if (!a) return;
 
   try{
     a.currentTime = 0;
     const p = a.play();
-    if(p && typeof p.catch === 'function'){
-      p.catch(()=>{
+    if (p && typeof p.catch === 'function'){
+      p.catch(() => {
         __audioAvisosPending = true; // se bloqueou autoplay, toca no primeiro clique/tecla
       });
     }
-  }catch(e){
+  } catch (e){
     __audioAvisosPending = true;
   }
 }
@@ -1812,12 +1827,14 @@ function tryPlayAvisoSound(){
 // ========================
 (function unlockAudioOnce(){
   const a = document.getElementById('audioAvisos');
-  if(!a) return;
+  if (!a) return;
 
   let unlocked = false;
+
   async function unlock(){
-    if(unlocked) return;
+    if (unlocked) return;
     unlocked = true;
+
     try{
       a.muted = true;
       a.currentTime = 0;
@@ -1829,28 +1846,29 @@ function tryPlayAvisoSound(){
       __audioAvisosUnlocked = true;
 
       // se tinha som pendente (login bloqueado), toca agora
-      if(__audioAvisosPending){
+      if (__audioAvisosPending){
         __audioAvisosPending = false;
         tryPlayAvisoSound();
       }
-    }catch(e){
+    } catch (e){
       unlocked = false;
       __audioAvisosUnlocked = false;
     }
   }
 
-  ['click','touchstart','keydown'].forEach(evt=>{
-    window.addEventListener(evt, unlock, {once:true, passive:true});
+  ['click', 'touchstart', 'keydown'].forEach(evt => {
+    window.addEventListener(evt, unlock, { once: true, passive: true });
   });
 })();
 
 // ========================
 // AVISOS
 // ========================
-let avisosWired=false;
+let avisosWired = false;
+
 function initAvisos(){
-  if(avisosWired) return;
-  avisosWired=true;
+  if (avisosWired) return;
+  avisosWired = true;
 
   const toastOKEl = document.getElementById('toastOK');
   const toastOK = toastOKEl ? new bootstrap.Toast(toastOKEl) : null;
@@ -1858,11 +1876,177 @@ function initAvisos(){
   function getUnread(){
     return document.querySelectorAll('.aviso-card[data-lido="0"]').length;
   }
+
   function refresh(){
     // aqui NÃO abre toast (para não piscar)
-    setAvisosBadge(getUnread(), {showToast:false});
+    setAvisosBadge(getUnread(), { showToast: false });
   }
 
+  // filtro "somente não lidos"
+  document.getElementById('toggleNaoLidos')?.addEventListener('change', (e) => {
+    const only = e.target.checked;
+    document.querySelectorAll('.aviso-card').forEach(card => {
+      const lido = card.getAttribute('data-lido') === '1';
+      card.style.display = (only && lido) ? 'none' : '';
+    });
+  });
+
+  // marcar aviso como lido
+  (document.getElementById('avisosListContainer') || document).addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-acao="marcar-lido"]');
+    if (!btn) return;
+
+    const url = btn.getAttribute('data-url');
+    const card = btn.closest('.aviso-card');
+
+    try{
+      const resp = await fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      if (!resp.ok){
+        alert('Falha ao marcar como lido.');
+        return;
+      }
+
+      if (card){
+        card.setAttribute('data-lido', '1');
+        card.classList.add('lido');
+
+        const meta = card.querySelector('.text-muted.small');
+        if (meta){
+          const html = meta.innerHTML
+            .replace(/•\s*<span class="text-danger">Não lido<\/span>/i, '')
+            .replace(/•\s*<span class="text-success">Lido<\/span>/i, '');
+          meta.innerHTML = html + ' • <span class="text-success">Lido</span>';
+        }
+      }
+
+      btn.remove();
+      refresh();
+      if (toastOK) toastOK.show();
+
+      // sincroniza com backend para manter contador certo
+      pollAvisos();
+    } catch (e){
+      alert('Erro de rede ao marcar aviso como lido.');
+    }
+  });
+
+  refresh();
+
+  // se a seção veio vazia, carrega pela rota
+  if (!document.querySelector('#avisosListContainer .aviso-card')){
+    const href = document.getElementById('linkAvisos')?.href;
+    if (href) loadAvisosFromRoute(href);
+  }
+}
+
+async function loadAvisosFromRoute(href){
+  try{
+    const res = await fetch(href, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(res.status);
+
+    const html = await res.text();
+    const dom = new DOMParser().parseFromString(html, 'text/html');
+
+    const cards = [...dom.querySelectorAll('.aviso-card')];
+    const cont = document.getElementById('avisosListContainer');
+    if (!cont) return;
+
+    cont.innerHTML = '';
+
+    if (cards.length){
+      cards.forEach(c => cont.appendChild(document.importNode(c, true)));
+
+      avisosWired = false;
+      initAvisos();
+
+      const unreadLocal = cards.filter(c => c.getAttribute('data-lido') === '0').length;
+      setAvisosBadge(unreadLocal, { showToast: false });
+
+      // alinha com backend
+      pollAvisos();
+    } else {
+      cont.innerHTML = '<div class="card card-body"><div class="text-muted"><i class="bi bi-inbox me-1"></i> Nenhum aviso disponível.</div></div>';
+      setAvisosBadge(0, { showToast: false });
+      pollAvisos();
+    }
+  } catch (e){
+    const cont = document.getElementById('avisosListContainer');
+    if (cont){
+      cont.innerHTML = '<div class="card card-body text-muted">Não foi possível carregar os avisos agora.</div>';
+    }
+  }
+}
+
+// ========================
+// POLLING DE AVISOS
+// ========================
+let lastUnread = null;
+let __shownAtLogin = false;
+
+function onNewAviso(unread){
+  // abre toast uma vez
+  setAvisosBadge(unread, { showToast: true });
+
+  // toca som
+  tryPlayAvisoSound();
+}
+
+async function pollAvisos(){
+  try{
+    const r = await fetch('/api/rest/avisos/unread_count', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+
+    if (!r.ok) throw new Error(r.status);
+
+    const j = await r.json();
+    if (!j || !j.ok) return;
+
+    const unread = Number(j.unread || 0);
+
+    // atualiza badge sem abrir toast
+    setAvisosBadge(unread, { showToast: false });
+
+    // primeira leitura após login/carregamento
+    if (lastUnread === null){
+      lastUnread = unread;
+
+      if (unread > 0 && !__shownAtLogin){
+        __shownAtLogin = true;
+        setAvisosBadge(unread, { showToast: true });
+        tryPlayAvisoSound();
+      }
+      return;
+    }
+
+    // novo aviso chegou
+    if (unread > lastUnread){
+      onNewAviso(unread);
+    }
+
+    // zerou
+    if (unread === 0 && lastUnread > 0){
+      setAvisosBadge(0, { showToast: true });
+    }
+
+    lastUnread = unread;
+  } catch (e){
+    // silencioso
+  }
+}
+  
   // filtro
   document.getElementById('toggleNaoLidos')?.addEventListener('change', (e)=>{
     const only=e.target.checked;
