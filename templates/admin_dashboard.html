@@ -328,16 +328,11 @@
 
       <div id="menuFinanceiro" class="collapse show nav-sublinks">
         <!-- Lançamentos (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='lancamentos' else '' }}"
-           data-bs-toggle="tab"
-           data-bs-target="#lancamentos"
-           href="#lancamentos"
-           role="tab"
-           aria-controls="lancamentos"
-           aria-selected="{{ 'true' if _tab=='lancamentos' else 'false' }}">
-          <i class="bi bi-journal-text"></i>
-          <span class="nav-link-label">Lançamentos</span>
-        </a>
+       <a class="nav-sublink {{ 'active' if request.endpoint == 'admin_lancamentos' else '' }}"
+   href="{{ url_for('admin_lancamentos') }}">
+  <i class="bi bi-journal-text"></i>
+  <span class="nav-link-label">Lançamentos</span>
+</a>
 
         <!-- Receitas Coop (tab) -->
         <a class="nav-sublink {{ 'active' if _tab=='receitas' else '' }}"
