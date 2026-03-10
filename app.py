@@ -1872,8 +1872,8 @@ def admin_lancamentos():
 def filtrar_lancamentos():
     qs = request.query_string.decode("utf-8")
     base = url_for("admin_lancamentos")
-    joiner = "&" if qs else ""
-    return redirect(f"{base}{joiner}{qs}")
+    sep = "?" if qs else ""
+    return redirect(f"{base}{sep}{qs}"))
 
 @portal_bp.get("/avisos", endpoint="portal_cooperado_avisos")
 @role_required("cooperado")
