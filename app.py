@@ -117,14 +117,45 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 # Compat: Restaurante Avisos (evita 404 no front)
 # =========================
 @app.get("/api/rest/avisos/unread_count")
+@role_required("restaurante")
 def api_rest_avisos_unread_count():
-    """Endpoint de compatibilidade usado pelo painel do restaurante.
-    Se você não usa módulo de avisos por restaurante, retorna 0.
-    """
+    def _nocache(resp):
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return resp
+
+    u_id = session.get("user_id")
+    if not u_id:
+        return _nocache(jsonify(ok=False, unread=0, count=0)), 401
+
+    rest = Restaurante.query.filter_by(usuario_id=u_id).first()
+    if not rest:
+        return _nocache(jsonify(ok=False, unread=0, count=0)), 404
+
     try:
-        return jsonify(count=0)
+        try:
+            avisos = list(get_avisos_for_restaurante(rest))
+        except NameError:
+            avisos = (
+                Aviso.query
+                .filter(Aviso.ativo.is_(True))
+                .filter(or_(Aviso.tipo == "global", Aviso.tipo == "restaurante"))
+                .order_by(Aviso.fixado.desc(), Aviso.criado_em.desc())
+                .all()
+            )
+
+        lidos_ids = {
+            row[0]
+            for row in db.session.query(AvisoLeitura.aviso_id)
+            .filter_by(restaurante_id=rest.id)
+            .all()
+        }
+
+        unread = sum(1 for a in avisos if a.id not in lidos_ids)
+
+        return _nocache(jsonify(ok=True, unread=int(unread), count=int(unread))), 200
     except Exception:
-        return jsonify(count=0)
+        db.session.rollback()
+        return _nocache(jsonify(ok=False, unread=0, count=0)), 500
 
 app.secret_key = os.environ.get("SECRET_KEY", "coopex-secret")
 
