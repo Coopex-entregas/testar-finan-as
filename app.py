@@ -672,27 +672,6 @@ class AvisoLeitura(db.Model):
     lido_em = db.Column(db.DateTime, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint("aviso_id", "cooperado_id", "restaurante_id", name="uq_aviso_dest"), )
 
-# =========================
-# Helpers
-# =========================
-def _is_sqlite() -> bool:
-    try:
-        return db.session.get_bind().dialect.name == "sqlite"
-    except Exception:
-        return "sqlite" in (app.config.get("SQLALCHEMY_DATABASE_URI") or "")
-
-
-from sqlalchemy.exc import InvalidRequestError
-
-# Se não existir, define _is_sqlite() de forma segura
-try:
-    _is_sqlite  # type: ignore
-except NameError:
-    def _is_sqlite() -> bool:
-        try:
-            return db.engine.url.get_backend_name() == "sqlite"
-        except Exception:
-            return "sqlite" in str(db.engine.url).lower()
 
 # ===== Alíquotas (parametrizáveis por env) =====
 # Por padrão:
