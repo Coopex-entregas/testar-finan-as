@@ -1705,6 +1705,14 @@ function pushView(v){
   }catch(e){}
 }
 
+function replaceView(v){
+  try{
+    const u = new URL(location.href);
+    u.searchParams.set('view', v);
+    history.replaceState({view:v}, '', u.toString());
+  }catch(e){}
+}
+
 function startView(){
   try{
     return new URL(location.href).searchParams.get('view') || 'lancar';
@@ -1751,6 +1759,7 @@ let avisosWired = false;
 let lastUnread = null;
 let __shownAtLogin = false;
 let __audioAvisosPending = false;
+let __pollAvisosTimer = null;
 
 function ensureToastInstance(){
   const el = document.getElementById('toastAvisos');
@@ -1898,6 +1907,12 @@ async function pollAvisos(){
   } catch (e){}
 }
 
+function startAvisosPolling(){
+  if (__pollAvisosTimer) clearInterval(__pollAvisosTimer);
+  pollAvisos();
+  __pollAvisosTimer = setInterval(pollAvisos, 8000);
+}
+
 function initAvisos(){
   if (avisosWired) return;
 
@@ -2017,11 +2032,11 @@ async function loadAvisosFromRoute(href){
 
       const unreadLocal = cards.filter(c => c.getAttribute('data-lido') === '0').length;
       setAvisosBadge(unreadLocal, { showToast:false });
-      pollAvisos();
+      lastUnread = unreadLocal;
     } else {
       cont.innerHTML = '<div class="card card-body text-muted"><i class="bi bi-inbox me-1"></i> Nenhum aviso disponível.</div>';
       setAvisosBadge(0, { showToast:false });
-      pollAvisos();
+      lastUnread = 0;
     }
   } catch (e){
     const cont = document.getElementById('avisosListContainer');
@@ -2615,16 +2630,12 @@ function wireTabelaViewer(){
   });
 }
 
-document.getElementById('sideNav')?.addEventListener('click', (e)=>{
+document.getElementById('sideNav')?.addEventListener('click', async (e)=>{
   const a = e.target.closest('a');
   if (!a) return;
 
   const t = a.getAttribute('data-target');
   if (!t) return;
-
-  if (t === 'avisos') {
-    return;
-  }
 
   e.preventDefault();
 
@@ -2634,29 +2645,61 @@ document.getElementById('sideNav')?.addEventListener('click', (e)=>{
   showSection(t);
   pushView(t);
 
+  if (t === 'avisos'){
+    const href = a.getAttribute('href');
+    if (href) await loadAvisosFromRoute(href);
+  }
+
   if (t === 'tabelas'){
     prefetch(a.href);
   }
 });
 
-document.getElementById('toastVerAgora')?.addEventListener('click', (e)=>{
+document.getElementById('toastVerAgora')?.addEventListener('click', async (e)=>{
   e.preventDefault();
   const href = e.currentTarget.getAttribute('href');
-  if (href) window.location.href = href;
+
+  showSection('avisos');
+  pushView('avisos');
+
+  document.querySelectorAll('#sideNav a').forEach(x=>x.classList.remove('active'));
+  document.getElementById('linkAvisos')?.classList.add('active');
+
+  if (href) await loadAvisosFromRoute(href);
 });
 
-document.addEventListener('DOMContentLoaded', ()=>{
+document.addEventListener('DOMContentLoaded', async ()=>{
   const initial = startView();
+
+  replaceView(initial);
   showSection(initial);
   hideLancOverlay();
 
-  pollAvisos();
-  setInterval(pollAvisos, 8000);
+  if (initial === 'avisos'){
+    const href = document.getElementById('linkAvisos')?.getAttribute('href');
+    if (href) await loadAvisosFromRoute(href);
+  }
+
+  startAvisosPolling();
 });
 
-window.addEventListener('popstate', (ev)=>{
-  const v = (ev.state && ev.state.view) || startView();
+window.addEventListener('popstate', async (ev)=>{
+  let v = (ev.state && ev.state.view) || startView();
+
+  if (!v){
+    v = 'lancar';
+    replaceView(v);
+  }
+
   showSection(v);
+
+  document.querySelectorAll('#sideNav a').forEach(x=>x.classList.remove('active'));
+  document.querySelector(`#sideNav a[data-target="${v}"]`)?.classList.add('active');
+
+  if (v === 'avisos'){
+    const href = document.getElementById('linkAvisos')?.getAttribute('href');
+    if (href) await loadAvisosFromRoute(href);
+  }
 });
 </script>
 </body>
