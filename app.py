@@ -112,20 +112,18 @@ def _build_db_uri() -> str:
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
+URI = _build_db_uri()
+
 # 🚫 Guard: impede cair em SQLite em produção se DATABASE_URL não existir
 if "sqlite" in URI and os.environ.get("FLASK_ENV") == "production":
     raise RuntimeError("DATABASE_URL ausente em produção")
 
 # ===== Pool dimensionado por worker =====
 workers = int(os.environ.get("WEB_CONCURRENCY", "1") or "1")
-threads = int(os.environ.get("GTHREADS", "1") or "1")  # se não usar threads, fica 1
+threads = int(os.environ.get("GTHREADS", "1") or "1")
+
 req_concurrency = max(1, workers * threads)
-
-# alvo global de conexões por instância (ajustável via env)
-# 40 é bem suficiente para ~70 pessoas usando o sistema sem estourar limite do Postgres
 target_total = int(os.environ.get("DB_TARGET_CONNS", "40") or "40")
-
-# por worker, limitado para não exagerar:
 per_worker_target = max(5, min(target_total // max(1, workers), 15))
 
 default_pool_size = min(per_worker_target, req_concurrency + 2)
@@ -133,14 +131,14 @@ default_max_overflow = max(5, default_pool_size)
 
 pool_size = int(os.environ.get("DB_POOL_SIZE", str(default_pool_size)))
 max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", str(default_max_overflow)))
-pool_recycle = int(os.environ.get("SQL_POOL_RECYCLE", "240"))  # 4 min < timeout de idle do provider
-pool_timeout = int(os.environ.get("SQL_POOL_TIMEOUT", "20"))   # espera máx. por conexão do pool (s)
+pool_recycle = int(os.environ.get("SQL_POOL_RECYCLE", "240"))
+pool_timeout = int(os.environ.get("SQL_POOL_TIMEOUT", "20"))
 
 app.config.update(
     SQLALCHEMY_DATABASE_URI=URI,
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     JSON_SORT_KEYS=False,
-    MAX_CONTENT_LENGTH=32 * 1024 * 1024,  # 32MB
+    MAX_CONTENT_LENGTH=32 * 1024 * 1024,
     SESSION_COOKIE_HTTPONLY=True,
     REMEMBER_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -151,13 +149,11 @@ app.config.update(
         "pool_size": pool_size,
         "max_overflow": max_overflow,
         "pool_timeout": pool_timeout,
-        "pool_pre_ping": True,       # testa conexão antes de usar (evita usar conn morta)
-        "pool_use_lifo": True,       # reduz churn de conexões sob carga
-        "pool_recycle": pool_recycle,  # recicla sockets ociosos (evita timeout de idle / TLS)
+        "pool_pre_ping": True,
+        "pool_use_lifo": True,
+        "pool_recycle": pool_recycle,
         "connect_args": {
-            # tempo máx. para abrir conexão
             "connect_timeout": int(os.getenv("PGCONNECT_TIMEOUT", "5")),
-            # tempo máx. por statement no servidor (defensivo)
             "options": "-c statement_timeout=15000",
         },
     },
