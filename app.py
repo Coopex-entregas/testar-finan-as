@@ -6968,9 +6968,10 @@ except NameError:
 # Helpers
 # ---------------------------------------------------------------------------
 def _tabelas_base_dir() -> Path:
-    p = Path(TABELAS_DIR)   # TABELAS_DIR já definido no topo como /var/data/tabelas
+    p = Path(TABELAS_DIR)
     p.mkdir(parents=True, exist_ok=True)
     return p
+
 
 def _norm_txt(s: str) -> str:
     s = unicodedata.normalize("NFD", (s or "").strip())
@@ -6978,9 +6979,11 @@ def _norm_txt(s: str) -> str:
     s = re.sub(r"\s+", " ", s)
     return s.lower()
 
+
 def _guess_mimetype_from_path(path: str) -> str:
     mt, _ = mimetypes.guess_type(path)
     return mt or "application/octet-stream"
+
 
 def _enforce_restaurante_titulo(tabela, restaurante):
     """
@@ -6994,58 +6997,72 @@ def _enforce_restaurante_titulo(tabela, restaurante):
     if _norm_txt(tabela.titulo) != _norm_txt(login_nome):
         abort(403)
 
+
 def _serve_tabela_or_redirect(tabela, *, as_attachment: bool):
     """
     Resolve e serve o arquivo da Tabela:
-    - http(s) => redirect
-    - sempre tenta primeiro static/uploads/tabelas/<arquivo>
-    - aceita absoluto, relativo e só o nome
-    - ignora querystring/fragments (ex.: foo.pdf?v=123#x)
+    prioridade:
+      1) arquivo_nome salvo no banco
+      2) arquivo_url local legado
+      3) arquivo_url externa http(s)
     """
-    url = (tabela.arquivo_url or "").strip()
-    if not url:
-        abort(404)
-
-    # URL externa
-    if url.startswith(("http://", "https://")):
-        return redirect(url)
-
-    base_dir    = Path(BASE_DIR)
+    base_dir = Path(BASE_DIR)
     tabelas_dir = _tabelas_base_dir()
-
-    # normaliza: remove "/" inicial, query e fragment
-    raw = url.lstrip("/")
-    raw_no_q = raw.split("?", 1)[0].split("#", 1)[0]
-    fname = (raw_no_q.split("/")[-1] if raw_no_q else "").strip()
 
     candidates = []
 
-    # 1) SEMPRE prioriza nosso diretório oficial
-    if fname:
-        candidates.append(tabelas_dir / fname)
+    # 1) PRIORIDADE TOTAL: arquivo_nome
+    nome = (getattr(tabela, "arquivo_nome", None) or "").strip()
+    if nome:
+        nome_limpo = os.path.basename(nome)
+        candidates.append(tabelas_dir / nome_limpo)
+        candidates.append(base_dir / "static" / "uploads" / "tabelas" / nome_limpo)
+        candidates.append(base_dir / "uploads" / "tabelas" / nome_limpo)
 
-    # 2) Como veio, relativo ao BASE_DIR (compat c/ legado: static/uploads/tabelas/...)
-    candidates.append(base_dir / raw_no_q)
+    # 2) Compatibilidade com arquivo_url local/antigo
+    url = (getattr(tabela, "arquivo_url", None) or "").strip()
+    if url:
+        # URL externa
+        if url.startswith(("http://", "https://")):
+            return redirect(url)
 
-    # 3) Absoluto (se alguém gravou caminho completo por engano)
-    p = Path(url)
-    if p.is_absolute():
-        candidates.append(p)
+        raw = url.lstrip("/")
+        raw_no_q = raw.split("?", 1)[0].split("#", 1)[0]
+        fname = (raw_no_q.split("/")[-1] if raw_no_q else "").strip()
 
-    # 4) Mais dois legados comuns
-    if fname:
-        candidates.append(base_dir / "uploads" / "tabelas" / fname)
-        candidates.append(base_dir / "static" / "uploads" / "tabelas" / fname)
+        if fname:
+            candidates.append(tabelas_dir / fname)
 
-    file_path = next((c for c in candidates if c.exists() and c.is_file()), None)
+        if raw_no_q:
+            candidates.append(base_dir / raw_no_q)
+
+        p = Path(raw_no_q)
+        if p.is_absolute():
+            candidates.append(p)
+
+        if fname:
+            candidates.append(base_dir / "uploads" / "tabelas" / fname)
+            candidates.append(base_dir / "static" / "uploads" / "tabelas" / fname)
+
+    # remove duplicados preservando ordem
+    vistos = set()
+    candidatos_finais = []
+    for c in candidates:
+        s = str(c)
+        if s not in vistos:
+            vistos.add(s)
+            candidatos_finais.append(c)
+
+    file_path = next((c for c in candidatos_finais if c.exists() and c.is_file()), None)
     if not file_path:
         try:
-            log.warning(
-                "Arquivo de Tabela não encontrado. id=%s titulo=%r arquivo_url=%r tents=%r",
+            app.logger.warning(
+                "Arquivo de Tabela não encontrado. id=%s titulo=%r arquivo_nome=%r arquivo_url=%r tents=%r",
                 getattr(tabela, "id", None),
                 getattr(tabela, "titulo", None),
-                tabela.arquivo_url,
-                [str(c) for c in candidates],
+                getattr(tabela, "arquivo_nome", None),
+                getattr(tabela, "arquivo_url", None),
+                [str(c) for c in candidatos_finais],
             )
         except Exception:
             pass
@@ -7054,10 +7071,10 @@ def _serve_tabela_or_redirect(tabela, *, as_attachment: bool):
     return send_file(
         str(file_path),
         as_attachment=as_attachment,
-        download_name=(tabela.arquivo_nome or file_path.name),
+        download_name=(getattr(tabela, "arquivo_nome", None) or file_path.name),
         mimetype=_guess_mimetype_from_path(str(file_path)),
     )
-
+    
 # ---------------------------------------------------------------------------
 # Admin: listar / upload / delete
 # ---------------------------------------------------------------------------
