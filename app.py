@@ -29,7 +29,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dateutil.relativedelta import relativedelta
 
-# ✅ FALTAVA ISSO (resolve o erro do UserMixin e já deixa pronto p/ login)
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -49,7 +48,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, IntegrityError, DisconnectionError
 from sqlalchemy import delete as sa_delete
 
-# 👉 Novo: para gerar XLSX em memória
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
@@ -57,28 +55,24 @@ from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 # ============ App / Diretórios ============
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# uploads locais do app
+# uploads locais do app (somente legado / compatibilidade)
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# legado/local
-DOCS_DIR = os.path.join(UPLOAD_DIR, "docs")
+DOCS_DIR = os.path.join(UPLOAD_DIR, "docs")              # legado
+STATIC_TABLES = os.path.join(UPLOAD_DIR, "tabelas")      # legado
 os.makedirs(DOCS_DIR, exist_ok=True)
-
-STATIC_TABLES = os.path.join(UPLOAD_DIR, "tabelas")
 os.makedirs(STATIC_TABLES, exist_ok=True)
 
 # Persistência real (Render Disk)
+# Para persistir entre deploys, o Disk do Render deve estar montado em /var/data
 PERSIST_ROOT = os.environ.get("PERSIST_ROOT", "/var/data")
-if not os.path.isdir(PERSIST_ROOT):
-    PERSIST_ROOT = os.path.join(BASE_DIR, "data")
 os.makedirs(PERSIST_ROOT, exist_ok=True)
 
 # persistentes
 TABELAS_DIR = os.path.join(PERSIST_ROOT, "tabelas")
-os.makedirs(TABELAS_DIR, exist_ok=True)
-
 DOCS_PERSIST_DIR = os.path.join(PERSIST_ROOT, "docs")
+os.makedirs(TABELAS_DIR, exist_ok=True)
 os.makedirs(DOCS_PERSIST_DIR, exist_ok=True)
 
 
@@ -96,17 +90,15 @@ def _build_db_uri() -> str:
     if not raw:
         return "sqlite:///" + os.path.join(BASE_DIR, "app.db")
 
-    # força driver psycopg3 (SQLAlchemy)
     if raw.startswith("postgres://"):
         raw = raw.replace("postgres://", "postgresql+psycopg://", 1)
     elif raw.startswith("postgresql://") and "+psycopg" not in raw:
         raw = raw.replace("postgresql://", "postgresql+psycopg://", 1)
 
-    # SSL + keepalive + app name via libpq (idempotente)
     extras = {
         "sslmode": "require",
         "keepalives": "1",
-        "keepalives_idle": "30",   # segundos ocioso antes de mandar keepalive
+        "keepalives_idle": "30",
         "keepalives_interval": "10",
         "keepalives_count": "3",
         "application_name": os.environ.get("APP_NAME", "financas-dxsu"),
@@ -123,11 +115,9 @@ app.secret_key = app.config["SECRET_KEY"]
 # BANCO
 URI = _build_db_uri()
 
-# trava sqlite em produção
 if "sqlite" in URI and os.environ.get("FLASK_ENV") == "production":
     raise RuntimeError("DATABASE_URL ausente em produção")
 
-# POOL
 workers = int(os.environ.get("WEB_CONCURRENCY", "1") or "1")
 threads = int(os.environ.get("GTHREADS", "1") or "1")
 req_concurrency = max(1, workers * threads)
@@ -171,7 +161,6 @@ db = SQLAlchemy(app)
 
 def _sso_serializer():
     secret = os.environ.get("SSO_SHARED_SECRET") or app.secret_key
-    # "salt" separa o token SSO de outros usos do secret
     return URLSafeTimedSerializer(secret_key=secret, salt="coopex-sso-v1")
 
 def sso_load(token: str, max_age_seconds: int = 45) -> dict:
@@ -179,24 +168,19 @@ def sso_load(token: str, max_age_seconds: int = 45) -> dict:
     return s.loads(token, max_age=max_age_seconds)
 
 def _get_or_create_sso_user(tipo: str = "admin") -> Usuario:
-    """
-    Garante um usuário técnico para sessão SSO, evitando quebrar rotas que consultam Usuario.
-    """
     username = f"sso_{tipo}"
     u = Usuario.query.filter_by(usuario=username).first()
     if u:
         return u
 
-    # cria user técnico sem senha (não loga pelo /login)
     u = Usuario(usuario=username, tipo=tipo, senha_hash="!")
     db.session.add(u)
     db.session.commit()
     return u
-    
+
 
 def ajustar_banco():
     try:
-        # se você tiver essa função _is_sqlite, use; senão pode checar pela URI
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(despesas_cooperado);")).fetchall()
             colnames = {row[1] for row in cols}
@@ -215,33 +199,25 @@ def ajustar_banco():
         db.session.rollback()
 
 
-# ========= Retry de conexão p/ rotas críticas =========
 def with_db_retry(fn):
-    """
-    Decorator simples para repetir a operação 1x em caso de queda de conexão
-    (OperationalError / DisconnectionError). Usa junto de rotas que batem no banco.
-    """
     @wraps(fn)
     def wrapper(*args, **kwargs):
         last_exc = None
-        for attempt in range(2):  # tentativa 0 e 1
+        for attempt in range(2):
             try:
                 return fn(*args, **kwargs)
             except (OperationalError, DisconnectionError) as e:
                 last_exc = e
-                # rollback defensivo e pequeno backoff
                 db.session.rollback()
                 try:
                     app.logger.warning(f"[DB_RETRY] tentativa {attempt+1} falhou: {e}")
                 except Exception:
                     pass
                 time.sleep(0.2)
-        # se chegou aqui, estourou as tentativas
         raise last_exc
     return wrapper
 
 
-# Health checks
 @app.get("/healthz")
 def healthz():
     return "ok", 200
@@ -256,7 +232,6 @@ def readyz():
         return "not-ready", 503
 
 
-# Liga foreign_keys no SQLite
 @event.listens_for(Engine, "connect")
 def _set_sqlite_pragma(dbapi_con, con_record):
     try:
@@ -275,7 +250,6 @@ def _is_sqlite() -> bool:
         return "sqlite" in (app.config.get("SQLALCHEMY_DATABASE_URI") or "")
 
 
-
 # ==========================================
 # MODELOS
 # ==========================================
@@ -286,19 +260,17 @@ class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     usuario = db.Column(db.String(80), unique=True, nullable=False)
     senha_hash = db.Column(db.String(200), nullable=False)
-    tipo = db.Column(db.String(20), nullable=False)  # admin | cooperado | restaurante
+    tipo = db.Column(db.String(20), nullable=False)
 
-    # Importante: default no Python + default no BANCO
     ativo = db.Column(
         db.Boolean,
         nullable=False,
         default=True,
-        server_default=text("true")  # Postgres; funciona bem no Render
+        server_default=text("true")
     )
 
     @property
     def is_active(self) -> bool:
-        # Flask-Login usa isso para bloquear login de usuário inativo
         return bool(self.ativo)
 
     def set_password(self, raw: str):
@@ -315,14 +287,10 @@ class Cooperado(db.Model):
     nome = db.Column(db.String(120), nullable=False)
 
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, unique=True)
-
-    # 1 usuário -> 1 cooperado
     usuario_ref = db.relationship("Usuario", backref=db.backref("coop_account", uselist=False))
 
-    # NOVO
     telefone = db.Column(db.String(30))
 
-    # Foto no banco
     foto_bytes = db.Column(db.LargeBinary)
     foto_mime = db.Column(db.String(100))
     foto_filename = db.Column(db.String(255))
@@ -342,19 +310,14 @@ class Restaurante(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(120), nullable=False)
-    periodo = db.Column(db.String(20), nullable=False)  # seg-dom | sab-sex | sex-qui
+    periodo = db.Column(db.String(20), nullable=False)
 
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, unique=True)
-
-    # 1 usuário -> 1 restaurante
     usuario_ref = db.relationship("Usuario", backref=db.backref("rest_account", uselist=False))
 
-    # Foto no banco (bytea)
     foto_bytes = db.Column(db.LargeBinary)
     foto_mime = db.Column(db.String(100))
     foto_filename = db.Column(db.String(255))
-
-    # compatibilidade
     foto_url = db.Column(db.String(255))
 
 
@@ -362,7 +325,6 @@ class Lancamento(db.Model):
     __tablename__ = "lancamentos"
 
     id = db.Column(db.Integer, primary_key=True)
-
     restaurante_id = db.Column(db.Integer, db.ForeignKey("restaurantes.id"), nullable=False)
     cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=False)
 
@@ -371,46 +333,36 @@ class Lancamento(db.Model):
 
     descricao = db.Column(db.String(200))
     valor = db.Column(db.Float, default=0.0)
-
-    # Se sempre precisa de data, deixe nullable=False
     data = db.Column(db.Date, nullable=False)
 
     hora_inicio = db.Column(db.String(10))
     hora_fim = db.Column(db.String(10))
-
-    # opcional: quantidade de entregas
     qtd_entregas = db.Column(db.Integer)
 
 
-# === AVALIAÇÕES DE COOPERADO (NOVO) =========================================
 class AvaliacaoCooperado(db.Model):
     __tablename__ = "avaliacoes"
     id = db.Column(db.Integer, primary_key=True)
 
     restaurante_id = db.Column(db.Integer, db.ForeignKey("restaurantes.id"), nullable=False)
-    cooperado_id   = db.Column(db.Integer, db.ForeignKey("cooperados.id"),  nullable=False)
-
-    # 🔴 IMPORTANTE: CASCADE na FK para o lançamento
-    lancamento_id  = db.Column(
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=False)
+    lancamento_id = db.Column(
         db.Integer,
         db.ForeignKey("lancamentos.id", ondelete="CASCADE"),
-        nullable=True  # deixe True para permitir trocar para SET NULL futuramente, se quiser
+        nullable=True
     )
 
-    # notas 1..5
-    estrelas_geral         = db.Column(db.Integer)
-    estrelas_pontualidade  = db.Column(db.Integer)
-    estrelas_educacao      = db.Column(db.Integer)
-    estrelas_eficiencia    = db.Column(db.Integer)
-    estrelas_apresentacao  = db.Column(db.Integer)  # "Bem apresentado"
+    estrelas_geral = db.Column(db.Integer)
+    estrelas_pontualidade = db.Column(db.Integer)
+    estrelas_educacao = db.Column(db.Integer)
+    estrelas_eficiencia = db.Column(db.Integer)
+    estrelas_apresentacao = db.Column(db.Integer)
 
-    comentario       = db.Column(db.Text)
-
-    # IA/heurísticas
-    media_ponderada  = db.Column(db.Float)
-    sentimento       = db.Column(db.String(12))     # positivo | neutro | negativo
-    temas            = db.Column(db.String(255))    # palavras-chave resumidas
-    alerta_crise     = db.Column(db.Boolean, default=False)
+    comentario = db.Column(db.Text)
+    media_ponderada = db.Column(db.Float)
+    sentimento = db.Column(db.String(12))
+    temas = db.Column(db.String(255))
+    alerta_crise = db.Column(db.Boolean, default=False)
     feedback_motoboy = db.Column(db.Text)
 
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
@@ -442,34 +394,26 @@ class ReceitaCooperado(db.Model):
     data = db.Column(db.Date)
 
 
-# =========================
-# Models
-# =========================
 class DespesaCooperado(db.Model):
     __tablename__ = "despesas_cooperado"
     id = db.Column(db.Integer, primary_key=True)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=True)  # None = Todos
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=True)
     cooperado = db.relationship("Cooperado")
     descricao = db.Column(db.String(200), nullable=False)
     valor = db.Column(db.Float, default=0.0)
-    # legado (pontual)
     data = db.Column(db.Date)
-
-    # novo (período)
     data_inicio = db.Column(db.Date)
-    data_fim    = db.Column(db.Date)
+    data_fim = db.Column(db.Date)
 
-    # NOVO: vínculo forte para sabermos quem gerou a despesa
     beneficio_id = db.Column(
         db.Integer,
         db.ForeignKey("beneficios_registro.id", ondelete="CASCADE"),
         index=True,
-        nullable=True  # deixa True para migrar suave
+        nullable=True
     )
 
-    # 🔴 NOVO: marca se é adiantamento
     eh_adiantamento = db.Column(db.Boolean, default=False)
-    
+
 
 class BeneficioRegistro(db.Model):
     __tablename__ = "beneficios_registro"
@@ -477,12 +421,11 @@ class BeneficioRegistro(db.Model):
     data_inicial = db.Column(db.Date, nullable=False)
     data_final = db.Column(db.Date, nullable=False)
     data_lancamento = db.Column(db.Date)
-    tipo = db.Column(db.String(40), nullable=False)  # hospitalar | farmaceutico | alimentar
+    tipo = db.Column(db.String(40), nullable=False)
     valor_total = db.Column(db.Float, default=0.0)
-    recebedores_nomes = db.Column(db.Text)  # nomes separados por ';'
-    recebedores_ids = db.Column(db.Text)    # ids separados por ';'
+    recebedores_nomes = db.Column(db.Text)
+    recebedores_ids = db.Column(db.Text)
 
-    # NOVO: relacionamento reverso (não remove nada seu)
     despesas = db.relationship(
         "DespesaCooperado",
         primaryjoin="BeneficioRegistro.id==DespesaCooperado.beneficio_id",
@@ -490,32 +433,16 @@ class BeneficioRegistro(db.Model):
         passive_deletes=True
     )
 
-# =========================
-# Semana seg→dom + Normalização automática
-# =========================
-from sqlalchemy import event
 
 def semana_bounds(d: date):
-    """
-    Para uma data 'd', retorna (segunda, domingo) da mesma semana.
-    0=segunda .. 6=domingo
-    """
     dow = d.weekday()
-    ini = d - timedelta(days=dow)     # segunda
-    fim = ini + timedelta(days=6)     # domingo
+    ini = d - timedelta(days=dow)
+    fim = ini + timedelta(days=6)
     return ini, fim
 
-def normaliza_periodo(data: date|None, data_inicio: date|None, data_fim: date|None):
-    """
-    Regra global para DespesaCooperado:
-      - data_inicio = segunda
-      - data_fim    = domingo
-      - data        = domingo (== data_fim)
-    Se vier só 'data', deriva o período pela semana dessa data.
-    Se vier início/fim, ajusta para seg/dom da(s) semana(s) informada(s).
-    """
+
+def normaliza_periodo(data: date | None, data_inicio: date | None, data_fim: date | None):
     if data_inicio and data_fim:
-        # garante ordem e aplica bordas semanais
         if data_fim < data_inicio:
             data_inicio, data_fim = data_fim, data_inicio
         ini, _ = semana_bounds(data_inicio)
@@ -526,63 +453,44 @@ def normaliza_periodo(data: date|None, data_inicio: date|None, data_fim: date|No
     ini, fim = semana_bounds(base)
     return fim, ini, fim
 
-# === Normalização automática de período em DespesaCooperado ===
+
 def _ajusta_semana(target: DespesaCooperado):
     d, di, df = normaliza_periodo(target.data, target.data_inicio, target.data_fim)
     target.data = d
     target.data_inicio = di
     target.data_fim = df
 
+
 @event.listens_for(DespesaCooperado, "before_insert")
 def _desp_before_insert(mapper, connection, target):
     _ajusta_semana(target)
+
 
 @event.listens_for(DespesaCooperado, "before_update")
 def _desp_before_update(mapper, connection, target):
     _ajusta_semana(target)
 
 
-
 class Escala(db.Model):
     __tablename__ = "escalas"
     id = db.Column(db.Integer, primary_key=True)
-    cooperado_id = db.Column(
-        db.Integer,
-        db.ForeignKey("cooperados.id", ondelete="CASCADE"),
-        nullable=True  # pode não ter cadastro
-    )
-    restaurante_id = db.Column(
-        db.Integer,
-        db.ForeignKey("restaurantes.id", ondelete="CASCADE"),
-        nullable=True
-    )
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id", ondelete="CASCADE"), nullable=True)
+    restaurante_id = db.Column(db.Integer, db.ForeignKey("restaurantes.id", ondelete="CASCADE"), nullable=True)
 
     data = db.Column(db.String(40))
     turno = db.Column(db.String(50))
     horario = db.Column(db.String(50))
     contrato = db.Column(db.String(80))
     cor = db.Column(db.String(200))
-    cooperado_nome = db.Column(db.String(120))  # nome bruto da planilha quando não há cadastro
+    cooperado_nome = db.Column(db.String(120))
 
 
 class TrocaSolicitacao(db.Model):
     __tablename__ = "trocas"
     id = db.Column(db.Integer, primary_key=True)
-    solicitante_id = db.Column(
-        db.Integer,
-        db.ForeignKey("cooperados.id", ondelete="CASCADE"),
-        nullable=False
-    )
-    destino_id = db.Column(
-        db.Integer,
-        db.ForeignKey("cooperados.id", ondelete="CASCADE"),
-        nullable=False
-    )
-    origem_escala_id = db.Column(
-        db.Integer,
-        db.ForeignKey("escalas.id", ondelete="CASCADE"),
-        nullable=False
-    )
+    solicitante_id = db.Column(db.Integer, db.ForeignKey("cooperados.id", ondelete="CASCADE"), nullable=False)
+    destino_id = db.Column(db.Integer, db.ForeignKey("cooperados.id", ondelete="CASCADE"), nullable=False)
+    origem_escala_id = db.Column(db.Integer, db.ForeignKey("escalas.id", ondelete="CASCADE"), nullable=False)
     mensagem = db.Column(db.Text)
     status = db.Column(db.String(20), default="pendente")
     criada_em = db.Column(db.DateTime, default=datetime.utcnow)
@@ -607,7 +515,7 @@ class Documento(db.Model):
 
 
 class Tabela(db.Model):
-
+    __tablename__ = "tabelas"
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(200), nullable=False)
     categoria = db.Column(db.String(40))
@@ -617,7 +525,6 @@ class Tabela(db.Model):
     enviado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# ---------- AVISOS (NOVO) ----------
 aviso_restaurantes = db.Table(
     "aviso_restaurantes",
     db.Column("aviso_id", db.Integer, db.ForeignKey("avisos.id"), primary_key=True),
@@ -629,20 +536,17 @@ class Aviso(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(140), nullable=False)
     corpo = db.Column(db.Text, nullable=False)
-    # escopo: global | restaurante | cooperado
     tipo = db.Column(db.String(20), nullable=False, default="global")
 
-    # destino individual (opcional)
     destino_cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"))
     destino_cooperado = db.relationship("Cooperado", foreign_keys=[destino_cooperado_id])
 
-    # destino por restaurante (opcional, N:N)
     restaurantes = db.relationship("Restaurante", secondary=aviso_restaurantes, backref="avisos")
 
-    prioridade = db.Column(db.String(10), default="normal")  # normal | alta
+    prioridade = db.Column(db.String(10), default="normal")
     fixado = db.Column(db.Boolean, default=False)
     ativo = db.Column(db.Boolean, default=True)
-    inicio_em = db.Column(db.DateTime)  # janela de exibição opcional
+    inicio_em = db.Column(db.DateTime)
     fim_em = db.Column(db.DateTime)
 
     criado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
@@ -656,24 +560,15 @@ class AvisoLeitura(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=True, index=True)
     restaurante_id = db.Column(db.Integer, db.ForeignKey("restaurantes.id"), nullable=True, index=True)
     lido_em = db.Column(db.DateTime, default=datetime.utcnow)
-    __table_args__ = (db.UniqueConstraint("aviso_id", "cooperado_id", "restaurante_id", name="uq_aviso_dest"), )
+    __table_args__ = (
+        db.UniqueConstraint("aviso_id", "cooperado_id", "restaurante_id", name="uq_aviso_dest"),
+    )
 
 
-# ===== Alíquotas (parametrizáveis por env) =====
-# Por padrão:
-# INSS = 4% (0.04)
-# SEST/SENAT = 0,5% (0.005)
 INSS_ALIQ = float(os.environ.get("ALIQUOTA_INSS", "0.04"))
 SEST_ALIQ = float(os.environ.get("ALIQUOTA_SEST", "0.005"))
 
 def calc_descontos(valor: float) -> dict:
-    """
-    Calcula descontos padronizados (2 casas) e retorna um dicionário:
-      - inss: 4%
-      - sest: 0,5%
-      - encargos: total (INSS + SEST)
-      - liquido: valor - encargos
-    """
     v = float(valor or 0.0)
     inss = round(v * INSS_ALIQ, 2)
     sest = round(v * SEST_ALIQ, 2)
@@ -687,20 +582,7 @@ def calc_descontos(valor: float) -> dict:
     }
 
 
-# =========================
-# Init DB / Migração leve
-# =========================
 def init_db():
-    """
-    Versão unificada e idempotente:
-      1) Ajustes de performance para SQLite (WAL/synchronous)
-      2) Criação de todas as tabelas (create_all)
-      3) Índices úteis (cooperado/restaurante/criado_em)
-      4) Migrações leves (qtd_entregas, ativo em usuarios, colunas de escalas, fotos, tabela avaliacoes_restaurante)
-      5) Bootstrap mínimo (admin e config) — só se os modelos existirem
-    """
-
-    # 1) Perf no SQLite
     try:
         if _is_sqlite():
             db.session.execute(sa_text("PRAGMA journal_mode=WAL;"))
@@ -709,33 +591,29 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-    # 2) Tabelas/mapeamentos
     try:
         db.create_all()
     except Exception:
         db.session.rollback()
 
-    # 3) Índices de performance (idempotentes)
     try:
         if _is_sqlite():
             stmts = [
                 "CREATE INDEX IF NOT EXISTS ix_avaliacoes_criado_em   ON avaliacoes (criado_em)",
                 "CREATE INDEX IF NOT EXISTS ix_avaliacoes_rest_criado ON avaliacoes (restaurante_id, criado_em)",
-                "CREATE INDEX IF NOT EXISTS ix_avaliacoes_coop_criado ON avaliacoes (cooperado_id,  criado_em)",
-
+                "CREATE INDEX IF NOT EXISTS ix_avaliacoes_coop_criado ON avaliacoes (cooperado_id, criado_em)",
                 "CREATE INDEX IF NOT EXISTS ix_av_rest_criado_em      ON avaliacoes_restaurante (criado_em)",
                 "CREATE INDEX IF NOT EXISTS ix_av_rest_rest_criado    ON avaliacoes_restaurante (restaurante_id, criado_em)",
-                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop_criado    ON avaliacoes_restaurante (cooperado_id,  criado_em)",
+                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop_criado    ON avaliacoes_restaurante (cooperado_id, criado_em)",
             ]
         else:
             stmts = [
                 "CREATE INDEX IF NOT EXISTS ix_avaliacoes_criado_em   ON public.avaliacoes (criado_em)",
                 "CREATE INDEX IF NOT EXISTS ix_avaliacoes_rest_criado ON public.avaliacoes (restaurante_id, criado_em)",
-                "CREATE INDEX IF NOT EXISTS ix_avaliacoes_coop_criado ON public.avaliacoes (cooperado_id,  criado_em)",
-
+                "CREATE INDEX IF NOT EXISTS ix_avaliacoes_coop_criado ON public.avaliacoes (cooperado_id, criado_em)",
                 "CREATE INDEX IF NOT EXISTS ix_av_rest_criado_em      ON public.avaliacoes_restaurante (criado_em)",
                 "CREATE INDEX IF NOT EXISTS ix_av_rest_rest_criado    ON public.avaliacoes_restaurante (restaurante_id, criado_em)",
-                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop_criado    ON public.avaliacoes_restaurante (cooperado_id,  criado_em)",
+                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop_criado    ON public.avaliacoes_restaurante (cooperado_id, criado_em)",
             ]
 
         for sql in stmts:
@@ -744,7 +622,6 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-    # 4) Migração leve: garantir coluna qtd_entregas em lancamentos
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(lancamentos);")).fetchall()
@@ -761,7 +638,6 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-    # 4.x) período em despesas_cooperado (data_inicio / data_fim) + backfill
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(despesas_cooperado);")).fetchall()
@@ -773,7 +649,6 @@ def init_db():
                 db.session.execute(sa_text("ALTER TABLE despesas_cooperado ADD COLUMN data_fim DATE"))
             db.session.commit()
 
-            # Retropreenche linhas antigas
             db.session.execute(sa_text("""
                 UPDATE despesas_cooperado
                    SET data_inicio = COALESCE(data_inicio, data),
@@ -784,11 +659,11 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text("""
-                ALTER TABLE IF NOT EXISTS public.despesas_cooperado
+                ALTER TABLE IF EXISTS public.despesas_cooperado
                 ADD COLUMN IF NOT EXISTS data_inicio DATE
             """))
             db.session.execute(sa_text("""
-                ALTER TABLE IF NOT EXISTS public.despesas_cooperado
+                ALTER TABLE IF EXISTS public.despesas_cooperado
                 ADD COLUMN IF NOT EXISTS data_fim DATE
             """))
             db.session.commit()
@@ -804,7 +679,6 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-    # 4.y) beneficio_id em despesas_cooperado (FK p/ beneficios_registro)
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(despesas_cooperado);")).fetchall()
@@ -812,15 +686,15 @@ def init_db():
             if "beneficio_id" not in colnames:
                 db.session.execute(sa_text("ALTER TABLE despesas_cooperado ADD COLUMN beneficio_id INTEGER"))
             db.session.commit()
-            # OBS: SQLite não permite adicionar uma FK com ON DELETE CASCADE via ALTER TABLE;
-            # para ter a FK de fato, teria que recriar a tabela. Em dev, costuma bastar só a coluna.
         else:
-            # Index para consultas
+            db.session.execute(sa_text("""
+                ALTER TABLE IF EXISTS public.despesas_cooperado
+                ADD COLUMN IF NOT EXISTS beneficio_id INTEGER
+            """))
             db.session.execute(sa_text("""
                 CREATE INDEX IF NOT EXISTS ix_despesas_beneficio_id
                 ON public.despesas_cooperado (beneficio_id)
             """))
-            # Normaliza sequência: DROP antes do ADD (idempotente entre deploys)
             db.session.execute(sa_text("""
                 ALTER TABLE public.despesas_cooperado
                 DROP CONSTRAINT IF EXISTS despesas_cooperado_beneficio_id_fkey
@@ -835,7 +709,6 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-    # 4.z) eh_adiantamento em despesas_cooperado (marca adiantamento separado)
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(despesas_cooperado);")).fetchall()
@@ -852,8 +725,6 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-
-    # 4.1) cooperado_nome em escalas
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(escalas);")).fetchall()
@@ -863,14 +734,13 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS escalas "
+                "ALTER TABLE IF EXISTS escalas "
                 "ADD COLUMN IF NOT EXISTS cooperado_nome VARCHAR(120)"
             ))
             db.session.commit()
     except Exception:
         db.session.rollback()
 
-    # 4.2) restaurante_id em escalas
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(escalas);")).fetchall()
@@ -880,14 +750,13 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS escalas "
+                "ALTER TABLE IF EXISTS escalas "
                 "ADD COLUMN IF NOT EXISTS restaurante_id INTEGER"
             ))
             db.session.commit()
     except Exception:
         db.session.rollback()
 
-    # 4.3) fotos no banco (cooperados)
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(cooperados);")).fetchall()
@@ -902,19 +771,14 @@ def init_db():
                 db.session.execute(sa_text("ALTER TABLE cooperados ADD COLUMN foto_url VARCHAR(255)"))
             db.session.commit()
         else:
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
             db.session.commit()
     except Exception:
         db.session.rollback()
 
-    # 4.3.x) telefone em cooperados
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(cooperados);")).fetchall()
@@ -924,67 +788,70 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados "
+                "ALTER TABLE IF EXISTS cooperados "
                 "ADD COLUMN IF NOT EXISTS telefone VARCHAR(30)"
             ))
             db.session.commit()
     except Exception:
         db.session.rollback()
 
-    # 4.4) tabela avaliacoes_restaurante (se não existir)
+    # tabela avaliacoes_restaurante correta
     try:
         if _is_sqlite():
             db.session.execute(sa_text("""
                 CREATE TABLE IF NOT EXISTS avaliacoes_restaurante (
-                id SERIAL PRIMARY KEY,
-                restaurante_id INTEGER NOT NULL,
-                cooperado_id   INTEGER NOT NULL,
-                lancamento_id  INTEGER UNIQUE,
-                estrelas_geral INTEGER,
-                estrelas_ambiente   INTEGER,
-                estrelas_tratamento INTEGER,
-                estrelas_suporte    INTEGER,
-                comentario TEXT,
-                media_ponderada DOUBLE PRECISION,
-                sentimento VARCHAR(12),
-                temas VARCHAR(255),
-                alerta_crise BOOLEAN DEFAULT FALSE,
-                criado_em TIMESTAMP
-              );
-          """))
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    restaurante_id INTEGER NOT NULL,
+                    cooperado_id INTEGER NOT NULL,
+                    lancamento_id INTEGER UNIQUE,
+                    estrelas_geral INTEGER,
+                    estrelas_ambiente INTEGER,
+                    estrelas_tratamento INTEGER,
+                    estrelas_suporte INTEGER,
+                    comentario TEXT,
+                    media_ponderada REAL,
+                    sentimento VARCHAR(12),
+                    temas VARCHAR(255),
+                    alerta_crise BOOLEAN DEFAULT 0,
+                    criado_em TIMESTAMP
+                )
+            """))
             db.session.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_av_rest_rest ON avaliacoes_restaurante(restaurante_id, criado_em)"))
+                "CREATE INDEX IF NOT EXISTS ix_av_rest_rest ON avaliacoes_restaurante(restaurante_id, criado_em)"
+            ))
             db.session.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop ON avaliacoes_restaurante(cooperado_id)"))
+                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop ON avaliacoes_restaurante(cooperado_id)"
+            ))
             db.session.commit()
         else:
             db.session.execute(sa_text("""
-                CREATE TABLE IF NOT EXISTS avaliacoes_restaurante (
-                  id SERIAL PRIMARY KEY,
-                  restaurante_id INTEGER NOT NULL,
-                  cooperado_id   INTEGER NOT NULL,
-                  lancamento_id  INTEGER UNIQUE,
-                  estrelas_geral INTEGER,
-                  estrelas_ambiente   = db.Column(db.Integer)
-                  estrelas_tratamento = db.Column(db.Integer)
-                  estrelas_suporte    = db.Column(db.Integer)
-                  comentario TEXT,
-                  media_ponderada DOUBLE PRECISION,
-                  sentimento VARCHAR(12),
-                  temas VARCHAR(255),
-                  alerta_crise BOOLEAN DEFAULT FALSE,
-                  criado_em TIMESTAMP
-                );
+                CREATE TABLE IF NOT EXISTS public.avaliacoes_restaurante (
+                    id SERIAL PRIMARY KEY,
+                    restaurante_id INTEGER NOT NULL,
+                    cooperado_id INTEGER NOT NULL,
+                    lancamento_id INTEGER UNIQUE,
+                    estrelas_geral INTEGER,
+                    estrelas_ambiente INTEGER,
+                    estrelas_tratamento INTEGER,
+                    estrelas_suporte INTEGER,
+                    comentario TEXT,
+                    media_ponderada DOUBLE PRECISION,
+                    sentimento VARCHAR(12),
+                    temas VARCHAR(255),
+                    alerta_crise BOOLEAN DEFAULT FALSE,
+                    criado_em TIMESTAMP
+                )
             """))
             db.session.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_av_rest_rest ON avaliacoes_restaurante(restaurante_id, criado_em)"))
+                "CREATE INDEX IF NOT EXISTS ix_av_rest_rest ON public.avaliacoes_restaurante(restaurante_id, criado_em)"
+            ))
             db.session.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop ON avaliacoes_restaurante(cooperado_id)"))
+                "CREATE INDEX IF NOT EXISTS ix_av_rest_coop ON public.avaliacoes_restaurante(cooperado_id)"
+            ))
             db.session.commit()
     except Exception:
         db.session.rollback()
 
-    # 4.5) fotos no banco (restaurantes)
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(restaurantes);")).fetchall()
@@ -999,67 +866,38 @@ def init_db():
                 db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN foto_url VARCHAR(255)"))
             db.session.commit()
         else:
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
-            db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
             db.session.commit()
     except Exception:
         db.session.rollback()
 
-    # 5) Bootstrap mínimo (admin e config) — só se os modelos existirem
     try:
-        # Garante que o model Usuario está acessível
-        _ = Usuario  # type: ignore[name-defined]
-
-        # Admin
-        try:
-            tem_admin = Usuario.query.filter_by(tipo="admin").first()  # type: ignore[name-defined]
-        except Exception:
-            tem_admin = None
-
+        tem_admin = Usuario.query.filter_by(tipo="admin").first()
         if not tem_admin:
             admin_user = os.environ.get("ADMIN_USER", "admin")
             admin_pass = os.environ.get("ADMIN_PASS", os.urandom(8).hex())
-            admin = Usuario(usuario=admin_user, tipo="admin", senha_hash="")  # type: ignore[name-defined]
-            try:
-                admin.set_password(admin_pass)  # type: ignore[attr-defined]
-            except Exception:
-                try:
-                    from werkzeug.security import generate_password_hash
-                    admin.senha_hash = generate_password_hash(admin_pass)  # type: ignore[attr-defined]
-                except Exception:
-                    pass
+            admin = Usuario(usuario=admin_user, tipo="admin", senha_hash="")
+            admin.set_password(admin_pass)
             db.session.add(admin)
             db.session.commit()
     except Exception:
         db.session.rollback()
 
     try:
-        # Se o model Config existir, cria default
-        try:
-            Config  # type: ignore[name-defined]
-            has_config_model = True
-        except NameError:
-            has_config_model = False
-
-        if has_config_model:
-            if not Config.query.get(1):  # type: ignore[name-defined]
-                db.session.add(Config(id=1, salario_minimo=0.0))  # type: ignore[name-defined]
-                db.session.commit()
+        if not Config.query.get(1):
+            db.session.add(Config(id=1, salario_minimo=0.0))
+            db.session.commit()
     except Exception:
         db.session.rollback()
 
-# === Bootstrap do banco no start (Render/Gunicorn) ===
+
 try:
     if os.environ.get("INIT_DB_ON_START", "1") == "1":
         _t0 = datetime.utcnow()
         with app.app_context():
-       
             init_db()
         try:
             app.logger.info(f"init_db concluído em {(datetime.utcnow() - _t0).total_seconds():.2f}s")
@@ -1105,25 +943,22 @@ def _normalize_name(s: str) -> list[str]:
     s = unicodedata.normalize("NFD", s or "")
     s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
     s = re.sub(r"[^a-zA-Z0-9\s]", " ", s)
-    parts = [p.lower() for p in s.split() if p.strip()]
-    return parts
+    return [p.lower() for p in s.split() if p.strip()]
 
 
 def _norm_login(s: str) -> str:
-    # remove acento, minúsculo e sem espaços
     s = unicodedata.normalize("NFD", s or "")
     s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
     s = s.lower().strip()
     s = re.sub(r"\s+", "", s)
     return s
 
+
 def _match_cooperado_by_login(login_planilha: str, cooperados: list[Cooperado]) -> Cooperado | None:
-    """Casa EXATAMENTE com Usuario.usuario após normalização."""
     key = _norm_login(login_planilha)
     if not key:
         return None
     for c in cooperados:
-        # c.usuario_ref.usuario é o login usado no sistema
         login = getattr(c.usuario_ref, "usuario", "") or ""
         if _norm_login(login) == key:
             return c
@@ -1181,7 +1016,7 @@ def _match_cooperado_by_name(nome_planilha: str, cooperados: list[Cooperado]) ->
     if len(sheet_tokens) == 1 and len(sheet_tokens[0]) >= 3:
         token = sheet_tokens[0]
         hits = [c for c in cooperados if token in set(_normalize_name(c.nome))]
-        if os.environ.get("INIT_DB_ON_START", "0") == "1":
+        if hits:
             return hits[0]
 
     names_norm = [norm_join(c.nome) for c in cooperados]
@@ -1202,7 +1037,6 @@ def _build_docinfo(c: Cooperado) -> dict:
 
 
 def _save_upload(file_storage) -> str | None:
-    # Mantido para compatibilidade com outras partes do app (ex.: uploads de xlsx)
     if not file_storage:
         return None
     fname = secure_filename(file_storage.filename or "")
@@ -1212,82 +1046,98 @@ def _save_upload(file_storage) -> str | None:
     file_storage.save(path)
     return f"/static/uploads/{fname}"
 
-def salvar_tabela_upload(file_storage) -> str | None:
-    """
-    Salva o arquivo de TABELA dentro do diretório persistente (TABELAS_DIR)
-    e retorna APENAS o nome do arquivo (para guardar no banco em Tabela.arquivo_nome).
-    """
-    if not file_storage or not file_storage.filename:
-        return None
-    fname = secure_filename(file_storage.filename)
+
+def _build_unique_filename(original_name: str) -> str:
+    fname = secure_filename(original_name or "arquivo")
     base, ext = os.path.splitext(fname)
-    unique = f"{base}_{time.strftime('%Y%m%d_%H%M%S')}{ext.lower()}"
-    destino = os.path.join(TABELAS_DIR, unique)
-    file_storage.save(destino)
-    return unique  # <- guarde este em Tabela.arquivo_nome
+    stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    return f"{base}_{stamp}{ext.lower()}"
 
-
-def resolve_tabela_path(nome_arquivo: str) -> str | None:
-    """
-    Resolve o caminho real de uma TABELA:
-      1) /var/data/tabelas   (persistente)
-      2) static/uploads/...  (legado)
-    """
-    if not nome_arquivo:
-        return None
-    candidatos = [
-        os.path.join(TABELAS_DIR, nome_arquivo),
-        os.path.join(STATIC_TABLES, nome_arquivo),  # legado
-        # último fallback: se por acaso gravaram caminho completo em arquivo_url
-        _abs_path_from_url(nome_arquivo) if nome_arquivo.startswith("/") else None,
-    ]
-    for p in candidatos:
-        if p and os.path.isfile(p):
-            return p
-    # log amigável (vai parar com o WARNING que você viu)
-    app.logger.warning("Arquivo de Tabela não encontrado. nome='%s' tents=%s",
-                       nome_arquivo, [c for c in candidatos if c])
-    return None
-
-def _save_foto_to_db(entidade, file_storage, *, is_cooperado: bool) -> str | None:
-    """
-    Salva o arquivo enviado diretamente no banco (bytea/Blob) e
-    retorna uma URL interna (/media/coop/<id> ou /media/rest/<id>).
-    """
-    if not file_storage or not file_storage.filename:
-        return getattr(entidade, "foto_url", None)
-    data = file_storage.read()
-    if not data:
-        return getattr(entidade, "foto_url", None)
-    entidade.foto_bytes = data
-    entidade.foto_mime = (file_storage.mimetype or "application/octet-stream")
-    entidade.foto_filename = secure_filename(file_storage.filename)
-    # garante que temos ID
-    db.session.flush()
-    if is_cooperado:
-        url = url_for("media_coop", coop_id=entidade.id)
-    else:
-        url = url_for("media_rest", rest_id=entidade.id)
-    entidade.foto_url = f"{url}?v={int(datetime.utcnow().timestamp())}"
-    return entidade.foto_url
 
 def _abs_path_from_url(rel_url: str) -> str:
-    """
-    Converte '/static/uploads/arquivo.pdf' para o caminho absoluto no disco.
-    """
     if not rel_url:
         return ""
-    # caminho padrão: /static/uploads/...
     if rel_url.startswith("/"):
         rel_url = rel_url.lstrip("/")
     return os.path.join(BASE_DIR, rel_url.replace("/", os.sep))
 
+
+def _guess_mimetype_from_path(path: str) -> str:
+    mime, _ = mimetypes.guess_type(path)
+    return mime or "application/octet-stream"
+
+
+def _serve_path(path: str, *, download_name: str | None = None, force_download: bool = False):
+    if not path or not os.path.isfile(path):
+        abort(404)
+
+    mime = _guess_mimetype_from_path(path)
+    is_pdf = (mime == "application/pdf") or path.lower().endswith(".pdf")
+
+    return send_file(
+        path,
+        mimetype=mime,
+        as_attachment=(force_download or not is_pdf),
+        download_name=(download_name or os.path.basename(path)),
+        conditional=True,
+    )
+
+
+def salvar_tabela_upload(file_storage) -> str | None:
+    if not file_storage or not file_storage.filename:
+        return None
+    unique = _build_unique_filename(file_storage.filename)
+    destino = os.path.join(TABELAS_DIR, unique)
+    file_storage.save(destino)
+    return unique
+
+
+def resolve_tabela_path(nome_arquivo: str) -> str | None:
+    if not nome_arquivo:
+        return None
+
+    nome_limpo = os.path.basename(str(nome_arquivo))
+    candidatos = [
+        os.path.join(TABELAS_DIR, nome_limpo),
+        os.path.join(STATIC_TABLES, nome_limpo),
+        _abs_path_from_url(nome_arquivo) if str(nome_arquivo).startswith("/") else None,
+    ]
+    for p in candidatos:
+        if p and os.path.isfile(p):
+            return p
+
+    app.logger.warning(
+        "Arquivo de Tabela não encontrado. nome='%s' tents=%s",
+        nome_arquivo,
+        [c for c in candidatos if c],
+    )
+    return None
+
+
+def _save_foto_to_db(entidade, file_storage, *, is_cooperado: bool) -> str | None:
+    if not file_storage or not file_storage.filename:
+        return getattr(entidade, "foto_url", None)
+
+    data = file_storage.read()
+    if not data:
+        return getattr(entidade, "foto_url", None)
+
+    entidade.foto_bytes = data
+    entidade.foto_mime = file_storage.mimetype or "application/octet-stream"
+    entidade.foto_filename = secure_filename(file_storage.filename)
+
+    db.session.flush()
+
+    if is_cooperado:
+        url = url_for("media_coop", coop_id=entidade.id)
+    else:
+        url = url_for("media_rest", rest_id=entidade.id)
+
+    entidade.foto_url = f"{url}?v={int(datetime.utcnow().timestamp())}"
+    return entidade.foto_url
+
+
 def _serve_uploaded(rel_url: str, *, download_name: str | None = None, force_download: bool = False):
-    """
-    Entrega um arquivo salvo em /static/uploads com mimetype correto.
-    - PDFs abrem inline (no navegador) por padrão.
-    - Se quiser forçar download, passe force_download=True.
-    """
     if not rel_url:
         abort(404)
     abs_path = _abs_path_from_url(rel_url)
@@ -1301,51 +1151,48 @@ def _serve_uploaded(rel_url: str, *, download_name: str | None = None, force_dow
         mimetype=mime or "application/octet-stream",
         as_attachment=(force_download or not is_pdf),
         download_name=(download_name or os.path.basename(abs_path)),
-        conditional=True,     # ajuda visualização/retomar download
+        conditional=True,
     )
 
-# ========= Helpers de DOCUMENTOS (PDFs, etc.) =========
+
 def salvar_documento_upload(file_storage) -> str | None:
-    """
-    Salva o arquivo em disco persistente (/var/data/docs ou BASE_DIR/data/docs)
-    e retorna APENAS o nome do arquivo (para guardar no banco em Documento.arquivo_nome).
-    Requer que DOCS_PERSIST_DIR já exista (criado no Passo 1).
-    """
     if not file_storage or not file_storage.filename:
         return None
-    fname = secure_filename(file_storage.filename)
-    base, ext = os.path.splitext(fname)
-    unique = f"{base}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}{ext.lower()}"
+    unique = _build_unique_filename(file_storage.filename)
     destino = os.path.join(DOCS_PERSIST_DIR, unique)
     file_storage.save(destino)
-    return unique  # <- gravar em Documento.arquivo_nome
+    return unique
+
 
 def resolve_documento_path(nome_arquivo: str) -> str | None:
-    """
-    Resolve o caminho real do documento nesta ordem:
-      1) persistente (/var/data/docs ou BASE_DIR/data/docs)
-      2) legado (DOCS_DIR -> static/uploads/docs)
-      3) caminho absoluto derivado de '/static/...'
-    """
     if not nome_arquivo:
         return None
+
+    nome_limpo = os.path.basename(str(nome_arquivo))
     candidatos = [
-        os.path.join(DOCS_PERSIST_DIR, nome_arquivo),   # persistente
-        os.path.join(DOCS_DIR, nome_arquivo),           # legado
+        os.path.join(DOCS_PERSIST_DIR, nome_limpo),
+        os.path.join(DOCS_DIR, nome_limpo),
         _abs_path_from_url(nome_arquivo) if str(nome_arquivo).startswith("/") else None,
     ]
     for p in candidatos:
         if p and os.path.isfile(p):
             return p
-    app.logger.warning("Documento não encontrado. nome='%s' tents=%s",
-                       nome_arquivo, [c for c in candidatos if c])
+
+    app.logger.warning(
+        "Documento não encontrado. nome='%s' tents=%s",
+        nome_arquivo,
+        [c for c in candidatos if c],
+    )
     return None
 
+
 def _assert_cooperado_ativo(cooperado_id: int):
-    c = (Cooperado.query
-         .join(Usuario, Cooperado.usuario_id == Usuario.id)
-         .filter(Cooperado.id == cooperado_id, Usuario.ativo.is_(True))
-         .first())
+    c = (
+        Cooperado.query
+        .join(Usuario, Cooperado.usuario_id == Usuario.id)
+        .filter(Cooperado.id == cooperado_id, Usuario.ativo.is_(True))
+        .first()
+    )
     if not c:
         abort(400, description="Cooperado inativo ou inexistente.")
     return c
