@@ -1864,17 +1864,6 @@ def admin_lancamentos():
     )
 
 
-# =========================
-# Navegação/Export util
-# =========================
-@app.route("/filtrar_lancamentos")
-@admin_required
-def filtrar_lancamentos():
-    qs = request.query_string.decode("utf-8")
-    base = url_for("admin_lancamentos")
-    sep = "?" if qs else ""
-    return redirect(f"{base}{sep}{qs}")
-
 @portal_bp.get("/avisos", endpoint="portal_cooperado_avisos")
 @role_required("cooperado")
 def avisos_list():
@@ -3382,61 +3371,6 @@ def exportar_lancamentos():
         download_name="lancamentos.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-
-
-# =========================
-# CRUD Lançamentos (Admin)
-# =========================
-@app.route("/admin/lancamentos/add", methods=["POST"])
-@admin_required
-def admin_add_lancamento():
-    f = request.form
-    l = Lancamento(
-        restaurante_id=f.get("restaurante_id", type=int),
-        cooperado_id=f.get("cooperado_id", type=int),
-        descricao=f.get("descricao", "").strip(),
-        valor=f.get("valor", type=float),
-        data=_parse_date(f.get("data")),
-        hora_inicio=f.get("hora_inicio"),
-        hora_fim=f.get("hora_fim"),
-        qtd_entregas=f.get("qtd_entregas", type=int),
-    )
-    db.session.add(l)
-    db.session.commit()
-    flash("Lançamento inserido.", "success")
-    return redirect(url_for("admin_lancamentos"))
-
-
-@app.route("/admin/lancamentos/<int:id>/edit", methods=["POST"])
-@admin_required
-def admin_edit_lancamento(id):
-    l = Lancamento.query.get_or_404(id)
-    f = request.form
-    l.restaurante_id = f.get("restaurante_id", type=int)
-    l.cooperado_id = f.get("cooperado_id", type=int)
-    l.descricao = f.get("descricao", "").strip()
-    l.valor = f.get("valor", type=float)
-    l.data = _parse_date(f.get("data"))
-    l.hora_inicio = f.get("hora_inicio")
-    l.hora_fim = f.get("hora_fim")
-    l.qtd_entregas = f.get("qtd_entregas", type=int)
-    db.session.commit()
-    flash("Lançamento atualizado.", "success")
-    return redirect(url_for("admin_lancamentos"))
-
-
-@app.route("/admin/lancamentos/<int:id>/delete")
-@admin_required
-def admin_delete_lancamento(id):
-    l = Lancamento.query.get_or_404(id)
-
-    db.session.execute(sa_delete(AvaliacaoCooperado).where(AvaliacaoCooperado.lancamento_id == id))
-    db.session.execute(sa_delete(AvaliacaoRestaurante).where(AvaliacaoRestaurante.lancamento_id == id))
-
-    db.session.delete(l)
-    db.session.commit()
-    flash("Lançamento excluído.", "success")
-    return redirect(url_for("admin_lancamentos"))
 
 
 @app.route("/admin/avaliacoes", methods=["GET"])
