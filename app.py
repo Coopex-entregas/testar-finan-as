@@ -57,28 +57,52 @@ from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 # ============ App / Diretórios ============
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# uploads locais do app
+# uploads locais do app (legado / compatibilidade)
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# legado/local
-DOCS_DIR = os.path.join(UPLOAD_DIR, "docs")
+DOCS_DIR = os.path.join(UPLOAD_DIR, "docs")         # legado
+STATIC_TABLES = os.path.join(UPLOAD_DIR, "tabelas") # legado
 os.makedirs(DOCS_DIR, exist_ok=True)
-
-STATIC_TABLES = os.path.join(UPLOAD_DIR, "tabelas")
 os.makedirs(STATIC_TABLES, exist_ok=True)
 
-# Persistência real (Render Disk)
-PERSIST_ROOT = os.environ.get("PERSIST_ROOT", "/var/data")
-if not os.path.isdir(PERSIST_ROOT):
-    PERSIST_ROOT = os.path.join(BASE_DIR, "data")
-os.makedirs(PERSIST_ROOT, exist_ok=True)
+def _pick_persist_root() -> str:
+    """
+    Escolhe um diretório gravável sem derrubar o deploy.
+    Ordem:
+      1) env PERSIST_ROOT
+      2) /var/data
+      3) fallback local (não persistente entre deploys)
+    """
+    candidates = []
+
+    env_root = os.environ.get("PERSIST_ROOT", "").strip()
+    if env_root:
+        candidates.append(env_root)
+
+    candidates.append("/var/data")
+    candidates.append(os.path.join(BASE_DIR, "data"))
+
+    for root in candidates:
+        try:
+            os.makedirs(root, exist_ok=True)
+            test_file = os.path.join(root, ".write_test")
+            with open(test_file, "w", encoding="utf-8") as f:
+                f.write("ok")
+            os.remove(test_file)
+            return root
+        except Exception:
+            continue
+
+    raise RuntimeError("Nenhum diretório gravável disponível para persistência.")
+
+PERSIST_ROOT = _pick_persist_root()
 
 # persistentes
 TABELAS_DIR = os.path.join(PERSIST_ROOT, "tabelas")
-os.makedirs(TABELAS_DIR, exist_ok=True)
-
 DOCS_PERSIST_DIR = os.path.join(PERSIST_ROOT, "docs")
+
+os.makedirs(TABELAS_DIR, exist_ok=True)
 os.makedirs(DOCS_PERSIST_DIR, exist_ok=True)
 
 
@@ -115,6 +139,11 @@ def _build_db_uri() -> str:
 
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
+
+try:
+    app.logger.info(f"PERSIST_ROOT em uso: {PERSIST_ROOT}")
+except Exception:
+    pass
 
 # CHAVE DE SESSÃO
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "coopex-chave-local-123456")
