@@ -1516,11 +1516,6 @@
   </div>
 </div>
 
-<!-- ÁUDIO DO AVISO -->
-<audio id="audioAvisos" preload="auto" playsinline>
-  <source src="{{ url_for('static', filename='avisos.mp3') }}" type="audio/mpeg">
-</audio>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // ========================
@@ -1547,22 +1542,25 @@ function hideLancOverlay(){
 // ========================
 // MÁSCARA + SELEÇÃO COOPERADO (LANÇAR)
 // ========================
-
-// máscara simples BR
 function formatPhoneBR(v) {
   let d = (v || '').replace(/\D/g,'');
   if (d.length > 11 && d.startsWith('55')) d = d.slice(d.length - 11);
   d = d.slice(0, 11);
+
   if (d.length <= 10) {
     return d.replace(/^(\d{0,2})(\d{0,4})(\d{0,4}).*$/, (_,a,b,c)=>{
-      let out=''; if(a) out+='('+a; if(a && a.length===2) out+=') ';
-      if(b) out+=b; if(b && b.length===4 && c) out+='-'+c; return out;
+      let out = '';
+      if (a) out += '(' + a;
+      if (a && a.length === 2) out += ') ';
+      if (b) out += b;
+      if (b && b.length === 4 && c) out += '-' + c;
+      return out;
     });
   }
+
   return d.replace(/^(\d{2})(\d{5})(\d{4}).*$/, '($1) $2-$3');
 }
 
-// Controle de seleção do cooperado (Lançar)
 (function(){
   const header  = document.getElementById('selectedHeader');
   const img     = document.getElementById('selFoto');
@@ -1576,7 +1574,7 @@ function formatPhoneBR(v) {
   const listaCooperados = document.getElementById('listaCooperados');
   const cooperadoCards  = listaCooperados ? listaCooperados.querySelectorAll('.cooperado-item') : [];
 
-  function setPhone(digits, raw) {
+  function setPhone(digits) {
     const d = (digits || '').replace(/\D/g,'');
     if (d) {
       phoneEl.textContent = formatPhoneBR(d);
@@ -1594,7 +1592,7 @@ function formatPhoneBR(v) {
     cooperadoCards.forEach(c => c.classList.remove('selected'));
   }
 
-  function selectCoop({id, nome, foto, total, foneDigits, foneRaw}) {
+  function selectCoop({id, nome, foto, total, foneDigits}) {
     if (!id) return;
 
     if (header) header.style.display = '';
@@ -1605,15 +1603,13 @@ function formatPhoneBR(v) {
     if (nomeEl) nomeEl.textContent = nome || '—';
     if (totalEl) totalEl.textContent = (total || '0,00');
 
-    setPhone(foneDigits, foneRaw);
+    setPhone(foneDigits);
     if (inputId) inputId.value = id || '';
 
-    // mostra tabela correspondente
     document.querySelectorAll('.lancamentos-table').forEach(t => t.style.display = 'none');
     const table = document.getElementById('tabela-' + id);
     if (table) table.style.display = '';
 
-    // define data de hoje se o campo estiver vazio
     if (form) {
       const campoData = form.querySelector('input[name="data"]');
       if (campoData && !campoData.value) {
@@ -1626,23 +1622,22 @@ function formatPhoneBR(v) {
     }
   }
 
-  // clique na lista de cooperados
   listaCooperados?.addEventListener('click', (e) => {
     const card = e.target.closest('.cooperado-item');
     if (!card) return;
+
     clearSelection();
     card.classList.add('selected');
+
     selectCoop({
       id: card.dataset.id,
       nome: card.dataset.nome,
       foto: card.dataset.foto,
       total: (parseFloat(card.dataset.total || '0') || 0).toFixed(2).replace('.', ','),
-      foneDigits: card.dataset.fone || '',
-      foneRaw: card.dataset['foneRaw'] || ''
+      foneDigits: card.dataset.fone || ''
     });
   });
 
-  // mudança no <select> de cooperado
   document.getElementById('selectCoop')?.addEventListener('change', (e) => {
     const opt = e.target.selectedOptions[0];
     if (!opt || !opt.value) return;
@@ -1658,8 +1653,7 @@ function formatPhoneBR(v) {
       nome: opt.textContent.trim(),
       foto: card ? card.dataset.foto : '',
       total: card ? (parseFloat(card.dataset.total || '0').toFixed(2).replace('.', ',')) : '0,00',
-      foneDigits: opt.getAttribute('data-fone') || (card ? card.dataset.fone : ''),
-      foneRaw: opt.getAttribute('data-fone-raw') || (card ? card.dataset['foneRaw'] : '')
+      foneDigits: opt.getAttribute('data-fone') || (card ? card.dataset.fone : '')
     });
   });
 })();
@@ -1667,24 +1661,29 @@ function formatPhoneBR(v) {
 // ========================
 // TEMA
 // ========================
-const THEME_KEY='portal_theme';
+const THEME_KEY = 'portal_theme';
+
 function applyTheme(t){
-  document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light');
-  const lbl=document.getElementById('lblTheme');
-  const icon=document.querySelector('#btnTheme i');
-  if(lbl) lbl.textContent = (t==='dark')?'Claro':'Escuro';
-  if(icon){
-    icon.classList.toggle('bi-moon', t!=='dark');
-    icon.classList.toggle('bi-sun', t==='dark');
+  document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+  const lbl = document.getElementById('lblTheme');
+  const icon = document.querySelector('#btnTheme i');
+
+  if (lbl) lbl.textContent = (t === 'dark') ? 'Claro' : 'Escuro';
+  if (icon){
+    icon.classList.toggle('bi-moon', t !== 'dark');
+    icon.classList.toggle('bi-sun', t === 'dark');
   }
+
   localStorage.setItem(THEME_KEY, t);
 }
+
 (function initTheme(){
   const saved = localStorage.getItem(THEME_KEY) || 'light';
   applyTheme(saved);
+
   document.getElementById('btnTheme')?.addEventListener('click', ()=>{
     const cur = localStorage.getItem(THEME_KEY) || 'light';
-    applyTheme(cur==='dark'?'light':'dark');
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
   });
 })();
 
@@ -1693,24 +1692,28 @@ function applyTheme(t){
 // ========================
 function showSection(view){
   document.querySelectorAll('section[data-view]').forEach(sec=>{
-    sec.classList.toggle('view-active', sec.getAttribute('data-view')===view);
+    sec.classList.toggle('view-active', sec.getAttribute('data-view') === view);
   });
+
   document.querySelectorAll('#sideNav a').forEach(a=>{
-    const t=a.getAttribute('data-target');
-    a.classList.toggle('active', t===view);
+    const t = a.getAttribute('data-target');
+    a.classList.toggle('active', t === view);
   });
-  if(view==='avisos') initAvisos();
-  if(view==='lancamentos') initLancamentos();
-  if(view==='lancar') initLancar();
-  if(view==='tabelas') initTabelas();
+
+  if (view === 'avisos') initAvisos();
+  if (view === 'lancamentos') initLancamentos();
+  if (view === 'lancar') initLancar();
+  if (view === 'tabelas') initTabelas();
 }
+
 function pushView(v){
   try{
-    const u=new URL(location.href);
-    u.searchParams.set('view',v);
-    history.pushState({view:v},'',u.toString());
+    const u = new URL(location.href);
+    u.searchParams.set('view', v);
+    history.pushState({view:v}, '', u.toString());
   }catch(e){}
 }
+
 function startView(){
   try{
     return new URL(location.href).searchParams.get('view') || 'lancar';
@@ -1723,52 +1726,55 @@ function startView(){
 // UTILS
 // ========================
 function togglePwd(btn){
-  const i=btn.previousElementSibling;
-  if(!i) return;
-  i.type=i.type==='password'?'text':'password';
+  const i = btn.previousElementSibling;
+  if (!i) return;
+  i.type = i.type === 'password' ? 'text' : 'password';
+
   const icon = btn.querySelector('i');
-  if(icon){
+  if (icon){
     icon.classList.toggle('bi-eye');
     icon.classList.toggle('bi-eye-slash');
   }
 }
-const brMoney = (n)=> (n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+
+const brMoney = (n)=> (n || 0).toLocaleString('pt-BR', {
+  minimumFractionDigits:2,
+  maximumFractionDigits:2
+});
+
 const todayStr = ()=>{
-  const d=new Date();
-  const mm=String(d.getMonth()+1).padStart(2,'0');
-  const dd=String(d.getDate()).padStart(2,'0');
-  return d.getFullYear()+'-'+mm+'-'+dd;
+  const d = new Date();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return d.getFullYear() + '-' + mm + '-' + dd;
 };
+
 function prefetch(href){
   try{
-    const l=document.createElement('link');
-    l.rel='prefetch';
-    l.href=href;
+    const l = document.createElement('link');
+    l.rel = 'prefetch';
+    l.href = href;
     document.head.appendChild(l);
   }catch(e){}
 }
 
 // ========================
-// TOAST & BADGE DE AVISOS (CORRIGIDO: SEM PISCAR)
+// TOAST & BADGE DE AVISOS
 // ========================
 let toastAvisosInst = null;
 
 function ensureToastInstance(){
   const el = document.getElementById('toastAvisos');
   if (!el) return null;
+
   if (!toastAvisosInst) {
     toastAvisosInst = new bootstrap.Toast(el, { autohide: false });
   }
   return toastAvisosInst;
 }
 
-/**
- * setAvisosBadge(n, {showToast:boolean})
- * - showToast=false: atualiza badge/contador sem abrir/fechar toast (não pisca)
- * - showToast=true : abre se n>0 / fecha se n==0
- */
 function setAvisosBadge(n, opts){
-  const o = Object.assign({ showToast: false }, (opts || {}));
+  const o = Object.assign({ showToast:false }, (opts || {}));
 
   const b = document.getElementById('badgeAvisos');
   if (b){
@@ -1800,10 +1806,10 @@ function setAvisosBadge(n, opts){
 }
 
 // ========================
-// AVISO: ÁUDIO (DESBLOQUEIO + "PENDENTE" PARA LOGIN)
+// ÁUDIO DE AVISOS
 // ========================
-let __audioAvisosUnlocked = false;
 let __audioAvisosPending = false;
+let __audioAvisosUnlocked = false;
 
 function tryPlayAvisoSound(){
   const a = document.getElementById('audioAvisos');
@@ -1814,7 +1820,7 @@ function tryPlayAvisoSound(){
     const p = a.play();
     if (p && typeof p.catch === 'function'){
       p.catch(() => {
-        __audioAvisosPending = true; // se bloqueou autoplay, toca no primeiro clique/tecla
+        __audioAvisosPending = true;
       });
     }
   } catch (e){
@@ -1822,9 +1828,6 @@ function tryPlayAvisoSound(){
   }
 }
 
-// ========================
-// ADICIONADO: UNLOCK DO ÁUDIO (SEM ISSO O CHROME BLOQUEIA)
-// ========================
 (function unlockAudioOnce(){
   const a = document.getElementById('audioAvisos');
   if (!a) return;
@@ -1842,10 +1845,8 @@ function tryPlayAvisoSound(){
       a.pause();
       a.muted = false;
       a.currentTime = 0;
-
       __audioAvisosUnlocked = true;
 
-      // se tinha som pendente (login bloqueado), toca agora
       if (__audioAvisosPending){
         __audioAvisosPending = false;
         tryPlayAvisoSound();
@@ -1857,7 +1858,7 @@ function tryPlayAvisoSound(){
   }
 
   ['click', 'touchstart', 'keydown'].forEach(evt => {
-    window.addEventListener(evt, unlock, { once: true, passive: true });
+    window.addEventListener(evt, unlock, { once:true, passive:true });
   });
 })();
 
@@ -1865,6 +1866,57 @@ function tryPlayAvisoSound(){
 // AVISOS
 // ========================
 let avisosWired = false;
+let lastUnread = null;
+let __shownAtLogin = false;
+
+function onNewAviso(unread){
+  setAvisosBadge(unread, { showToast:true });
+  tryPlayAvisoSound();
+}
+
+async function pollAvisos(){
+  try{
+    const r = await fetch('/api/rest/avisos/unread_count', {
+      credentials:'same-origin',
+      cache:'no-store',
+      headers:{
+        'Accept':'application/json',
+        'X-Requested-With':'XMLHttpRequest'
+      }
+    });
+
+    if (!r.ok) throw new Error(r.status);
+
+    const j = await r.json();
+    if (!j || !j.ok) return;
+
+    const unread = Number(j.unread || 0);
+
+    // atualiza o contador sempre, mesmo fora da página avisos
+    setAvisosBadge(unread, { showToast:false });
+
+    if (lastUnread === null){
+      lastUnread = unread;
+
+      if (unread > 0 && !__shownAtLogin){
+        __shownAtLogin = true;
+        setAvisosBadge(unread, { showToast:true });
+        tryPlayAvisoSound();
+      }
+      return;
+    }
+
+    if (unread > lastUnread){
+      onNewAviso(unread);
+    }
+
+    if (unread === 0 && lastUnread > 0){
+      setAvisosBadge(0, { showToast:true });
+    }
+
+    lastUnread = unread;
+  } catch (e){}
+}
 
 function initAvisos(){
   if (avisosWired) return;
@@ -1872,17 +1924,16 @@ function initAvisos(){
 
   const toastOKEl = document.getElementById('toastOK');
   const toastOK = toastOKEl ? new bootstrap.Toast(toastOKEl) : null;
+  const avisosContainer = document.getElementById('avisosListContainer');
 
   function getUnread(){
     return document.querySelectorAll('.aviso-card[data-lido="0"]').length;
   }
 
-  function refresh(){
-    // aqui NÃO abre toast (para não piscar)
-    setAvisosBadge(getUnread(), { showToast: false });
+  function refreshAvisosLocal(){
+    setAvisosBadge(getUnread(), { showToast:false });
   }
 
-  // filtro "somente não lidos"
   document.getElementById('toggleNaoLidos')?.addEventListener('change', (e) => {
     const only = e.target.checked;
     document.querySelectorAll('.aviso-card').forEach(card => {
@@ -1891,8 +1942,7 @@ function initAvisos(){
     });
   });
 
-  // marcar aviso como lido
-  (document.getElementById('avisosListContainer') || document).addEventListener('click', async (ev) => {
+  avisosContainer?.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-acao="marcar-lido"]');
     if (!btn) return;
 
@@ -1901,10 +1951,10 @@ function initAvisos(){
 
     try{
       const resp = await fetch(url, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+        method:'POST',
+        credentials:'same-origin',
+        headers:{
+          'X-Requested-With':'XMLHttpRequest'
         }
       });
 
@@ -1927,19 +1977,16 @@ function initAvisos(){
       }
 
       btn.remove();
-      refresh();
-      if (toastOK) toastOK.show();
-
-      // sincroniza com backend para manter contador certo
+      refreshAvisosLocal();
+      toastOK?.show();
       pollAvisos();
     } catch (e){
       alert('Erro de rede ao marcar aviso como lido.');
     }
   });
 
-  refresh();
+  refreshAvisosLocal();
 
-  // se a seção veio vazia, carrega pela rota
   if (!document.querySelector('#avisosListContainer .aviso-card')){
     const href = document.getElementById('linkAvisos')?.href;
     if (href) loadAvisosFromRoute(href);
@@ -1948,12 +1995,11 @@ function initAvisos(){
 
 async function loadAvisosFromRoute(href){
   try{
-    const res = await fetch(href, { credentials: 'same-origin' });
+    const res = await fetch(href, { credentials:'same-origin' });
     if (!res.ok) throw new Error(res.status);
 
     const html = await res.text();
     const dom = new DOMParser().parseFromString(html, 'text/html');
-
     const cards = [...dom.querySelectorAll('.aviso-card')];
     const cont = document.getElementById('avisosListContainer');
     if (!cont) return;
@@ -1967,13 +2013,11 @@ async function loadAvisosFromRoute(href){
       initAvisos();
 
       const unreadLocal = cards.filter(c => c.getAttribute('data-lido') === '0').length;
-      setAvisosBadge(unreadLocal, { showToast: false });
-
-      // alinha com backend
+      setAvisosBadge(unreadLocal, { showToast:false });
       pollAvisos();
     } else {
       cont.innerHTML = '<div class="card card-body"><div class="text-muted"><i class="bi bi-inbox me-1"></i> Nenhum aviso disponível.</div></div>';
-      setAvisosBadge(0, { showToast: false });
+      setAvisosBadge(0, { showToast:false });
       pollAvisos();
     }
   } catch (e){
@@ -1985,156 +2029,16 @@ async function loadAvisosFromRoute(href){
 }
 
 // ========================
-// POLLING DE AVISOS
-// ========================
-let lastUnread = null;
-let __shownAtLogin = false;
-
-function onNewAviso(unread){
-  // abre toast uma vez
-  setAvisosBadge(unread, { showToast: true });
-
-  // toca som
-  tryPlayAvisoSound();
-}
-
-async function pollAvisos(){
-  try{
-    const r = await fetch('/api/rest/avisos/unread_count', {
-      credentials: 'same-origin',
-      cache: 'no-store',
-      headers: {
-        'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    });
-
-    if (!r.ok) throw new Error(r.status);
-
-    const j = await r.json();
-    if (!j || !j.ok) return;
-
-    const unread = Number(j.unread || 0);
-
-    // atualiza badge sem abrir toast
-    setAvisosBadge(unread, { showToast: false });
-
-    // primeira leitura após login/carregamento
-    if (lastUnread === null){
-      lastUnread = unread;
-
-      if (unread > 0 && !__shownAtLogin){
-        __shownAtLogin = true;
-        setAvisosBadge(unread, { showToast: true });
-        tryPlayAvisoSound();
-      }
-      return;
-    }
-
-    // novo aviso chegou
-    if (unread > lastUnread){
-      onNewAviso(unread);
-    }
-
-    // zerou
-    if (unread === 0 && lastUnread > 0){
-      setAvisosBadge(0, { showToast: true });
-    }
-
-    lastUnread = unread;
-  } catch (e){
-    // silencioso
-  }
-}
-  
-  // filtro
-  document.getElementById('toggleNaoLidos')?.addEventListener('change', (e)=>{
-    const only=e.target.checked;
-    document.querySelectorAll('.aviso-card').forEach(card=>{
-      const lido=card.getAttribute('data-lido')==='1';
-      card.style.display = (only && lido) ? 'none' : '';
-    });
-  });
-
-  // marcar lido
-  (document.getElementById('avisosListContainer')||document).addEventListener('click', async (ev)=>{
-    const btn=ev.target.closest('[data-acao="marcar-lido"]');
-    if(!btn) return;
-    const url=btn.getAttribute('data-url');
-    const card=btn.closest('.aviso-card');
-    try{
-      const resp=await fetch(url,{method:'POST',credentials:'same-origin'});
-      if(resp.ok){
-        card.setAttribute('data-lido','1');
-        card.classList.add('lido');
-        const meta=card.querySelector('.text-muted.small');
-        if(meta && !/Lido/.test(meta.innerHTML)){
-          meta.innerHTML += ' • <span class="text-success">Lido</span>';
-        }
-        btn.remove();
-        refresh();
-        toastOK?.show();
-
-        // sincroniza com backend (para badge ficar perfeito)
-        pollAvisos();
-      }else{
-        alert('Falha ao marcar como lido ('+resp.status+').');
-      }
-    }catch(e){
-      alert('Erro de rede.');
-    }
-  });
-
-  refresh();
-
-  if(!document.querySelector('#avisosListContainer .aviso-card')){
-    const href=document.getElementById('linkAvisos')?.href;
-    if(href) loadAvisosFromRoute(href);
-  }
-}
-
-async function loadAvisosFromRoute(href){
-  try{
-    const res=await fetch(href,{credentials:'same-origin'});
-    if(!res.ok) throw new Error(res.status);
-    const html=await res.text();
-    const dom=new DOMParser().parseFromString(html,'text/html');
-    const cards=[...dom.querySelectorAll('.aviso-card,#avisosListContainer .aviso,.aviso')];
-    const cont=document.getElementById('avisosListContainer');
-    if(!cont) return;
-    cont.innerHTML='';
-    if(cards.length){
-      cards.forEach(c=>cont.appendChild(document.importNode(c,true)));
-      avisosWired=false;
-      initAvisos();
-
-      // atualiza badge sem abrir toast (sem piscar)
-      const unreadLocal = cards.filter(c=>c.getAttribute('data-lido')==='0').length;
-      setAvisosBadge(unreadLocal, {showToast:false});
-
-      // alinha com backend
-      pollAvisos();
-    }else{
-      cont.innerHTML='<div class="card card-body"><div class="text-muted"><i class="bi bi-inbox me-1"></i> Nenhum aviso disponível.</div></div>';
-      setAvisosBadge(0, {showToast:false});
-      pollAvisos();
-    }
-  }catch(e){
-    const cont=document.getElementById('avisosListContainer');
-    if(cont) cont.innerHTML='<div class="card card-body text-muted">Não foi possível carregar os avisos agora.</div>';
-  }
-}
-
-// ========================
 // LANÇAR (TELA DE LANÇAMENTO)
 // ========================
 let lancarWired = false;
+
 function initLancar(){
   if (lancarWired) return;
   lancarWired = true;
 
   const busca = document.getElementById('buscaCoop');
-  const itens  = Array.from(document.querySelectorAll('.cooperado-item'));
+  const itens = Array.from(document.querySelectorAll('.cooperado-item'));
 
   function filtrarESelecionar(valor, autoSelecionar){
     const q = (valor || '').trim().toLowerCase();
@@ -2150,13 +2054,11 @@ function initLancar(){
     if (!autoSelecionar) return;
 
     let alvo = visiveis.find(el => (el.dataset.nome || '').toLowerCase() === q);
-    if (!alvo && visiveis.length === 1){
-      alvo = visiveis[0];
-    }
+    if (!alvo && visiveis.length === 1) alvo = visiveis[0];
 
     if (alvo){
       alvo.click();
-      if (busca) busca.blur();
+      busca?.blur();
     }
   }
 
@@ -2178,142 +2080,163 @@ function initLancar(){
   document.querySelectorAll('.rating-group').forEach(g=>{
     if (g.dataset.name !== 'av_geral') wireStars(g);
   });
-  autoGeral();
 
+  autoGeral();
   wireAvaliacaoFlow();
 
-  // EXCLUSÃO COM OVERLAY "EXCLUINDO…"
   const blocoTabelas = document.getElementById('blocoTabelas');
   blocoTabelas?.addEventListener('click', (e)=>{
     const link = e.target.closest('a.btn-outline-danger');
-    if(!link) return;
+    if (!link) return;
+
     e.preventDefault();
-    if(!confirm('Deseja realmente excluir este lançamento?')) return;
+    if (!confirm('Deseja realmente excluir este lançamento?')) return;
+
     showLancOverlay('delete');
-    setTimeout(()=>{ window.location.href = link.href; }, 80);
+    window.location.href = link.href;
   });
 }
 
 // ========================
 // LANÇAMENTOS (LISTAGEM)
 // ========================
-let lancamentosWired=false;
-function initLancamentos(){
-  if(lancamentosWired) return;
-  lancamentosWired=true;
-  const tbody=document.getElementById('tbodyLanc');
-  if(!tbody) return;
-  const ftValor=document.getElementById('ftValor');
-  const ftEnt=document.getElementById('ftEntregas');
-  const kpiV=document.getElementById('kpiTotalValor');
-  const kpiE=document.getElementById('kpiTotalEntregas');
-  const grid=document.getElementById('gridCoop');
-  const f=document.getElementById('formFiltroLanc');
+let lancamentosWired = false;
 
-  const key='lanc_applied_today';
-  if(f && !f.data_inicio.value && !f.data_fim.value && !f.mes.value && !sessionStorage.getItem(key)){
-    const t=todayStr();
-    f.data_inicio.value=t;
-    f.data_fim.value=t;
-    sessionStorage.setItem(key,'1');
+function initLancamentos(){
+  if (lancamentosWired) return;
+  lancamentosWired = true;
+
+  const tbody = document.getElementById('tbodyLanc');
+  if (!tbody) return;
+
+  const ftValor = document.getElementById('ftValor');
+  const ftEnt = document.getElementById('ftEntregas');
+  const kpiV = document.getElementById('kpiTotalValor');
+  const kpiE = document.getElementById('kpiTotalEntregas');
+  const grid = document.getElementById('gridCoop');
+  const f = document.getElementById('formFiltroLanc');
+
+  const key = 'lanc_applied_today';
+  if (f && !f.data_inicio.value && !f.data_fim.value && !f.mes.value && !sessionStorage.getItem(key)){
+    const t = todayStr();
+    f.data_inicio.value = t;
+    f.data_fim.value = t;
+    sessionStorage.setItem(key, '1');
     sessionStorage.setItem('scrollY', String(window.scrollY));
     f.submit();
     return;
   }
-  const savedY=Number(sessionStorage.getItem('scrollY')||0);
-  if(savedY){
-    window.scrollTo(0,savedY);
+
+  const savedY = Number(sessionStorage.getItem('scrollY') || 0);
+  if (savedY){
+    window.scrollTo(0, savedY);
     sessionStorage.removeItem('scrollY');
   }
 
   function rows(){
     return Array.from(tbody.querySelectorAll('tr'));
   }
+
   function recompute(){
-    let totV=0, totE=0;
-    const per={};
+    let totV = 0, totE = 0;
+    const per = {};
+
     rows().forEach(tr=>{
-      if(tr.style.display==='none') return;
-      const v=Number(tr.querySelector('.valor')?.dataset.valor||0);
+      if (tr.style.display === 'none') return;
+
+      const v = Number(tr.querySelector('.valor')?.dataset.valor || 0);
       const eTxt = tr.querySelector('.entregas')?.textContent?.trim() || '0';
       const e = eTxt === '-' ? 0 : Number(eTxt.replace(/\D+/g,''));
-      totV+=v;
-      totE+=e;
-      const id=tr.dataset.coop;
-      const nm=tr.dataset.coopnome;
-      per[id]=per[id]||{nome:nm,valor:0,ent:0};
-      per[id].valor+=v;
-      per[id].ent+=e;
+
+      totV += v;
+      totE += e;
+
+      const id = tr.dataset.coop;
+      const nm = tr.dataset.coopnome;
+      per[id] = per[id] || { nome:nm, valor:0, ent:0 };
+      per[id].valor += v;
+      per[id].ent += e;
     });
-    if(ftValor) ftValor.textContent='R$ '+brMoney(totV);
-    if(ftEnt) ftEnt.textContent=String(totE);
-    if(kpiV) kpiV.textContent=brMoney(totV);
-    if(kpiE) kpiE.textContent=String(totE);
-    if(grid){
-      grid.innerHTML='';
+
+    if (ftValor) ftValor.textContent = 'R$ ' + brMoney(totV);
+    if (ftEnt) ftEnt.textContent = String(totE);
+    if (kpiV) kpiV.textContent = brMoney(totV);
+    if (kpiE) kpiE.textContent = String(totE);
+
+    if (grid){
+      grid.innerHTML = '';
       Object.values(per).sort((a,b)=>b.valor-a.valor).forEach(p=>{
-        const div=document.createElement('div');
-        div.className='col-sm-6 col-xl-4';
-        div.innerHTML=`<div class="kpi h-100">
-          <div class="fw-bold">${p.nome||'-'}</div>
-          <div class="small text-muted">Entregas: <b>${p.ent||0}</b></div>
-          <div>Total: <b>R$ ${brMoney(p.valor||0)}</b></div>
+        const div = document.createElement('div');
+        div.className = 'col-sm-6 col-xl-4';
+        div.innerHTML = `<div class="kpi h-100">
+          <div class="fw-bold">${p.nome || '-'}</div>
+          <div class="small text-muted">Entregas: <b>${p.ent || 0}</b></div>
+          <div>Total: <b>R$ ${brMoney(p.valor || 0)}</b></div>
         </div>`;
         grid.appendChild(div);
       });
     }
   }
+
   f?.q?.addEventListener('input', ()=>{
-    const q=(f.q.value||'').toLowerCase().trim();
-    sessionStorage.setItem('lanc_q',q);
+    const q = (f.q.value || '').toLowerCase().trim();
+    sessionStorage.setItem('lanc_q', q);
+
     rows().forEach(tr=>{
-      const coop=(tr.dataset.coopnome||'').toLowerCase();
-      const contrato=(tr.dataset.contrato||'').toLowerCase();
+      const coop = (tr.dataset.coopnome || '').toLowerCase();
+      const contrato = (tr.dataset.contrato || '').toLowerCase();
       tr.style.display = (!q || coop.includes(q) || contrato.includes(q)) ? '' : 'none';
     });
+
     recompute();
   });
+
   f?.addEventListener('submit', ()=>{
     sessionStorage.setItem('scrollY', String(window.scrollY));
   });
 
   document.getElementById('btnExportCsv')?.addEventListener('click', ()=>{
-    const rowsVis=rows().filter(r=>r.style.display!=='none');
-    const header=['Data','Cooperado','Contrato','Horário','Descrição','Entregas','Valor (R$)'];
-    const linhas=[header];
-    let totE=0, totV=0;
+    const rowsVis = rows().filter(r=>r.style.display !== 'none');
+    const header = ['Data','Cooperado','Contrato','Horário','Descrição','Entregas','Valor (R$)'];
+    const linhas = [header];
+    let totE = 0, totV = 0;
 
-    function csvEscape(t){ return '"' + String(t||'').replace(/"/g,'""') + '"'; }
+    function csvEscape(t){
+      return '"' + String(t || '').replace(/"/g,'""') + '"';
+    }
 
     rowsVis.forEach(r=>{
-      const c=r.cells;
-      const data=c[0]?.textContent.trim()||'';
-      const coop=c[1]?.textContent.trim()||'';
-      const contrato=c[2]?.textContent.trim()||'';
-      const horario=c[3]?.textContent.trim()||'';
-      const desc=(r.querySelector('.desc')?.textContent||'').replace(/\s+/g,' ').trim();
-      const eTxt=(r.querySelector('.entregas')?.textContent.trim()||'0');
-      const entregas=(eTxt==='-')?0:Number(eTxt.replace(/\D+/g,''));
-      const valorNum=Number(r.querySelector('.valor')?.dataset.valor||0);
+      const c = r.cells;
+      const data = c[0]?.textContent.trim() || '';
+      const coop = c[1]?.textContent.trim() || '';
+      const contrato = c[2]?.textContent.trim() || '';
+      const horario = c[3]?.textContent.trim() || '';
+      const desc = (r.querySelector('.desc')?.textContent || '').replace(/\s+/g,' ').trim();
+      const eTxt = (r.querySelector('.entregas')?.textContent.trim() || '0');
+      const entregas = (eTxt === '-') ? 0 : Number(eTxt.replace(/\D+/g,''));
+      const valorNum = Number(r.querySelector('.valor')?.dataset.valor || 0);
 
-      linhas.push([data,coop,contrato,horario,csvEscape(desc),String(entregas),valorNum.toFixed(2).replace('.',',')]);
-      totE+=entregas;
-      totV+=valorNum;
+      linhas.push([data, coop, contrato, horario, csvEscape(desc), String(entregas), valorNum.toFixed(2).replace('.',',')]);
+      totE += entregas;
+      totV += valorNum;
     });
+
     linhas.push(['Totais','','','', '', String(totE), String(totV.toFixed(2)).replace('.',',')]);
-    const csv='\uFEFF'+linhas.map(l=>l.join(';')).join('\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='lancamentos.csv';
+
+    const csv = '\uFEFF' + linhas.map(l=>l.join(';')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lancamentos.csv';
     a.click();
     URL.revokeObjectURL(a.href);
   });
 
   recompute();
-  const savedQ=sessionStorage.getItem('lanc_q')||'';
-  if(savedQ && f?.q){
-    f.q.value=savedQ;
+
+  const savedQ = sessionStorage.getItem('lanc_q') || '';
+  if (savedQ && f?.q){
+    f.q.value = savedQ;
     f.q.dispatchEvent(new Event('input'));
   }
 
@@ -2324,53 +2247,60 @@ function initLancamentos(){
 // HELPERS AVALIAÇÃO (ESTRELAS)
 // ========================
 function wireStars(group){
-  const hidden=group.querySelector('input[type="hidden"]');
-  const stars=group.querySelectorAll('.star');
-  function paint(v,hover=false){
+  const hidden = group.querySelector('input[type="hidden"]');
+  const stars = group.querySelectorAll('.star');
+
+  function paint(v, hover=false){
     stars.forEach(s=>{
-      const on=Number(s.dataset.v)<=v;
-      s.classList.toggle('active',on);
-      s.classList.toggle('hover',hover&&on);
+      const on = Number(s.dataset.v) <= v;
+      s.classList.toggle('active', on);
+      s.classList.toggle('hover', hover && on);
     });
   }
+
   stars.forEach(s=>{
-    s.addEventListener('mouseenter',()=>paint(Number(s.dataset.v),true));
-    s.addEventListener('mouseleave',()=>paint(Number(hidden.value||0),false));
-    s.addEventListener('click',()=>{
-      hidden.value=Number(s.dataset.v);
-      paint(Number(hidden.value),false);
+    s.addEventListener('mouseenter', ()=>paint(Number(s.dataset.v), true));
+    s.addEventListener('mouseleave', ()=>paint(Number(hidden.value || 0), false));
+    s.addEventListener('click', ()=>{
+      hidden.value = Number(s.dataset.v);
+      paint(Number(hidden.value), false);
       autoGeral();
     });
   });
-  paint(Number(hidden.value||0),false);
+
+  paint(Number(hidden.value || 0), false);
 }
 
-// autoGeral: média só se houver notas
 function autoGeral(){
-  const g=document.querySelector('.rating-group[data-name="av_geral"]');
-  if(!g) return;
-  const h=g.querySelector('input[type="hidden"]');
-  const nomes=['av_pontualidade','av_educacao','av_eficiencia','av_apresentacao'];
-  const vals=[];
+  const g = document.querySelector('.rating-group[data-name="av_geral"]');
+  if (!g) return;
+
+  const h = g.querySelector('input[type="hidden"]');
+  const nomes = ['av_pontualidade','av_educacao','av_eficiencia','av_apresentacao'];
+  const vals = [];
+
   nomes.forEach(n=>{
-    const v=Number(document.querySelector(`.rating-group[data-name="${n}"] input[type="hidden"]`)?.value||0);
-    if(v>0) vals.push(v);
+    const v = Number(document.querySelector(`.rating-group[data-name="${n}"] input[type="hidden"]`)?.value || 0);
+    if (v > 0) vals.push(v);
   });
-  const media = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+
+  const media = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : null;
   h.value = media ?? '';
+
   g.querySelectorAll('.star').forEach(s=>{
-    const v=Number(s.dataset.v);
-    s.classList.toggle('active', !!media && v<=media);
+    const v = Number(s.dataset.v);
+    s.classList.toggle('active', !!media && v <= media);
     s.classList.remove('hover');
   });
 }
 
 // ========================
-// FLUXO MODAL AVALIAÇÃO (LANÇAR) + OVERLAY "LANÇANDO…"
+// FLUXO MODAL AVALIAÇÃO (LANÇAR)
 // ========================
 function setAvalInputsEnabled(enabled){
   const boxAval = document.getElementById('boxAval');
-  if(!boxAval) return;
+  if (!boxAval) return;
+
   boxAval.querySelectorAll('input[name^="av_"], textarea[name="av_comentario"]').forEach(el=>{
     el.disabled = !enabled;
   });
@@ -2378,7 +2308,7 @@ function setAvalInputsEnabled(enabled){
 
 function wireAvaliacaoFlow(){
   const form = document.getElementById('formLancamento');
-  if(!form) return;
+  if (!form) return;
 
   const modalEl = document.getElementById('modalAvaliar');
   const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
@@ -2393,28 +2323,31 @@ function wireAvaliacaoFlow(){
 
   function setSubmitting(on){
     isSubmitting = !!on;
-    if(submitBtn){
+
+    if (submitBtn){
       submitBtn.disabled = on;
-      if(submitBtn.dataset.origText == null) submitBtn.dataset.origText = submitBtn.innerHTML;
+      if (submitBtn.dataset.origText == null) submitBtn.dataset.origText = submitBtn.innerHTML;
       submitBtn.innerHTML = on
         ? '<span class="spinner-border spinner-border-sm me-1"></span> Lançando…'
         : submitBtn.dataset.origText;
     }
+
     form.style.pointerEvents = on ? 'none' : '';
     form.classList.toggle('opacity-75', on);
 
-    if(on) showLancOverlay('launch'); else hideLancOverlay();
+    if (on) showLancOverlay('launch');
+    else hideLancOverlay();
   }
 
   function ensureRequestId(){
     let inp = form.querySelector('input[name="request_id"]');
-    if(!inp){
+    if (!inp){
       inp = document.createElement('input');
       inp.type = 'hidden';
       inp.name = 'request_id';
       form.appendChild(inp);
     }
-    inp.value = Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
+    inp.value = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
   }
 
   function scrollIntoViewSmooth(el){
@@ -2425,19 +2358,19 @@ function wireAvaliacaoFlow(){
 
   chkAvaliar?.addEventListener('change', ()=>{
     const on = chkAvaliar.checked;
-    if(inputAvaliar) inputAvaliar.value = on ? '1':'0';
-    if(boxAval) boxAval.style.display = on ? 'block':'none';
+    if (inputAvaliar) inputAvaliar.value = on ? '1' : '0';
+    if (boxAval) boxAval.style.display = on ? 'block' : 'none';
     setAvalInputsEnabled(on);
-    if(on){ autoGeral(); }
+    if (on) autoGeral();
   });
 
-  // SUBMIT PRINCIPAL
   form.addEventListener('submit', function(ev){
-    if(isSubmitting){
+    if (isSubmitting){
       ev.preventDefault();
       return;
     }
-    if(!form.checkValidity()){
+
+    if (!form.checkValidity()){
       form.reportValidity?.();
       ev.preventDefault();
       return;
@@ -2447,38 +2380,34 @@ function wireAvaliacaoFlow(){
                       (inputAvaliar && inputAvaliar.value === '1') ||
                       (boxAval && boxAval.style.display === 'block');
 
-    // Já está avaliando → só envia com overlay
-    if(avaliando){
+    if (avaliando){
       setAvalInputsEnabled(true);
       autoGeral();
       ensureRequestId();
-      setSubmitting(true);   // mostra "Lançando…"
-      // NÃO dá preventDefault → submit segue normal
+      setSubmitting(true);
       return;
     }
 
-    // Não está avaliando
-    if(modal){
-      // Usa o modal "Avaliar agora / Pular e lançar"
+    if (modal){
       ev.preventDefault();
       modal.show();
-    }else{
-      // Fallback: confirm do navegador com a frase
+    } else {
       ev.preventDefault();
       const querAvaliar = confirm('Deseja registrar uma avaliação agora antes de lançar?');
-      if(querAvaliar){
-        if(chkAvaliar) chkAvaliar.checked = true;
-        if(inputAvaliar) inputAvaliar.value = '1';
-        if(boxAval) boxAval.style.display = 'block';
+
+      if (querAvaliar){
+        if (chkAvaliar) chkAvaliar.checked = true;
+        if (inputAvaliar) inputAvaliar.value = '1';
+        if (boxAval) boxAval.style.display = 'block';
         setAvalInputsEnabled(true);
         autoGeral();
         ensureRequestId();
         setSubmitting(true);
         form.submit();
-      }else{
-        if(chkAvaliar) chkAvaliar.checked = false;
-        if(inputAvaliar) inputAvaliar.value = '0';
-        if(boxAval) boxAval.style.display = 'none';
+      } else {
+        if (chkAvaliar) chkAvaliar.checked = false;
+        if (inputAvaliar) inputAvaliar.value = '0';
+        if (boxAval) boxAval.style.display = 'none';
         setAvalInputsEnabled(false);
         ensureRequestId();
         setSubmitting(true);
@@ -2487,38 +2416,40 @@ function wireAvaliacaoFlow(){
     }
   });
 
-  // Clicou "Avaliar agora" no modal
   btnAvaliarAgora?.addEventListener('click', ()=>{
-    if(!chkAvaliar || !inputAvaliar) return;
+    if (!chkAvaliar || !inputAvaliar) return;
+
     chkAvaliar.checked = true;
     inputAvaliar.value = '1';
-    if(boxAval) boxAval.style.display = 'block';
+    if (boxAval) boxAval.style.display = 'block';
     setAvalInputsEnabled(true);
     modal?.hide();
+
     setTimeout(()=>{
       scrollIntoViewSmooth(boxAval);
       boxAval?.querySelector('.rating-group .star')?.focus?.();
     }, 150);
   });
 
-  // Clicou "Pular e lançar" no modal
   btnPularAval?.addEventListener('click', ()=>{
-    if(!inputAvaliar) return;
-    if(chkAvaliar) chkAvaliar.checked = false;
+    if (!inputAvaliar) return;
+
+    if (chkAvaliar) chkAvaliar.checked = false;
     inputAvaliar.value = '0';
-    if(boxAval) boxAval.style.display = 'none';
+    if (boxAval) boxAval.style.display = 'none';
     setAvalInputsEnabled(false);
     modal?.hide();
+
     setTimeout(()=>{
-      if(isSubmitting) return;
+      if (isSubmitting) return;
       ensureRequestId();
-      setSubmitting(true);  // overlay "Lançando…"
+      setSubmitting(true);
       form.submit();
     }, 80);
   });
 
   window.addEventListener('pageshow', (e)=>{
-    if(e.persisted){
+    if (e.persisted){
       setSubmitting(false);
       hideLancOverlay();
     }
@@ -2529,15 +2460,16 @@ function wireAvaliacaoFlow(){
 // AVALIAÇÃO NA LISTA DE LANÇAMENTOS
 // ========================
 function paintStaticStars(el){
-  const score = Number(el?.dataset?.score||0);
-  if(!el) return;
+  const score = Number(el?.dataset?.score || 0);
+  if (!el) return;
   const s = Math.max(0, Math.min(5, score));
   el.textContent = '★★★★★'.slice(0, s).padEnd(5, '☆');
 }
+
 function wireAvalLanc(){
   const tbody = document.getElementById('tbodyLanc');
   const modalEl = document.getElementById('modalAvalLanc');
-  if(!tbody || !modalEl) return;
+  if (!tbody || !modalEl) return;
 
   const modal = new bootstrap.Modal(modalEl);
   const form = document.getElementById('formAvalLanc');
@@ -2546,29 +2478,31 @@ function wireAvalLanc(){
 
   function initStarsInModal(){
     modalEl.querySelectorAll('.rating-group').forEach(g=>{
-      if(g.dataset.name!=='av_geral') wireStars(g);
+      if (g.dataset.name !== 'av_geral') wireStars(g);
     });
     autoGeral();
   }
 
   tbody.addEventListener('click', async (ev)=>{
     const btn = ev.target.closest('[data-open-av]');
-    if(!btn) return;
+    if (!btn) return;
+
     const tr = btn.closest('tr');
     const lancId = tr.dataset.id;
     const getUrl = tr.dataset.getavurl;
+
     inputLancId.value = lancId;
     info.textContent = `${tr.cells[0].textContent.trim()} • ${tr.dataset.coopnome}`;
 
     modalEl.querySelectorAll('input[name^="av_"]').forEach(i=>i.value='');
     const ta = modalEl.querySelector('textarea[name="av_comentario"]');
-    if(ta) ta.value='';
+    if (ta) ta.value = '';
 
     try{
       const r = await fetch(getUrl, {credentials:'same-origin'});
-      if(r.ok){
+      if (r.ok){
         const j = await r.json();
-        if(j.ok && j.data){
+        if (j.ok && j.data){
           const d = j.data;
           const map = {
             'av_pontualidade': d.pontualidade,
@@ -2577,16 +2511,16 @@ function wireAvalLanc(){
             'av_apresentacao': d.apresentacao,
             'av_geral': d.geral
           };
+
           Object.entries(map).forEach(([k,v])=>{
             const inp = modalEl.querySelector(`input[name="${k}"]`);
-            if(inp){ inp.value = v || ''; }
+            if (inp) inp.value = v || '';
           });
-          if(ta) ta.value = d.comentario || '';
+
+          if (ta) ta.value = d.comentario || '';
         }
       }
-    }catch(e){
-      // silencioso
-    }
+    }catch(e){}
 
     initStarsInModal();
     modal.show();
@@ -2594,27 +2528,34 @@ function wireAvalLanc(){
 
   form.addEventListener('submit', async (ev)=>{
     ev.preventDefault();
+
     const lancId = inputLancId.value;
     const tr = tbody.querySelector(`tr[data-id="${CSS.escape(lancId)}"]`);
-    if(!tr) return;
-    const postUrl = tr.dataset.avurl;
+    if (!tr) return;
 
+    const postUrl = tr.dataset.avurl;
     const fd = new FormData(form);
     autoGeral();
 
     try{
-      const r = await fetch(postUrl, {method:'POST', body:fd, credentials:'same-origin'});
-      if(!r.ok) throw new Error(r.status);
+      const r = await fetch(postUrl, {
+        method:'POST',
+        body:fd,
+        credentials:'same-origin'
+      });
+
+      if (!r.ok) throw new Error(r.status);
+
       const j = await r.json();
-      if(j.ok){
+      if (j.ok){
         const cell = tr.querySelector('[data-avcell]');
-        if(cell){
-          cell.innerHTML = `<span class="stars-static" data-score="${j.geral||0}">★★★★★</span>
+        if (cell){
+          cell.innerHTML = `<span class="stars-static" data-score="${j.geral || 0}">★★★★★</span>
                             <button class="btn btn-outline-royal btn-sm ms-1" data-open-av>Editar</button>`;
           paintStaticStars(cell.querySelector('.stars-static'));
         }
         modal.hide();
-      }else{
+      } else {
         alert(j.error || 'Falha ao salvar avaliação.');
       }
     }catch(e){
@@ -2629,152 +2570,109 @@ function wireAvalLanc(){
 // TABELAS
 // ========================
 function initTabelas(){
-  if(!document.getElementById('tabelasContainer')) return;
-  if(!document.querySelector('#tabelasContainer .doc-row')){
-    const href=document.getElementById('linkTabelas')?.href;
-    if(href) loadTabelasFromRoute(href);
+  if (!document.getElementById('tabelasContainer')) return;
+
+  if (!document.querySelector('#tabelasContainer .doc-row')){
+    const href = document.getElementById('linkTabelas')?.href;
+    if (href) loadTabelasFromRoute(href);
   }
+
   wireTabelaViewer();
 }
+
 async function loadTabelasFromRoute(href){
   try{
-    const res=await fetch(href,{credentials:'same-origin'});
-    if(!res.ok) throw new Error(res.status);
-    const html=await res.text();
-    const dom=new DOMParser().parseFromString(html,'text/html');
-    const card=dom.querySelector('.doc-row');
-    if(!card) return;
-    const cont=document.getElementById('tabelasContainer');
-    if(!cont) return;
-    cont.innerHTML='';
+    const res = await fetch(href, {credentials:'same-origin'});
+    if (!res.ok) throw new Error(res.status);
+
+    const html = await res.text();
+    const dom = new DOMParser().parseFromString(html,'text/html');
+    const card = dom.querySelector('.doc-row');
+    if (!card) return;
+
+    const cont = document.getElementById('tabelasContainer');
+    if (!cont) return;
+
+    cont.innerHTML = '';
     cont.appendChild(document.importNode(card,true));
     wireTabelaViewer();
-  }catch(e){
-    // mantém como está
-  }
+  }catch(e){}
 }
+
 function wireTabelaViewer(){
-  const modalEl=document.getElementById('modalTabela');
-  if(!modalEl) return;
-  const modal=new bootstrap.Modal(modalEl);
-  const lbl=document.getElementById('modalTabelaLabel');
-  const frame=document.getElementById('modalFrame');
-  const baixar=document.getElementById('modalBaixar');
-  const novaAba=document.getElementById('modalAbrirNovaAba');
+  const modalEl = document.getElementById('modalTabela');
+  if (!modalEl) return;
+
+  const modal = new bootstrap.Modal(modalEl);
+  const lbl = document.getElementById('modalTabelaLabel');
+  const frame = document.getElementById('modalFrame');
+  const baixar = document.getElementById('modalBaixar');
+  const novaAba = document.getElementById('modalAbrirNovaAba');
 
   document.getElementById('tabelasContainer')?.addEventListener('click', (ev)=>{
-    const card=ev.target.closest('.doc-row');
-    if(!card) return;
-    if(ev.target.closest('a[data-direct-download],button[data-direct-download]')) return;
-    const viewUrl=card.dataset.view||'#';
-    const downUrl=card.dataset.download||viewUrl;
-    const title=card.dataset.titleFull||'';
-    lbl.textContent=title;
-    baixar.href=downUrl;
-    novaAba.href=viewUrl;
-    frame.src=viewUrl;
+    const card = ev.target.closest('.doc-row');
+    if (!card) return;
+    if (ev.target.closest('a[data-direct-download],button[data-direct-download]')) return;
+
+    const viewUrl = card.dataset.view || '#';
+    const downUrl = card.dataset.download || viewUrl;
+    const title = card.dataset.titleFull || '';
+
+    lbl.textContent = title;
+    baixar.href = downUrl;
+    novaAba.href = viewUrl;
+    frame.src = viewUrl;
     modal.show();
   });
-  modalEl.addEventListener('hidden.bs.modal',()=>{ frame.src=''; });
+
+  modalEl.addEventListener('hidden.bs.modal', ()=>{
+    frame.src = '';
+  });
 }
 
 // ========================
-// POLLING DE AVISOS (PERFEITO: LOGIN + NOVO AVISO + SEM PISCAR)
-// ========================
-let lastUnread = null;
-let __shownAtLogin = false;
-
-async function pollAvisos(){
-  try{
-    const r = await fetch('/api/rest/avisos/unread_count', {credentials:'same-origin'});
-    if(!r.ok) throw new Error(r.status);
-    const j = await r.json();
-    if(!j || !j.ok) return;
-
-    const unread = Number(j.unread || 0);
-
-    // 1) atualiza badge SEM abrir toast (evita piscar)
-    setAvisosBadge(unread, { showToast: false });
-
-    // 2) PRIMEIRA LEITURA (após login/load)
-    if(lastUnread === null){
-      lastUnread = unread;
-
-      // se já tem não lidos ao logar: mostra toast UMA vez e tenta som
-      if(unread > 0 && !__shownAtLogin){
-        __shownAtLogin = true;
-        setAvisosBadge(unread, { showToast: true });
-        tryPlayAvisoSound(); // tenta tocar; se bloquear, toca no primeiro clique/tecla
-      }
-      return;
-    }
-
-    // 3) Se aumentou, chegou aviso novo
-    if(unread > lastUnread){
-      onNewAviso(unread);
-    }
-
-    // 4) Se virou 0 (todos lidos), pode fechar toast
-    if(unread === 0 && lastUnread > 0){
-      setAvisosBadge(0, { showToast: true }); // fecha
-    }
-
-    lastUnread = unread;
-  }catch(e){
-    // silencioso
-  }
-}
-
-function onNewAviso(unread){
-  // abre toast UMA vez + atualiza badge
-  setAvisosBadge(unread, { showToast: true });
-
-  // toca som 1x (ou marca pendente se o browser bloquear)
-  tryPlayAvisoSound();
-}
-
-// ========================
-// EVENTOS DO MENU / INICIALIZAÇÃO
+// MENU / INICIALIZAÇÃO
 // ========================
 document.getElementById('sideNav')?.addEventListener('click', async (e)=>{
-  const a=e.target.closest('a');
-  if(!a) return;
-  const t=a.getAttribute('data-target');
-  if(!t) return; // logout segue normal
+  const a = e.target.closest('a');
+  if (!a) return;
+
+  const t = a.getAttribute('data-target');
+  if (!t) return;
+
   e.preventDefault();
+
   document.querySelectorAll('#sideNav a').forEach(x=>x.classList.remove('active'));
   a.classList.add('active');
+
   showSection(t);
   pushView(t);
-  if(t==='avisos' || t==='tabelas'){
+
+  if (t === 'avisos' || t === 'tabelas'){
     prefetch(a.href);
   }
 });
 
 document.getElementById('toastVerAgora')?.addEventListener('click', async (e)=>{
   e.preventDefault();
-  const href=e.currentTarget.getAttribute('href');
+  const href = e.currentTarget.getAttribute('href');
   showSection('avisos');
   pushView('avisos');
   await loadAvisosFromRoute(href);
 });
 
-// ========================
-// NO LOGIN / LOAD: POLL IMEDIATO + INTERVALO
-// ========================
 document.addEventListener('DOMContentLoaded', ()=>{
-  const initial=startView();
+  const initial = startView();
   showSection(initial);
+  hideLancOverlay();
 
-  hideLancOverlay(); // garante overlay escondido ao carregar
-
-  // puxa contagem real imediatamente + a cada 25s
+  // atualiza rápido o contador mesmo fora da tela de avisos
   pollAvisos();
-  setInterval(pollAvisos, 25000);
+  setInterval(pollAvisos, 8000);
 });
 
-window.addEventListener('popstate',(ev)=>{
-  const v=(ev.state&&ev.state.view)||startView();
+window.addEventListener('popstate', (ev)=>{
+  const v = (ev.state && ev.state.view) || startView();
   showSection(v);
 });
 </script>
