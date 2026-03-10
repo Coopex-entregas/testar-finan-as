@@ -1576,12 +1576,12 @@ function formatPhoneBR(v) {
 
   function setPhone(digits) {
     const d = (digits || '').replace(/\D/g,'');
-    if (d) {
+    if (d && phoneEl) {
       phoneEl.textContent = formatPhoneBR(d);
       phoneEl.href = 'https://wa.me/55' + d;
       phoneEl.target = '_blank';
       phoneEl.classList.remove('text-muted');
-    } else {
+    } else if (phoneEl) {
       phoneEl.innerHTML = '<span class="text-muted">Sem telefone</span>';
       phoneEl.removeAttribute('href');
       phoneEl.removeAttribute('target');
@@ -1762,6 +1762,11 @@ function prefetch(href){
 // TOAST & BADGE DE AVISOS
 // ========================
 let toastAvisosInst = null;
+let avisosWired = false;
+let lastUnread = null;
+let __shownAtLogin = false;
+let __audioAvisosPending = false;
+let __audioAvisosUnlocked = false;
 
 function ensureToastInstance(){
   const el = document.getElementById('toastAvisos');
@@ -1808,9 +1813,6 @@ function setAvisosBadge(n, opts){
 // ========================
 // ÁUDIO DE AVISOS
 // ========================
-let __audioAvisosPending = false;
-let __audioAvisosUnlocked = false;
-
 function tryPlayAvisoSound(){
   const a = document.getElementById('audioAvisos');
   if (!a) return;
@@ -1865,10 +1867,6 @@ function tryPlayAvisoSound(){
 // ========================
 // AVISOS
 // ========================
-let avisosWired = false;
-let lastUnread = null;
-let __shownAtLogin = false;
-
 function onNewAviso(unread){
   setAvisosBadge(unread, { showToast:true });
   tryPlayAvisoSound();
@@ -1888,11 +1886,10 @@ async function pollAvisos(){
     if (!r.ok) throw new Error(r.status);
 
     const j = await r.json();
-    if (!j || !j.ok) return;
+    if (!j) return;
 
-    const unread = Number(j.unread || 0);
+    const unread = Number(j.unread ?? j.count ?? 0) || 0;
 
-    // atualiza o contador sempre, mesmo fora da página avisos
     setAvisosBadge(unread, { showToast:false });
 
     if (lastUnread === null){
@@ -1926,6 +1923,8 @@ function initAvisos(){
   const toastOK = toastOKEl ? new bootstrap.Toast(toastOKEl) : null;
   const avisosContainer = document.getElementById('avisosListContainer');
 
+  if (!avisosContainer) return;
+
   function getUnread(){
     return document.querySelectorAll('.aviso-card[data-lido="0"]').length;
   }
@@ -1942,7 +1941,7 @@ function initAvisos(){
     });
   });
 
-  avisosContainer?.addEventListener('click', async (ev) => {
+  avisosContainer.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-acao="marcar-lido"]');
     if (!btn) return;
 
@@ -2648,6 +2647,13 @@ document.getElementById('sideNav')?.addEventListener('click', async (e)=>{
   showSection(t);
   pushView(t);
 
+  if (t === 'avisos'){
+    const href = a.getAttribute('href');
+    if (href) {
+      await loadAvisosFromRoute(href);
+    }
+  }
+
   if (t === 'avisos' || t === 'tabelas'){
     prefetch(a.href);
   }
@@ -2658,22 +2664,31 @@ document.getElementById('toastVerAgora')?.addEventListener('click', async (e)=>{
   const href = e.currentTarget.getAttribute('href');
   showSection('avisos');
   pushView('avisos');
-  await loadAvisosFromRoute(href);
+  if (href) await loadAvisosFromRoute(href);
 });
 
-document.addEventListener('DOMContentLoaded', ()=>{
+document.addEventListener('DOMContentLoaded', async ()=>{
   const initial = startView();
   showSection(initial);
   hideLancOverlay();
 
-  // atualiza rápido o contador mesmo fora da tela de avisos
+  if (initial === 'avisos'){
+    const href = document.getElementById('linkAvisos')?.getAttribute('href');
+    if (href) await loadAvisosFromRoute(href);
+  }
+
   pollAvisos();
   setInterval(pollAvisos, 8000);
 });
 
-window.addEventListener('popstate', (ev)=>{
+window.addEventListener('popstate', async (ev)=>{
   const v = (ev.state && ev.state.view) || startView();
   showSection(v);
+
+  if (v === 'avisos'){
+    const href = document.getElementById('linkAvisos')?.getAttribute('href');
+    if (href) await loadAvisosFromRoute(href);
+  }
 });
 </script>
 </body>
