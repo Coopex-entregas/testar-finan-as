@@ -2028,13 +2028,21 @@ async function loadAvisosFromRoute(href){
 
     if (!res.ok) throw new Error(res.status);
 
-    const html = await res.text();
-    const dom = new DOMParser().parseFromString(html, 'text/html');
+    if (cards.length){
+  cards.forEach(c => {
+    const clone = document.importNode(c, true);
 
-    const origem = dom.querySelector('#avisosListContainer');
-    const cards = origem
-      ? [...origem.querySelectorAll('.aviso-card')]
-      : [...dom.querySelectorAll('.aviso-card')];
+    if (!clone.classList.contains('aviso-card')) {
+      clone.classList.add('card', 'card-body', 'my-2', 'aviso-card');
+      if (clone.classList.contains('unread')) {
+        clone.setAttribute('data-lido', '0');
+      } else if (!clone.hasAttribute('data-lido')) {
+        clone.setAttribute('data-lido', '1');
+      }
+    }
+
+    cont.appendChild(clone);
+  });
 
     const cont = document.getElementById('avisosListContainer');
     if (!cont) return;
