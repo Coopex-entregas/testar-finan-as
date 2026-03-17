@@ -12,83 +12,93 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
-  <style>
+ <style>
     :root{
       --royal-blue:#2747d9;
+      --royal-blue-2:#3358f0;
       --royal-dark:#16258a;
-      --hover-blue:#3b61e3;
-      --sidebar-w:260px;
-      --text-muted:#8f9bb8;
+      --royal-soft:#eef3ff;
+      --bg:#f4f7fc;
+      --card:#ffffff;
+      --text:#182033;
+      --muted:#7b879f;
+      --border:#e6ebf5;
+      --success:#12b76a;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+      --shadow:0 10px 30px rgba(17,24,39,.08);
+      --sidebar-w:278px;
+      --radius:20px;
     }
 
-    *{box-sizing:border-box;}
+    *{ box-sizing:border-box; }
+    html{ scroll-behavior:smooth; }
 
     body{
       margin:0;
-      font-family:'Roboto',sans-serif;
-      background:#f3f5fb;
-      color:#1f2430;
+      font-family:'Inter',sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(39,71,217,.10), transparent 28%),
+        linear-gradient(180deg, #f7f9fe 0%, #f2f5fb 100%);
+      color:var(--text);
       overflow-x:hidden;
     }
 
-    .layout{
-      display:flex;
-      min-height:100vh;
-    }
-
-    /* SIDEBAR ----------------------------------------------------------------*/
+    .layout{ display:flex; min-height:100vh; }
 
     .sidebar{
       position:fixed;
-      top:0;
-      left:0;
-      height:100vh;
+      top:0; left:0;
       width:var(--sidebar-w);
-      background:linear-gradient(180deg,var(--royal-blue),var(--royal-dark));
-      color:#fff;
+      height:100vh;
       padding:18px 14px;
-      display:flex;
-      flex-direction:column;
-      box-shadow:0 0 22px rgba(0,0,0,.25);
+      background:linear-gradient(180deg, rgba(51,88,240,1) 0%, rgba(39,71,217,1) 38%, rgba(22,37,138,1) 100%);
+      color:#fff;
+      box-shadow:0 0 26px rgba(0,0,0,.22);
       z-index:1020;
       overflow-y:auto;
-    }
-
-    .brand{
       display:flex;
       flex-direction:column;
-      gap:2px;
-      margin-bottom:12px;
-      padding:0 4px;
+    }
+
+    .sidebar::-webkit-scrollbar{ width:8px; }
+    .sidebar::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
+
+    .brand{
+      position:relative;
+      padding:16px;
+      margin-bottom:14px;
+      border-radius:18px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(8px);
     }
     .brand-title{
-      font-family:'Orbitron',sans-serif;
-      font-size:1.25rem;
-      letter-spacing:2px;
-      text-transform:uppercase;
       margin:0;
+      font-family:'Orbitron',sans-serif;
+      font-size:1.08rem;
+      letter-spacing:.9px;
+      text-transform:uppercase;
+      line-height:1.28;
     }
     .brand-sub{
-      font-size:.75rem;
-      opacity:.8;
+      display:block;
+      margin-top:6px;
+      font-size:.74rem;
+      opacity:.82;
     }
 
-    .sidebar-nav{
-      margin-top:8px;
-      padding:0;
-    }
-
+    .sidebar-nav{ padding:0; margin:0; }
     .nav-section-label{
-      font-size:.7rem;
-      letter-spacing:.08em;
+      font-size:.68rem;
+      letter-spacing:.12em;
       text-transform:uppercase;
       color:rgba(255,255,255,.60);
-      margin:12px 6px 6px;
+      margin:14px 8px 8px;
     }
-
     .sidebar-divider{
       border-color:rgba(255,255,255,.08);
-      margin:10px 0 6px;
+      margin:12px 0 8px;
     }
 
     .nav-link-main,
@@ -98,164 +108,240 @@
       justify-content:space-between;
       width:100%;
       border:0;
-      border-radius:10px;
-      padding:8px 10px;
-      margin:2px 0;
+      border-radius:14px;
+      padding:10px 12px;
+      margin:4px 0;
       background:transparent;
       color:#fff;
-      font-size:.9rem;
-      text-align:left;
       text-decoration:none;
+      font-size:.92rem;
       cursor:pointer;
-      transition:background .15s,transform .05s;
+      transition:all .18s ease;
     }
     .nav-link-main:hover,
     .nav-link-group-toggle:hover{
-      background:rgba(255,255,255,.08);
+      background:rgba(255,255,255,.10);
+      transform:translateY(-1px);
+      color:#fff;
     }
-    .nav-link-main.active{
-      background:rgba(0,0,0,.20);
-      box-shadow:0 0 0 1px rgba(255,255,255,.22);
-    }
-    .nav-link-main:active,
-    .nav-link-group-toggle:active{
-      transform:scale(.98);
+    .nav-link-main.active,
+    .nav-sublink.active{
+      background:rgba(255,255,255,.16) !important;
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow:0 8px 18px rgba(0,0,0,.10);
+      color:#fff !important;
     }
 
-    .nav-link-left{
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
+    .nav-link-left{ display:flex; align-items:center; gap:10px; }
     .nav-link-icon{
-      width:18px;
+      width:22px;
       display:flex;
       justify-content:center;
+      align-items:center;
+      font-size:1rem;
+      flex-shrink:0;
     }
-    .nav-link-label{
-      white-space:nowrap;
-    }
+    .nav-caret{ font-size:.82rem; opacity:.72; }
 
-    .nav-caret{
-      font-size:.8rem;
-      opacity:.7;
-    }
-
-    .nav-sublinks{
-      padding-left:30px;
-      margin-bottom:4px;
-    }
-
+    .nav-sublinks{ padding-left:16px; margin-bottom:6px; }
     .nav-sublink{
       display:flex;
       align-items:center;
       gap:8px;
-      padding:6px 8px;
-      margin:2px 0;
-      border-radius:8px;
-      font-size:.85rem;
-      color:rgba(255,255,255,.85);
+      padding:8px 10px;
+      margin:4px 0;
+      border-radius:12px;
+      color:rgba(255,255,255,.84);
       text-decoration:none;
-      transition:background .15s,color .15s,transform .05s;
+      font-size:.84rem;
+      transition:all .18s ease;
     }
     .nav-sublink:hover{
-      background:rgba(255,255,255,.08);
       color:#fff;
-    }
-    .nav-sublink.active{
-      background:rgba(0,0,0,.20);
-      color:#fff;
-      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+      background:rgba(255,255,255,.10);
+      transform:translateX(2px);
     }
 
-    .sidebar-footer{
-      margin-top:auto;
-      padding-top:10px;
-    }
-
-    /* MAIN -------------------------------------------------------------------*/
+    .sidebar-footer{ margin-top:auto; padding-top:10px; }
 
     .main{
       flex:1;
       margin-left:var(--sidebar-w);
-      padding:18px 22px;
+      padding:20px 20px 30px;
+      width:calc(100% - var(--sidebar-w));
     }
 
-    .content-shell{
-      max-width:1320px;
-      margin:0 auto 32px;
+    /* AJUSTE PEDIDO: conteúdo mais espalhado na tela */
+    .content-shell,
+    .main > .tab-content,
+    .main .tab-pane > .content-shell,
+    .main .tab-pane > .container-fluid{
+      max-width:none !important;
+      width:100%;
+      margin:0 auto 26px;
     }
 
-    .page-header{
-      margin-bottom:16px;
+    .panel-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:18px 20px;
+      border-radius:28px;
+      background:linear-gradient(135deg, rgba(39,71,217,1) 0%, rgba(51,88,240,1) 52%, rgba(22,37,138,1) 100%);
+      color:#fff;
+      box-shadow:0 18px 40px rgba(39,71,217,.22);
+      overflow:hidden;
+      margin-bottom:18px;
     }
-    .page-header h3{
+    .panel-head-title{
       margin:0;
-      font-size:1.35rem;
-      font-weight:600;
+      font-size:1.55rem;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      gap:10px;
     }
-    .page-header small{
-      color:var(--text-muted);
-      font-size:.85rem;
+    .panel-head-sub{
+      margin-top:6px;
+      color:rgba(255,255,255,.86);
+      font-size:.95rem;
     }
 
-    .card{
-      border-radius:12px;
-      border:0;
-      box-shadow:0 2px 8px rgba(15,23,42,.09);
-      background:#fff;
+    .card,
+    .card-modern{
+      background:var(--card);
+      border:1px solid var(--border) !important;
+      border-radius:var(--radius) !important;
+      box-shadow:var(--shadow) !important;
+      overflow:hidden;
+    }
+
+    .card-body{ padding:18px !important; }
+
+    .section-title,
+    h5.m-0,
+    h6.m-0{
+      font-size:1rem !important;
+      font-weight:800 !important;
+      color:#162033;
+    }
+
+    .section-subtitle,
+    .text-muted-2,
+    .text-muted,
+    small.text-muted{
+      color:var(--muted) !important;
+    }
+
+    .form-label,
+    .lanc-label{
+      display:block;
+      margin:0 0 6px;
+      font-size:.78rem !important;
+      font-weight:700 !important;
+      color:#45506a !important;
+    }
+
+    .form-control,
+    .form-select,
+    .input-group-text{
+      min-height:42px;
+      border-radius:14px !important;
+      border:1px solid var(--border) !important;
+      background:#fbfcff !important;
+      box-shadow:none !important;
+    }
+
+    .form-control:focus,
+    .form-select:focus{
+      border-color:#98abff !important;
+      box-shadow:0 0 0 .18rem rgba(39,71,217,.12) !important;
+      background:#fff !important;
     }
 
     .btn-royal{
-      background:var(--royal-blue);
-      color:#fff;
-      border-color:var(--royal-blue);
+      background:linear-gradient(135deg,var(--royal-blue),var(--royal-blue-2)) !important;
+      color:#fff !important;
+      border:0 !important;
+      border-radius:14px !important;
+      padding:10px 14px !important;
+      font-weight:700 !important;
+      box-shadow:0 10px 20px rgba(39,71,217,.16);
     }
-    .btn-royal:hover{
-      background:var(--hover-blue);
-      border-color:var(--hover-blue);
-      color:#fff;
+    .btn-royal:hover{ color:#fff !important; transform:translateY(-1px); }
+
+    .btn,.btn-sm{ border-radius:12px !important; }
+
+    .table-responsive,
+    .table-wrap,
+    .escalas-wrapper,
+    .troca-pendentes-wrapper,
+    .troca-historico-wrapper{
+      overflow:auto;
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:#fff;
     }
 
-    table thead th{
-      font-size:.8rem;
+    .table thead th,
+    .table-light th{
+      position:sticky;
+      top:0;
+      z-index:1;
+      background:#f8faff !important;
+      border-bottom:1px solid var(--border) !important;
+      color:#4b5565 !important;
+      font-size:.76rem !important;
+      font-weight:800 !important;
+      letter-spacing:.04em;
+      white-space:nowrap;
+      padding:.88rem .8rem !important;
       text-transform:uppercase;
-      letter-spacing:.03em;
     }
 
-    .form-label{
-      font-size:.8rem;
-      font-weight:500;
-      color:#3c4460;
+    .table tbody td,
+    .table tfoot td,
+    .table th,
+    .table td{
+      padding:.82rem .8rem !important;
+      border-color:#eef2f8 !important;
+      vertical-align:middle;
+      font-size:.9rem;
     }
+
+    .table tbody tr:hover{ background:#f8fbff !important; }
 
     .badge-soft{
-      background:#eef2ff;
-      color:#223;
-      border-radius:999px;
-      padding:.15rem .55rem;
-      font-size:.75rem;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:34px;
+      padding:6px 10px;
+      border-radius:999px !important;
+      font-size:.75rem !important;
+      font-weight:800 !important;
+      background:#eef3ff !important;
+      color:#2747d9 !important;
+      border:none !important;
     }
 
-    /* Responsivo -------------------------------------------------------------*/
+    .tab-pane{ animation:fadePane .2s ease; }
+    @keyframes fadePane{
+      from{ opacity:.35; transform:translateY(3px); }
+      to{ opacity:1; transform:none; }
+    }
 
     @media (max-width: 991.98px){
-      :root{ --sidebar-w:72px; }
+      :root{ --sidebar-w:74px; }
 
-      .sidebar{
-        padding:18px 8px;
-      }
-      .brand-sub,
-      .brand-title,
-      .nav-section-label,
-      .nav-link-label{
-        display:none;
-      }
-      .nav-sublinks{
-        padding-left:12px;
-      }
+      .sidebar{ padding:18px 8px; }
+      .brand-title,.brand-sub,.nav-section-label,.nav-link-label{ display:none; }
+      .nav-sublinks{ padding-left:10px; }
+
       .main{
         margin-left:var(--sidebar-w);
+        width:calc(100% - var(--sidebar-w));
         padding:16px 10px;
       }
     }
@@ -274,6 +360,51 @@
 {% set _flt       = _flt if _flt is defined else namespace(restaurante_id=None, cooperado_id=None, data_inicio='', data_fim='') %}
 {% set _tab       = (tab if tab is defined else request.args.get('tab','resumo')) %}
 
+{% set _perms = admin_perms if admin_perms is defined else {} %}
+{% set can_lanc_ver = admin_is_master or _perms.get('lancamentos', {}).get('ver', False) %}
+{% set can_lanc_criar = admin_is_master or _perms.get('lancamentos', {}).get('criar', False) %}
+{% set can_lanc_editar = admin_is_master or _perms.get('lancamentos', {}).get('editar', False) %}
+{% set can_lanc_excluir = admin_is_master or _perms.get('lancamentos', {}).get('excluir', False) %}
+{% set can_receitas_ver = admin_is_master or _perms.get('receitas', {}).get('ver', False) %}
+{% set can_receitas_criar = admin_is_master or _perms.get('receitas', {}).get('criar', False) %}
+{% set can_receitas_editar = admin_is_master or _perms.get('receitas', {}).get('editar', False) %}
+{% set can_receitas_excluir = admin_is_master or _perms.get('receitas', {}).get('excluir', False) %}
+{% set can_despesas_ver = admin_is_master or _perms.get('despesas', {}).get('ver', False) %}
+{% set can_despesas_criar = admin_is_master or _perms.get('despesas', {}).get('criar', False) %}
+{% set can_despesas_editar = admin_is_master or _perms.get('despesas', {}).get('editar', False) %}
+{% set can_despesas_excluir = admin_is_master or _perms.get('despesas', {}).get('excluir', False) %}
+{% set can_coop_receitas_ver = admin_is_master or _perms.get('coop_receitas', {}).get('ver', False) %}
+{% set can_coop_receitas_criar = admin_is_master or _perms.get('coop_receitas', {}).get('criar', False) %}
+{% set can_coop_receitas_editar = admin_is_master or _perms.get('coop_receitas', {}).get('editar', False) %}
+{% set can_coop_receitas_excluir = admin_is_master or _perms.get('coop_receitas', {}).get('excluir', False) %}
+{% set can_coop_despesas_ver = admin_is_master or _perms.get('coop_despesas', {}).get('ver', False) %}
+{% set can_coop_despesas_criar = admin_is_master or _perms.get('coop_despesas', {}).get('criar', False) %}
+{% set can_coop_despesas_editar = admin_is_master or _perms.get('coop_despesas', {}).get('editar', False) %}
+{% set can_coop_despesas_excluir = admin_is_master or _perms.get('coop_despesas', {}).get('excluir', False) %}
+{% set can_beneficios_ver = admin_is_master or _perms.get('beneficios', {}).get('ver', False) %}
+{% set can_beneficios_criar = admin_is_master or _perms.get('beneficios', {}).get('criar', False) %}
+{% set can_beneficios_editar = admin_is_master or _perms.get('beneficios', {}).get('editar', False) %}
+{% set can_beneficios_excluir = admin_is_master or _perms.get('beneficios', {}).get('excluir', False) %}
+{% set can_cooperados_ver = admin_is_master or _perms.get('cooperados', {}).get('ver', False) %}
+{% set can_cooperados_criar = admin_is_master or _perms.get('cooperados', {}).get('criar', False) %}
+{% set can_cooperados_editar = admin_is_master or _perms.get('cooperados', {}).get('editar', False) %}
+{% set can_cooperados_excluir = admin_is_master or _perms.get('cooperados', {}).get('excluir', False) %}
+{% set can_restaurantes_ver = admin_is_master or _perms.get('restaurantes', {}).get('ver', False) %}
+{% set can_restaurantes_criar = admin_is_master or _perms.get('restaurantes', {}).get('criar', False) %}
+{% set can_restaurantes_editar = admin_is_master or _perms.get('restaurantes', {}).get('editar', False) %}
+{% set can_restaurantes_excluir = admin_is_master or _perms.get('restaurantes', {}).get('excluir', False) %}
+{% set can_escalas_ver = admin_is_master or _perms.get('escalas', {}).get('ver', False) %}
+{% set can_escalas_criar = admin_is_master or _perms.get('escalas', {}).get('criar', False) %}
+{% set can_escalas_editar = admin_is_master or _perms.get('escalas', {}).get('editar', False) %}
+{% set can_avisos_ver = admin_is_master or _perms.get('avisos', {}).get('ver', False) %}
+{% set can_documentos_ver = admin_is_master or _perms.get('documentos', {}).get('ver', False) %}
+{% set can_tabelas_ver = admin_is_master or _perms.get('tabelas', {}).get('ver', False) %}
+{% set can_avaliacoes_ver = admin_is_master or _perms.get('avaliacoes', {}).get('ver', False) %}
+{% set can_rh_ver = admin_is_master or _perms.get('rh', {}).get('ver', False) %}
+{% set can_config_ver = admin_is_master or _perms.get('config', {}).get('ver', False) %}
+{% set can_config_criar = admin_is_master or _perms.get('config', {}).get('criar', False) %}
+{% set can_config_editar = admin_is_master or _perms.get('config', {}).get('editar', False) %}
+
 <div class="layout">
 
   <!-- SIDEBAR -------------------------------------------------------------->
@@ -289,6 +420,7 @@
       <div class="nav-section-label">Visão Geral</div>
 
       <!-- Resumo (TAB, igual antes) -->
+      {% if can_lanc_ver or can_receitas_ver or can_despesas_ver or can_coop_receitas_ver or can_coop_despesas_ver or can_beneficios_ver %}
       <a class="nav-link-main {{ 'active' if _tab=='resumo' else '' }}"
          data-bs-toggle="tab"
          data-bs-target="#resumo"
@@ -301,8 +433,10 @@
           <span class="nav-link-label">Resumo</span>
         </div>
       </a>
+      {% endif %}
 
       <!-- Avaliações (ROTA /admin/avaliacoes) -->
+    {% if can_avaliacoes_ver %}
     <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
        href="{{ url_for('admin_avaliacoes') }}">
       <div class="nav-link-left">
@@ -310,6 +444,7 @@
         <span class="nav-link-label">Avaliações</span>
       </div>
     </a>
+    {% endif %}
 
       <hr class="sidebar-divider">
 
@@ -328,14 +463,19 @@
 
       <div id="menuFinanceiro" class="collapse show nav-sublinks">
         <!-- Lançamentos (tab) -->
-       <a class="nav-sublink {{ 'active' if request.endpoint == 'admin_lancamentos' else '' }}"
-   href="{{ url_for('admin_lancamentos') }}">
-  <i class="bi bi-journal-text"></i>
-  <span class="nav-link-label">Lançamentos</span>
-</a>
+        {% if can_lanc_ver %}<a class="nav-sublink {{ 'active' if _tab=='lancamentos' else '' }}"
+           data-bs-toggle="tab"
+           data-bs-target="#lancamentos"
+           href="#lancamentos"
+           role="tab"
+           aria-controls="lancamentos"
+           aria-selected="{{ 'true' if _tab=='lancamentos' else 'false' }}">
+          <i class="bi bi-journal-text"></i>
+          <span class="nav-link-label">Lançamentos</span>
+        </a>{% endif %}
 
         <!-- Receitas Coop (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='receitas' else '' }}"
+        {% if can_receitas_ver %}<a class="nav-sublink {{ 'active' if _tab=='receitas' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#receitas"
            href="#receitas"
@@ -344,10 +484,10 @@
            aria-selected="{{ 'true' if _tab=='receitas' else 'false' }}">
           <i class="bi bi-credit-card"></i>
           <span class="nav-link-label">Receitas Coop</span>
-        </a>
+        </a>{% endif %}
 
         <!-- Despesas Coop (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='despesas' else '' }}"
+        {% if can_despesas_ver %}<a class="nav-sublink {{ 'active' if _tab=='despesas' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#despesas"
            href="#despesas"
@@ -356,10 +496,10 @@
            aria-selected="{{ 'true' if _tab=='despesas' else 'false' }}">
           <i class="bi bi-cart-dash"></i>
           <span class="nav-link-label">Despesas Coop</span>
-        </a>
+        </a>{% endif %}
 
         <!-- Receitas Cooperados (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='coop_receitas' else '' }}"
+        {% if can_coop_receitas_ver %}<a class="nav-sublink {{ 'active' if _tab=='coop_receitas' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#coop_receitas"
            href="#coop_receitas"
@@ -368,10 +508,10 @@
            aria-selected="{{ 'true' if _tab=='coop_receitas' else 'false' }}">
           <i class="bi bi-wallet2"></i>
           <span class="nav-link-label">Receitas Cooperados</span>
-        </a>
+        </a>{% endif %}
 
         <!-- Despesas Cooperados (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='coop_despesas' else '' }}"
+        {% if can_coop_despesas_ver %}<a class="nav-sublink {{ 'active' if _tab=='coop_despesas' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#coop_despesas"
            href="#coop_despesas"
@@ -380,10 +520,10 @@
            aria-selected="{{ 'true' if _tab=='coop_despesas' else 'false' }}">
           <i class="bi bi-bag-dash"></i>
           <span class="nav-link-label">Despesas Cooperados</span>
-        </a>
+        </a>{% endif %}
 
         <!-- Benefícios (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='beneficios' else '' }}"
+        {% if can_beneficios_ver %}<a class="nav-sublink {{ 'active' if _tab=='beneficios' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#beneficios"
            href="#beneficios"
@@ -392,8 +532,17 @@
            aria-selected="{{ 'true' if _tab=='beneficios' else 'false' }}">
           <i class="bi bi-heart-pulse"></i>
           <span class="nav-link-label">Benefícios</span>
-        </a>
+        </a>{% endif %}
       </div>
+
+
+      {% if can_rh_ver %}<a class="nav-link-main {% if request.endpoint and request.endpoint.startswith('admin_rh_') %}active{% endif %}"
+         href="{{ url_for('admin_rh_dashboard') }}">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-people-fill"></i></span>
+          <span class="nav-link-label">RH</span>
+        </div>
+      </a>{% endif %}
 
       <!-- CADASTROS (tabs + rotas) ------------------------------------------>
       <button class="nav-link-group-toggle"
@@ -410,7 +559,7 @@
 
       <div id="menuCadastros" class="collapse show nav-sublinks">
         <!-- Cooperados (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='cooperados' else '' }}"
+        {% if can_cooperados_ver %}<a class="nav-sublink {{ 'active' if _tab=='cooperados' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#cooperados"
            href="#cooperados"
@@ -419,10 +568,10 @@
            aria-selected="{{ 'true' if _tab=='cooperados' else 'false' }}">
           <i class="bi bi-person-badge"></i>
           <span class="nav-link-label">Cooperados</span>
-        </a>
+        </a>{% endif %}
 
         <!-- Estabelecimentos (tab) -->
-        <a class="nav-sublink {{ 'active' if _tab=='restaurantes' else '' }}"
+        {% if can_restaurantes_ver %}<a class="nav-sublink {{ 'active' if _tab=='restaurantes' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#restaurantes"
            href="#restaurantes"
@@ -431,21 +580,21 @@
            aria-selected="{{ 'true' if _tab=='restaurantes' else 'false' }}">
           <i class="bi bi-shop-window"></i>
           <span class="nav-link-label">Estabelecimentos</span>
-        </a>
+        </a>{% endif %}
 
         <!-- Documentos (rota) -->
-        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
+        {% if can_documentos_ver %}<a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
            href="{{ url_for('admin_documentos') }}">
           <i class="bi bi-folder2"></i>
           <span class="nav-link-label">Documentos</span>
-        </a>
+        </a>{% endif %}
 
         <!-- Tabelas (rota) -->
-        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
+        {% if can_tabelas_ver %}<a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
            href="{{ url_for('admin_tabelas') }}">
           <i class="bi bi-table"></i>
           <span class="nav-link-label">Tabelas</span>
-        </a>
+        </a>{% endif %}
       </div>
 
       <!-- OPERAÇÃO ---------------------------------------------------------->
@@ -463,24 +612,30 @@
 
       <div id="menuOperacao" class="collapse show nav-sublinks">
         <!-- Escalas (tab) -->
-        <a class="nav-sublink {% if request.endpoint == 'admin_escalas' %}active{% endif %}"
-   href="{{ url_for('admin_escalas') }}">
-  <i class="bi bi-calendar-week"></i><span class="nav-link-label">Escalas</span>
-</a>
+        {% if can_escalas_ver %}<a class="nav-sublink {{ 'active' if _tab=='escalas' else '' }}"
+           data-bs-toggle="tab"
+           data-bs-target="#escalas"
+           href="#escalas"
+           role="tab"
+           aria-controls="escalas"
+           aria-selected="{{ 'true' if _tab=='escalas' else 'false' }}">
+          <i class="bi bi-calendar-week"></i>
+          <span class="nav-link-label">Escalas</span>
+        </a>{% endif %}
 
         <!-- Avisos (rota, como já era) -->
-        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
+        {% if can_avisos_ver %}<a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
            href="{{ url_for('admin_avisos') }}">
           <i class="bi bi-megaphone"></i>
           <span class="nav-link-label">Avisos</span>
-        </a>
+        </a>{% endif %}
       </div>
 
       <hr class="sidebar-divider">
 
       <!-- Config (TAB) e Sair (rota) ---------------------------------------->
       <div class="sidebar-footer">
-        <a class="nav-link-main {{ 'active' if _tab=='config' else '' }}"
+        {% if can_config_ver %}<a class="nav-link-main {{ 'active' if _tab=='config' else '' }}"
            data-bs-toggle="tab"
            data-bs-target="#config"
            href="#config"
@@ -491,7 +646,7 @@
             <span class="nav-link-icon"><i class="bi bi-gear"></i></span>
             <span class="nav-link-label">Configurações</span>
           </div>
-        </a>
+        </a>{% endif %}
 
         <a class="nav-link-main"
            href="{{ url_for('logout') }}">
@@ -525,10 +680,10 @@
         {%- endmacro %}
 
         {# ---------- Filtros atuais (querystring) ---------- #}
-        {% set ri  = request.args.get('resumo_inicio','') %}
-        {% set rf  = request.args.get('resumo_fim','') %}
-        {% set rs  = request.args.get('resumo_restaurante_id','') %}
-        {% set cs  = request.args.get('resumo_cooperado_id','') %}
+        {% set ri  = request.args.get('data_inicio', request.args.get('resumo_inicio','')) %}
+        {% set rf  = request.args.get('data_fim', request.args.get('resumo_fim','')) %}
+        {% set rs  = request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) %}
+        {% set cs  = request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) %}
         {% set rid = rs|int if rs else None %}
         {% set cid = cs|int if cs else None %}
 
@@ -658,9 +813,6 @@
                 </div>
                 <div>
                   <h5 class="mb-0 resumo-title">Resumo geral financeiro</h5>
-                  <small class="text-muted">
-                    Use os filtros para enxergar produção, INSS (4,0%), SEST/SENAT (0,5%), receitas e despesas por período, estabelecimento e cooperado.
-                  </small>
                 </div>
               </div>
 
@@ -692,15 +844,15 @@
               <input type="hidden" name="tab" value="resumo">
               <div class="col-md-2">
                 <label class="form-label">De</label>
-                <input type="date" class="form-control form-control-sm" name="resumo_inicio" value="{{ ri }}">
+                <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ ri }}">
               </div>
               <div class="col-md-2">
                 <label class="form-label">Até</label>
-                <input type="date" class="form-control form-control-sm" name="resumo_fim" value="{{ rf }}">
+                <input type="date" class="form-control form-control-sm" name="data_fim" value="{{ rf }}">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Estabelecimento</label>
-                <select class="form-select form-select-sm" name="resumo_restaurante_id">
+                <select class="form-select form-select-sm" name="restaurante_id">
                   <option value="">Todos</option>
                   {% for rr in restaurantes %}
                     <option value="{{ rr.id }}" {{ 'selected' if rid and rid==rr.id else '' }}>{{ rr.nome }}</option>
@@ -709,7 +861,7 @@
               </div>
               <div class="col-md-4">
                 <label class="form-label">Cooperado</label>
-                <select class="form-select form-select-sm" name="resumo_cooperado_id">
+                <select class="form-select form-select-sm" name="cooperado_id">
                   <option value="">Todos</option>
                   {% for cc in cooperados %}
                     <option value="{{ cc.id }}" {{ 'selected' if cid and cid==cc.id else '' }}>{{ cc.nome }}</option>
@@ -717,7 +869,7 @@
                 </select>
               </div>
 
-              <div class="col-12 d-flex flex-wrap gap-2 mt-2">
+              <div class="col-12 d-flex flex-wrap gap-2 mt-2 align-items-end resumo-filter-actions">
                 <button class="btn btn-royal btn-sm">
                   <i class="bi bi-funnel"></i> Filtrar
                 </button>
@@ -729,6 +881,27 @@
                 <button id="btnExportXLSX" type="button" class="btn btn-outline-success btn-sm">
                   <i class="bi bi-file-earmark-excel"></i> Exportar XLSX (com filtros)
                 </button>
+                <div class="d-flex flex-wrap gap-2 align-items-end ms-lg-auto">
+                  <div>
+                    <label class="form-label mb-1">Filtro mensal</label>
+                    <input type="month" class="form-control form-control-sm" id="quickMonthResumo">
+                  </div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="btnQuickMonthResumo">
+                    <i class="bi bi-calendar3"></i> Aplicar mês
+                  </button>
+                  <div>
+                    <label class="form-label mb-1">Filtro anual</label>
+                    <select class="form-select form-select-sm" id="quickYearResumo">
+                      <option value="">Ano</option>
+                      {% for ano in range(2025, 2101) %}
+                        <option value="{{ ano }}">{{ ano }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="btnQuickYearResumo">
+                    <i class="bi bi-calendar-range"></i> Aplicar ano
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -867,6 +1040,48 @@
               </div>
             </div>
           </div>
+
+          <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 kpi-card">
+              <div class="kpi-border kpi-entregas-periodo"></div>
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-uppercase text-muted small">Quantidade de Entregas</div>
+                  <div id="kpiQtdEntregasPeriodo" class="fw-bold fs-5">0</div>
+                  <div class="small text-muted">No período filtrado</div>
+                </div>
+                <div class="kpi-icon"><i class="bi bi-bicycle"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 kpi-card">
+              <div class="kpi-border kpi-ticket-periodo"></div>
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-uppercase text-muted small">Ticket Médio</div>
+                  <div id="kpiTicketMedioPeriodo" class="fw-bold fs-5">R$ 0,00</div>
+                  <div class="small text-muted">Média por entrega</div>
+                </div>
+                <div class="kpi-icon"><i class="bi bi-receipt"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 kpi-card">
+              <div class="kpi-border kpi-benef-rateados"></div>
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-uppercase text-muted small">Benefícios Rateados</div>
+                  <div id="kpiBeneficiosRateados" class="fw-bold fs-5">R$ 0,00</div>
+                  <div class="small text-muted">Total lançado no período</div>
+                </div>
+                <div class="kpi-icon"><i class="bi bi-heart-pulse"></i></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Resumo por Cooperado -->
@@ -877,10 +1092,6 @@
                 <div class="resumo-pill-label"><i class="bi bi-people"></i></div>
                 <div>
                   <h6 class="m-0">Resumo por Cooperado (filtro aplicado)</h6>
-                  <small class="text-muted">
-                    Líquido = Produções + <span class="text-success">Receitas</span> − INSS (4,0%) − SEST/SENAT (0,5%) −
-                    <span class="text-danger">Despesas</span>
-                  </small>
                 </div>
               </div>
             </div>
@@ -949,6 +1160,20 @@
                 <span>Top Estabelecimentos (Produções no período)</span>
               </h6>
               <canvas id="chartEstabs"></canvas>
+              <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered table-hover align-middle" id="tblTopEstabsResumo">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:72px">#</th>
+                      <th>Estabelecimento</th>
+                      <th class="text-end">Produção real</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="3" class="text-center text-muted">Carregando…</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -1006,6 +1231,9 @@
         #resumo .kpi-desp-coop2{ border-color: rgba(248,113,113,0.65); }
         #resumo .kpi-res-coop{ border-color: rgba(14,116,144,0.6); }
         #resumo .kpi-total-rec{ border-color: rgba(99,102,241,0.7); }
+        #resumo .kpi-entregas-periodo{ border-color: rgba(245,158,11,0.65); }
+        #resumo .kpi-ticket-periodo{ border-color: rgba(168,85,247,0.65); }
+        #resumo .kpi-benef-rateados{ border-color: rgba(236,72,153,0.65); }
 
         #resumo .resumo-kpi-row .card.kpi-card .text-muted.small {
           font-size: 0.76rem;
@@ -1154,6 +1382,19 @@
         {% endfor %}
       ];
 
+      const BENEFICIOS_VIEW = [
+        {% for b in beneficios_view %}
+          {
+            id: {{ b.id }},
+            data_inicial: "{{ ymd(b.data_inicial) }}",
+            data_final: "{{ ymd(b.data_final) }}",
+            data_lancamento: "{{ ymd(b.data_lancamento) }}",
+            tipo: "{{ (b.tipo or '')|e }}",
+            valor_total: {{ (b.valor_total or 0)|float }}
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
       const COOPS = [
         {% for c in cooperados %}
           { id: {{ c.id }}, nome: "{{ c.nome|e }}" }{{ "," if not loop.last }}
@@ -1220,8 +1461,10 @@
 
       const filteredRECc = REC_COOP_CORP.filter(r => inRange(r.data));
       const filteredDESc = DESP_COOP_CORP.filter(d => inRange(d.data));
+      const filteredBEN  = BENEFICIOS_VIEW.filter(b => inRange(b.data_lancamento || b.data_final || b.data_inicial));
 
       // ---- KPIs (front) ----
+      const qtdEntregasPeriodo   = filteredPROD.length;
       const kpiProd         = sumBy(filteredPROD, x => x.valor);
       const kpiINSS4        = kpiProd * 0.04;
       const kpiSEST05       = kpiProd * 0.005;
@@ -1237,6 +1480,8 @@
 
       const kpiResultadoCoop      = kpiRecCoopCorp - kpiDespCoopCorp;
       const kpiTotalReceitasGeral = kpiRecCoopCorp + kpiRecCooperadosFull;
+      const kpiTicketMedioPeriodo = qtdEntregasPeriodo ? (kpiProd / qtdEntregasPeriodo) : 0;
+      const kpiBeneficiosRateados = sumBy(filteredBEN, x => x.valor_total);
 
       // aplica KPIs na tela
       document.getElementById('kpiTotalProds').textContent         = fmtBR(kpiProd);
@@ -1247,6 +1492,12 @@
       document.getElementById('kpiRecCooperadosFull').textContent  = fmtBR(kpiRecCooperadosFull);
       document.getElementById('kpiDespCooperados').textContent     = fmtBR(kpiDespCooperados);
       document.getElementById('kpiTotalReceitasGeral').textContent = fmtBR(kpiTotalReceitasGeral);
+      const qtdEl = document.getElementById('kpiQtdEntregasPeriodo');
+      if (qtdEl) qtdEl.textContent = Number(qtdEntregasPeriodo || 0).toLocaleString('pt-BR');
+      const ticketEl = document.getElementById('kpiTicketMedioPeriodo');
+      if (ticketEl) ticketEl.textContent = fmtBR(kpiTicketMedioPeriodo);
+      const benEl = document.getElementById('kpiBeneficiosRateados');
+      if (benEl) benEl.textContent = fmtBR(kpiBeneficiosRateados);
 
       const resEl = document.getElementById('kpiResultadoCoop');
       if (resEl) {
@@ -1490,18 +1741,36 @@
           });
         })();
 
-        // Estabelecimentos — barra horizontal
+        // Estabelecimentos — barra horizontal + tabela real
         (function () {
           const byR = {};
           filteredPROD.forEach(p => {
-            if (p.restaurante_id == null) return;
-            const k = p.restaurante_nome || '—';
-            byR[k] = (byR[k] || 0) + p.valor;
+            if (p.restaurante_id == null && !p.restaurante_nome) return;
+            const nome = (p.restaurante_nome || '—').trim() || '—';
+            byR[nome] = (byR[nome] || 0) + (+p.valor || 0);
           });
 
-          const entries = Object.entries(byR).sort((a, b) => b[1] - a[1]).slice(0, 20);
-          const labels = entries.map(e => e[0]);
-          const vals   = entries.map(e => e[1]);
+          const entries = Object.entries(byR)
+            .map(([nome, valor]) => ({ nome, valor: +(valor || 0) }))
+            .sort((a, b) => b.valor - a.valor)
+            .slice(0, 20);
+
+          const labels = entries.map(e => e.nome);
+          const vals   = entries.map(e => Number(e.valor.toFixed(2)));
+
+          const tbody = document.querySelector('#tblTopEstabsResumo tbody');
+          if (tbody) {
+            tbody.innerHTML = entries.length ? '' : '<tr><td colspan="3" class="text-center text-muted">Sem dados no período.</td></tr>';
+            entries.forEach((item, idx) => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td class="text-break">${item.nome}</td>
+                <td class="text-end fw-semibold">${fmtBR(item.valor)}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
 
           const ctx = document.getElementById('chartEstabs');
           if (!ctx) return;
@@ -1516,6 +1785,44 @@
           });
         })();
       });
+
+      // ---- Atalhos de filtro mensal / anual ----
+      (function(){
+        const form = document.querySelector('#resumo form[method="GET"]');
+        if (!form) return;
+        const diInput = form.querySelector('input[name="data_inicio"]');
+        const dfInput = form.querySelector('input[name="data_fim"]');
+        const monthInput = document.getElementById('quickMonthResumo');
+        const yearSelect = document.getElementById('quickYearResumo');
+        const btnMonth = document.getElementById('btnQuickMonthResumo');
+        const btnYear = document.getElementById('btnQuickYearResumo');
+
+        if (monthInput && FILTER.ri && FILTER.rf && FILTER.ri.slice(0,7) === FILTER.rf.slice(0,7)) {
+          monthInput.value = FILTER.ri.slice(0,7);
+        }
+        if (yearSelect && FILTER.ri && FILTER.rf && FILTER.ri.slice(0,4) === FILTER.rf.slice(0,4)) {
+          yearSelect.value = FILTER.ri.slice(0,4);
+        }
+
+        btnMonth?.addEventListener('click', () => {
+          const ym = monthInput?.value || '';
+          if (!ym || !diInput || !dfInput) return;
+          const [y, m] = ym.split('-').map(Number);
+          if (!y || !m) return;
+          const lastDay = new Date(y, m, 0).getDate();
+          diInput.value = `${y}-${String(m).padStart(2,'0')}-01`;
+          dfInput.value = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+          form.submit();
+        });
+
+        btnYear?.addEventListener('click', () => {
+          const y = Number(yearSelect?.value || 0);
+          if (!y || !diInput || !dfInput) return;
+          diInput.value = `${y}-01-01`;
+          dfInput.value = `${y}-12-31`;
+          form.submit();
+        });
+      })();
 
       // ---- Exportação XLSX ----
       const ensureXLSX = () => new Promise(res => {
@@ -1659,9 +1966,6 @@
           </span>
           <span>Lançamentos & Produção</span>
         </h5>
-        <small class="text-muted-2">
-          Controle de produção por restaurante, cooperado e período, com INSS (4,0%), SEST/SENAT (0,5%) e líquido calculados.
-        </small>
       </div>
 
       <div class="d-flex flex-wrap gap-2 justify-content-end">
@@ -1805,14 +2109,11 @@
           </span>
           <div>
             <h6 class="m-0">Lançar Produção</h6>
-            <small class="text-muted-2">
-              A competência por <b>período do restaurante</b> é aplicada no back-end.
-            </small>
           </div>
         </div>
       </div>
 
-      <form method="POST" action="{{ url_for('admin_add_lancamento') }}" class="row g-2 align-items-end mt-3">
+      <form method="POST" action="{{ url_for('admin_add_lancamento') }}" class="row g-2 align-items-end mt-3" data-perm-form="can_lanc_criar">
         <div class="col-md-3">
           <label class="form-label lanc-label">Restaurante</label>
           <select class="form-select form-select-sm" name="restaurante_id" required>
@@ -1869,12 +2170,6 @@
           </button>
         </div>
       </form>
-
-      <div class="mt-2 text-muted small">
-        Nota: os descontos abaixo são cálculo bruto linha-a-linha:
-        <b>INSS 4,0%</b> + <b>SEST/SENAT 0,5%</b> = <b>4,5%</b>.
-        <b>Isenções por benefício</b> entram na <u>Folha</u> e nos <u>totais</u> do Resumo.
-      </div>
     </div>
   </div>
 
@@ -1921,7 +2216,7 @@
                 <td class="text-end">R$ {{ "%.2f"|format(sest_05) }}</td>
                 <td class="text-end">R$ {{ "%.2f"|format(liq) }}</td>
                 <td class="text-center text-nowrap">
-                  <button class="btn btn-warning btn-sm rounded-pill"
+                  {% if can_lanc_editar %}<button class="btn btn-warning btn-sm rounded-pill"
                           data-bs-toggle="modal"
                           data-bs-target="#modalEditLancamento"
                           data-id="{{ l.id }}"
@@ -1936,10 +2231,11 @@
                           data-url="{{ url_for('admin_edit_lancamento', id=l.id) }}">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <a class="btn btn-danger btn-sm rounded-pill btn-del"
+                  {% if can_lanc_excluir %}<a class="btn btn-danger btn-sm rounded-pill btn-del"
                      href="{{ url_for('admin_delete_lancamento', id=l.id) }}">
                     <i class="bi bi-trash"></i>
-                  </a>
+                  </a>{% endif %}
+                  {% endif %}
                 </td>
               </tr>
             {% else %}
@@ -2125,6 +2421,8 @@
       </div>
       <form method="GET" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="receitas">
+        <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
+        <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
         <div class="col-md-3">
           <label class="form-label">Data Início</label>
           <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
@@ -2148,12 +2446,12 @@
         <span class="text-muted small">Preencha os campos e clique em <b>Adicionar</b>.</span>
       </div>
 
-      <form method="POST" action="{{ url_for('add_receita') }}" class="row g-2 align-items-end mt-2">
+      <form method="POST" action="{{ url_for('add_receita') }}" class="row g-2 align-items-end mt-2" data-perm-form="can_receitas_criar">
 
-      <input type="hidden" name="resumo_inicio" value="{{ request.args.get('resumo_inicio','') }}">
-      <input type="hidden" name="resumo_fim" value="{{ request.args.get('resumo_fim','') }}">
-      <input type="hidden" name="resumo_restaurante_id" value="{{ request.args.get('resumo_restaurante_id','') }}">
-      <input type="hidden" name="resumo_cooperado_id" value="{{ request.args.get('resumo_cooperado_id','') }}">
+      <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', request.args.get('resumo_inicio','')) }}">
+      <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
+      <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
+      <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
         <div class="col-md-5">
           <label class="form-label">Descrição</label>
           <input type="text" class="form-control form-control-sm" name="descricao" placeholder="Descrição" required>
@@ -2199,7 +2497,7 @@
                 <td class="text-break">{{ r.descricao }}</td>
                 <td class="text-end">R$ {{ '%.2f'|format(v_row) }}</td>
                 <td class="text-center text-nowrap">
-                  <button class="btn btn-warning btn-sm"
+                  {% if can_receitas_editar %}<button class="btn btn-warning btn-sm"
                           data-bs-toggle="modal"
                           data-bs-target="#modalEditReceita"
                           data-id="{{ r.id }}"
@@ -2209,9 +2507,10 @@
                           data-url="{{ url_for('edit_receita', id=r.id) }}">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <a class="btn btn-danger btn-sm btn-del" href="{{ url_for('delete_receita', id=r.id) }}">
+                  {% if can_receitas_excluir %}<a class="btn btn-danger btn-sm btn-del" href="{{ url_for('delete_receita', id=r.id) }}">
                     <i class="bi bi-trash"></i>
-                  </a>
+                  </a>{% endif %}
+                  {% endif %}
                 </td>
               </tr>
             {% else %}
@@ -2254,6 +2553,8 @@
       </div>
       <form method="GET" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="despesas">
+        <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
+        <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
         <div class="col-md-3">
           <label class="form-label">Data Início</label>
           <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
@@ -2277,12 +2578,12 @@
         <span class="text-muted small">Preencha os campos e clique em <b>Adicionar</b>.</span>
       </div>
 
-      <form method="POST" action="{{ url_for('add_despesa') }}" class="row g-2 align-items-end mt-2">
+      <form method="POST" action="{{ url_for('add_despesa') }}" class="row g-2 align-items-end mt-2" data-perm-form="can_despesas_criar">
 
-      <input type="hidden" name="resumo_inicio" value="{{ request.args.get('resumo_inicio','') }}">
-      <input type="hidden" name="resumo_fim" value="{{ request.args.get('resumo_fim','') }}">
-      <input type="hidden" name="resumo_restaurante_id" value="{{ request.args.get('resumo_restaurante_id','') }}">
-      <input type="hidden" name="resumo_cooperado_id" value="{{ request.args.get('resumo_cooperado_id','') }}">
+      <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', request.args.get('resumo_inicio','')) }}">
+      <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
+      <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
+      <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
         <div class="col-md-5">
           <label class="form-label">Descrição</label>
           <input type="text" class="form-control form-control-sm" name="descricao" placeholder="Descrição" required>
@@ -2327,7 +2628,7 @@
                 <td class="text-break">{{ d.descricao }}</td>
                 <td class="text-end">R$ {{ "%.2f"|format(d.valor) }}</td>
                 <td class="text-center text-nowrap">
-                  <button class="btn btn-warning btn-sm"
+                  {% if can_despesas_editar %}<button class="btn btn-warning btn-sm"
                           data-bs-toggle="modal"
                           data-bs-target="#modalEditDespesa"
                           data-id="{{ d.id }}"
@@ -2337,9 +2638,10 @@
                           data-url="{{ url_for('edit_despesa', id=d.id) }}">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <a class="btn btn-danger btn-sm btn-del" href="{{ url_for('delete_despesa', id=d.id) }}">
+                  {% if can_despesas_excluir %}<a class="btn btn-danger btn-sm btn-del" href="{{ url_for('delete_despesa', id=d.id) }}">
                     <i class="bi bi-trash"></i>
-                  </a>
+                  </a>{% endif %}
+                  {% endif %}
                 </td>
               </tr>
             {% else %}
@@ -2382,6 +2684,8 @@
       </div>
       <form method="GET" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="coop_receitas">
+        <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
+        <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
         <div class="col-md-3">
           <label class="form-label">Data Início</label>
           <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
@@ -2405,12 +2709,12 @@
         <span class="text-muted small">Selecione o cooperado e informe os dados.</span>
       </div>
 
-      <form method="POST" action="{{ url_for('add_receita_coop') }}" class="row g-2 align-items-end mt-2">
+      <form method="POST" action="{{ url_for('add_receita_coop') }}" class="row g-2 align-items-end mt-2" data-perm-form="can_coop_receitas_criar">
 
-      <input type="hidden" name="resumo_inicio" value="{{ request.args.get('resumo_inicio','') }}">
-      <input type="hidden" name="resumo_fim" value="{{ request.args.get('resumo_fim','') }}">
-      <input type="hidden" name="resumo_restaurante_id" value="{{ request.args.get('resumo_restaurante_id','') }}">
-      <input type="hidden" name="resumo_cooperado_id" value="{{ request.args.get('resumo_cooperado_id','') }}">
+      <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', request.args.get('resumo_inicio','')) }}">
+      <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
+      <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
+      <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
         <div class="col-md-3">
           <label class="form-label">Cooperado</label>
           <select class="form-select form-select-sm" name="cooperado_id" required>
@@ -2464,7 +2768,7 @@
                 <td class="text-break">{{ rc.descricao }}</td>
                 <td class="text-end">R$ {{ "%.2f"|format(rc.valor) }}</td>
                 <td class="text-center text-nowrap">
-                  <button class="btn btn-warning btn-sm"
+                  {% if can_coop_receitas_editar %}<button class="btn btn-warning btn-sm"
                           data-bs-toggle="modal"
                           data-bs-target="#modalEditReceitaCoop"
                           data-id="{{ rc.id }}"
@@ -2475,9 +2779,10 @@
                           data-url="{{ url_for('edit_receita_coop', id=rc.id) }}">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <a class="btn btn-danger btn-sm btn-del" href="{{ url_for('delete_receita_coop', id=rc.id) }}">
+                  {% if can_coop_receitas_excluir %}<a class="btn btn-danger btn-sm btn-del" href="{{ url_for('delete_receita_coop', id=rc.id) }}">
                     <i class="bi bi-trash"></i>
-                  </a>
+                  </a>{% endif %}
+                  {% endif %}
                 </td>
               </tr>
             {% else %}
@@ -2535,6 +2840,8 @@
 
       <form method="GET" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="coop_despesas">
+        <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
+        <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
 
         <div class="col-md-3">
           <label class="form-label">Data Início</label>
@@ -2574,12 +2881,12 @@
         </span>
       </div>
 
-      <form method="POST" action="{{ url_for('add_despesa_coop') }}" class="row g-2 align-items-end mt-2">
+      <form method="POST" action="{{ url_for('add_despesa_coop') }}" class="row g-2 align-items-end mt-2" data-perm-form="can_coop_despesas_criar">
 
-      <input type="hidden" name="resumo_inicio" value="{{ request.args.get('resumo_inicio','') }}">
-      <input type="hidden" name="resumo_fim" value="{{ request.args.get('resumo_fim','') }}">
-      <input type="hidden" name="resumo_restaurante_id" value="{{ request.args.get('resumo_restaurante_id','') }}">
-      <input type="hidden" name="resumo_cooperado_id" value="{{ request.args.get('resumo_cooperado_id','') }}">
+      <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', request.args.get('resumo_inicio','')) }}">
+      <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
+      <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
+      <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
         <div class="col-md-4">
           <label class="form-label">Cooperados</label>
           <select class="form-select form-select-sm" name="cooperado_ids[]" multiple size="5">
@@ -2645,7 +2952,7 @@
                 <td class="text-end">R$ {{ "%.2f"|format(dc.valor) }}</td>
 
                 <td class="text-center text-nowrap">
-                  <button class="btn btn-warning btn-sm"
+                  {% if can_coop_despesas_editar %}<button class="btn btn-warning btn-sm"
                           data-bs-toggle="modal"
                           data-bs-target="#modalEditDespesaCoop"
                           data-id="{{ dc.id }}"
@@ -2655,21 +2962,21 @@
                           data-data="{{ dc.data.strftime('%Y-%m-%d') if dc.data else '' }}"
                           data-url="{{ url_for('edit_despesa_coop', id=dc.id) }}">
                     <i class="bi bi-pencil"></i>
-                  </button>
+                  </button>{% endif %}
 
                   <!-- EXCLUIR via POST (evita 405) -->
-                  <form method="POST" action="{{ url_for('delete_despesa_coop', id=dc.id) }}" class="d-inline">
+                  {% if can_coop_despesas_excluir %}<form method="POST" action="{{ url_for('delete_despesa_coop', id=dc.id) }}" class="d-inline">
 
-                  <input type="hidden" name="resumo_inicio" value="{{ request.args.get('resumo_inicio','') }}">
-                  <input type="hidden" name="resumo_fim" value="{{ request.args.get('resumo_fim','') }}">
-                  <input type="hidden" name="resumo_restaurante_id" value="{{ request.args.get('resumo_restaurante_id','') }}">
-                  <input type="hidden" name="resumo_cooperado_id" value="{{ request.args.get('resumo_cooperado_id','') }}">
+                  <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', request.args.get('resumo_inicio','')) }}">
+                  <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
+                  <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
+                  <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
                     {# Se você usa Flask-WTF/CSRF, descomente a linha abaixo #}
                     {# {{ csrf_token() }} #}
                     <button type="submit" class="btn btn-danger btn-sm btn-del" onclick="return confirm('Excluir esta despesa?');">
                       <i class="bi bi-trash"></i>
                     </button>
-                  </form>
+                  </form>{% endif %}
                 </td>
               </tr>
             {% else %}
@@ -2744,13 +3051,12 @@
   <!-- Formulário de rateio -->
   <div class="card border-0 shadow-sm rounded-3 mb-3">
     <div class="card-body">
-      <p class="mb-3 text-muted">
-        Informe o <b>período semanal</b> e, para cada tipo, o <b>valor unitário por beneficiado</b>. Na submissão
-        calculamos: <b>Total</b> (= unitário × nº beneficiados) e <b>Rateio por pagante</b>
-        (pagantes = <i>todos</i> − <i>beneficiados</i> − <i>isentos</i>).
-      </p>
 
-      <form id="form-beneficios" method="POST" action="{{ url_for('ratear_beneficios') }}" class="row g-3">
+      <form id="form-beneficios" method="POST" action="{{ url_for('ratear_beneficios') }}" class="row g-3" data-perm-form="can_beneficios_criar_or_editar">
+        <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
+        <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim','') }}">
+        <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
+        <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
         <div class="col-12 col-md-3">
           <label class="form-label">Data inicial</label>
           <input type="date" class="form-control form-control-sm" name="data_inicial" required value="{{ request.args.get('data_inicio','') }}">
@@ -2851,7 +3157,6 @@
           <button class="btn btn-royal">
             <i class="bi bi-scissors"></i> Aplicar rateios
           </button>
-          <small class="muted ms-2">Os lançamentos aparecerão em <b>Despesas para Cooperados</b> como “(rateio ref mm/aaaa)”.</small>
         </div>
       </form>
     </div>
@@ -2867,6 +3172,10 @@
         </h6>
         <form method="GET" class="row g-2 align-items-end">
           <input type="hidden" name="tab" value="beneficios">
+          <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
+          <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim','') }}">
+          <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
+          <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
           <div class="col-md-3">
             <label class="form-label">De</label>
             <input type="date" class="form-control form-control-sm" name="b_ini" value="{{ request.args.get('b_ini','') }}">
@@ -2898,7 +3207,6 @@
   <button type="submit" class="btn btn-outline-danger btn-sm" id="btn-bulk-delete" disabled>
     <i class="bi bi-trash"></i> Excluir selecionados
   </button>
-  <span class="text-muted small">Selecione vários e exclua de uma vez.</span>
 </form>
 
 <div class="table-responsive mt-3">
@@ -3126,7 +3434,7 @@
   <!-- Novo cooperado -->
   <div class="card border-0 shadow-sm rounded-3 mb-3">
     <div class="card-body">
-      <form method="POST" action="{{ url_for('add_cooperado') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+      <form method="POST" action="{{ url_for('add_cooperado') }}" enctype="multipart/form-data" class="row g-3 align-items-end" data-perm-form="can_cooperados_criar">
         {% if csrf_token is defined %}
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% endif %}
@@ -3260,7 +3568,7 @@
                     </button>
 
                     <!-- Editar (AGORA passa a foto atual também) -->
-                    <button class="btn btn-warning"
+                    {% if can_cooperados_editar %}<button class="btn btn-warning"
                             data-bs-toggle="modal"
                             data-bs-target="#modalEditCooperado"
                             data-id="{{ coop.id }}"
@@ -3280,7 +3588,7 @@
                     </button>
 
                     <!-- Excluir -->
-                    <form action="{{ url_for('delete_cooperado', id=coop.id) }}"
+                    {% if can_cooperados_excluir %}<form action="{{ url_for('delete_cooperado', id=coop.id) }}"
                           method="POST"
                           class="d-inline"
                           onsubmit="return confirm('Excluir {{ coop.nome }}? Esta ação não pode ser desfeita.');">
@@ -3290,7 +3598,8 @@
                       <button type="submit" class="btn btn-danger btn-del" title="Excluir">
                         <i class="bi bi-trash"></i>
                       </button>
-                    </form>
+                    </form>{% endif %}
+                    {% endif %}
                   </div>
                 </td>
               </tr>
@@ -3530,7 +3839,7 @@
   <!-- Novo estabelecimento -->
   <div class="card border-0 shadow-sm rounded-3 mb-3">
     <div class="card-body">
-      <form method="POST" action="{{ url_for('add_restaurante') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+      <form method="POST" action="{{ url_for('add_restaurante') }}" enctype="multipart/form-data" class="row g-3 align-items-end" data-perm-form="can_restaurantes_criar">
         <div class="col-md-3">
           <label class="form-label">Nome</label>
           <input type="text" class="form-control form-control-sm" name="nome" placeholder="Ex.: Restaurante Centro" required>
@@ -3628,16 +3937,16 @@
                 </td>
                 <td class="text-center">
                   <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditRestaurante"
+                    {% if can_restaurantes_editar %}<button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditRestaurante"
                             data-id="{{ r.id }}" data-nome="{{ r.nome }}" data-usuario="{{ r.usuario_ref.usuario }}" data-periodo="{{ r.periodo }}"
                             data-url="{{ url_for('edit_restaurante', id=r.id) }}" title="Editar">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalResetSenhaRestaurante"
+                    {% if can_restaurantes_editar %}<button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalResetSenhaRestaurante"
                             data-id="{{ r.id }}" data-url="{{ url_for('reset_senha_restaurante', id=r.id) }}" title="Redefinir senha">
                       <i class="bi bi-key"></i>
                     </button>
-                    <form action="{{ url_for('delete_restaurante', id=r.id) }}"
+                    {% if can_restaurantes_excluir %}<form action="{{ url_for('delete_restaurante', id=r.id) }}"
       method="POST"
       class="d-inline"
       onsubmit="return confirm('Excluir {{ r.nome }}? Esta ação não pode ser desfeita.');">
@@ -3647,7 +3956,9 @@
   <button type="submit" class="btn btn-danger btn-sm" title="Excluir">
     <i class="bi bi-trash"></i>
   </button>
-</form>
+</form>{% endif %}
+                    {% endif %}
+                    {% endif %}
                   </div>
                 </td>
               </tr>
@@ -3721,15 +4032,13 @@
 
      <!-- ESCALAS -->
 <section class="tab-pane fade {{ 'show active' if _tab=='escalas' else '' }}" id="escalas" role="tabpanel">
-  <!-- Cabeçalho Escalas -->
   <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 align-items-lg-center mb-3">
     <div>
       <h5 class="mb-0 section-title">Gestão de Escalas</h5>
       <small class="section-subtitle">
-        Upload da planilha, consulta rápida por cooperado e histórico de trocas em um só lugar.
+        Upload da planilha, alertas no topo e escala semanal carregada somente quando você abrir.
       </small>
     </div>
-
     <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
       <div class="alert alert-info py-1 px-2 mb-0 small shadow-sm border-0">
         <b>Prazo-limite geral:</b> 31/12/<span id="prazoAno">—</span>
@@ -3739,14 +4048,69 @@
     </div>
   </div>
 
-  <!-- Upload + Busca -->
+  <div class="card p-3 mb-3 border-0 shadow-sm escala-alerta-card escala-alerta-top" id="escalaAlertasCard">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2">
+      <div>
+        <h6 class="mb-1 section-title">Aviso de contratos sem cooperado</h6>
+        <small class="section-subtitle">
+          O aviso fica no topo para aparecer logo. O som usa <strong>static/escala.mp3</strong> e toca quando surgir alerta novo com a aba aberta.
+        </small>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <span class="badge-soft" id="escalaAlertasCount">{{ escala_alertas_1h|length if escala_alertas_1h is defined else 0 }} alerta(s)</span>
+        <span class="badge-soft" id="escalaAlertasClock">Atualizando…</span>
+      </div>
+    </div>
+
+    <audio id="audioAlertaEscala" preload="auto">
+      <source src="{{ url_for('static', filename='escala.mp3') }}" type="audio/mpeg">
+    </audio>
+
+    <div id="escalaAlertasWrap"
+         data-initial='{{ escala_alertas_1h|default([])|tojson|safe }}'
+         data-endpoint='{{ url_for("admin_api_escala_alertas_1h") }}'>
+      {% if escala_alertas_1h %}
+        <div class="alert alert-warning border-0 shadow-sm mb-2">
+          <strong>Atenção:</strong> existem {{ escala_alertas_1h|length }} contrato(s) sem cooperado começando em até 1 hora.
+        </div>
+        <div class="table-responsive escala-alerta-table-wrap">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Dia</th>
+                <th>Data</th>
+                <th>Turno</th>
+                <th>Horário</th>
+                <th>Contrato</th>
+                <th>Faltam</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in escala_alertas_1h %}
+                <tr class="escala-alerta-row">
+                  <td>{{ a.weekday_label }}</td>
+                  <td>{{ a.data }}</td>
+                  <td>{{ a.turno or '—' }}</td>
+                  <td>{{ a.horario or '—' }}</td>
+                  <td><strong>{{ a.contrato }}</strong></td>
+                  <td>{{ a.minutos_restantes }} min</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-success border-0 mb-0">Nenhum contrato sem cooperado começando dentro da próxima 1 hora.</div>
+      {% endif %}
+    </div>
+  </div>
+
   <div class="card p-3 mb-3 escala-upload-card">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
       <div class="flex-grow-1">
         <h6 class="mb-1 section-title">Upload da Escala (.xlsx)</h6>
         <small class="section-subtitle">
-          Envie a planilha oficial de escalas. A associação do cooperado é feita por login (quando existir) ou por nome,
-          ignorando acentos.
+          Envie a planilha oficial. A grade semanal abaixo não vem aberta por padrão para não deixar a página tão grande.
         </small>
 
         <form method="POST"
@@ -3767,18 +4131,18 @@
                    id="arquivo_escala"
                    name="file"
                    accept=".xlsx"
-                   required>
+                   required
+                   {% if not can_escalas_criar %}disabled{% endif %}>
           </div>
 
           <div class="col-md-3">
-            <button type="submit" class="btn btn-royal btn-sm w-100 mt-1">
+            <button type="submit" class="btn btn-royal btn-sm w-100 mt-1" {% if not can_escalas_criar %}disabled{% endif %}>
               <i class="bi bi-upload me-1"></i> Enviar Planilha
             </button>
           </div>
         </form>
       </div>
 
-      <!-- Busca por cooperado / placa / CNH -->
       <div class="escala-search-box">
         <span class="section-subtitle d-block mb-1">Pesquisar cooperado</span>
         <div class="input-group input-group-sm">
@@ -3791,14 +4155,141 @@
                  placeholder="Digite nome, placa ou CNH...">
         </div>
         <div class="d-flex gap-2 mt-2 justify-content-end">
-          <span class="badge-soft">
-            Cooperados: {{ cooperados|length if cooperados else 0 }}
-          </span>
-          <span class="badge-soft">
-            Com escala: {{ escalas_por_coop|length if escalas_por_coop is defined else 0 }}
-          </span>
+          <span class="badge-soft">Cooperados: {{ cooperados|length if cooperados else 0 }}</span>
+          <span class="badge-soft">Com escala: {{ escalas_por_coop|length if escalas_por_coop is defined else 0 }}</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="card p-3 mb-3 border-0 shadow-sm escala-week-card">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+      <div>
+        <h6 class="mb-1 section-title">Escala semanal individual</h6>
+        <small class="section-subtitle">
+          Clique para abrir somente quando precisar. Você pode filtrar por nome, contrato, livres e por dia específico.
+        </small>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <span class="badge-soft">Contratos: {{ contratos_escala_opcoes|length if contratos_escala_opcoes is defined else 0 }}</span>
+        <button type="button" class="btn btn-royal btn-sm" id="btnToggleEscalaSemanal">
+          <i class="bi bi-calendar-week me-1"></i> Abrir escala semanal
+        </button>
+      </div>
+    </div>
+
+    <div id="escalaWeeklyPanel" class="mt-3" hidden>
+      <div class="row g-2 mb-3">
+        <div class="col-lg-3 col-md-6">
+          <label class="form-label mb-1">Localizar cooperado</label>
+          <input type="text" id="escalaFiltroNome" class="form-control form-control-sm" placeholder="Digite o nome do cooperado">
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <label class="form-label mb-1">Filtrar por contrato</label>
+          <select id="escalaFiltroContrato" class="form-select form-select-sm">
+            <option value="">Todos os contratos</option>
+            {% for contrato_nome in contratos_escala_opcoes or [] %}
+              <option value="{{ contrato_nome }}">{{ contrato_nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-lg-2 col-md-6">
+          <label class="form-label mb-1">Vagas</label>
+          <div class="form-check form-switch pt-2">
+            <input class="form-check-input" type="checkbox" id="escalaFiltroLivres">
+            <label class="form-check-label" for="escalaFiltroLivres">Somente livres</label>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 d-flex align-items-end justify-content-md-end gap-2 flex-wrap">
+          <span class="badge-soft" id="escalaWeeklyCount">0 linha(s)</span>
+          <span class="badge-soft" id="escalaWeeklyStatus">Aguardando abertura</span>
+        </div>
+      </div>
+
+      <div class="card border-0 bg-light-subtle p-3 mb-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-lg-2 col-md-6">
+            <label class="form-label mb-1">Histórico escalas de</label>
+            <input type="date" class="form-control form-control-sm" name="escala_hist_inicio" form="formEscalaHist" value="{{ escala_hist_inicio.strftime('%Y-%m-%d') if escala_hist_inicio else '' }}">
+          </div>
+          <div class="col-lg-2 col-md-6">
+            <label class="form-label mb-1">até</label>
+            <input type="date" class="form-control form-control-sm" name="escala_hist_fim" form="formEscalaHist" value="{{ escala_hist_fim.strftime('%Y-%m-%d') if escala_hist_fim else '' }}">
+          </div>
+          <div class="col-lg-8 d-flex flex-wrap gap-2 justify-content-lg-end">
+            <form id="formEscalaHist" method="GET" action="{{ url_for('admin_dashboard') }}" class="d-flex gap-2 flex-wrap">
+              <input type="hidden" name="tab" value="escalas">
+              <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-clock-history me-1"></i>Ver histórico</button>
+            </form>
+            <a class="btn btn-outline-success btn-sm" href="{{ url_for('admin_exportar_escalas_atual', escala_hist_inicio=(escala_hist_inicio.strftime('%Y-%m-%d') if escala_hist_inicio else ''), escala_hist_fim=(escala_hist_fim.strftime('%Y-%m-%d') if escala_hist_fim else '')) }}"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Exportar escala atual + alterações</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin_exportar_escalas_historico', escala_hist_inicio=(escala_hist_inicio.strftime('%Y-%m-%d') if escala_hist_inicio else ''), escala_hist_fim=(escala_hist_fim.strftime('%Y-%m-%d') if escala_hist_fim else '')) }}"><i class="bi bi-download me-1"></i>Exportar histórico de escalas</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="escala-day-tabs mb-3" id="escalaDayTabs">
+        <button type="button" class="btn btn-sm btn-royal active" data-day-filter="semana">Semana</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-day-filter="1">Segunda</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-day-filter="2">Terça</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-day-filter="3">Quarta</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-day-filter="4">Quinta</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-day-filter="5">Sexta</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-day-filter="6">Sábado</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-day-filter="7">Domingo</button>
+      </div>
+
+      <div id="escalaEditorMount"
+           data-rows='{{ escala_editor_rows|tojson|safe }}'
+           data-save-base="/admin/escalas/__ID__/salvar"
+           data-csrf="{{ csrf_token() if csrf_token is defined else '' }}"
+           data-can-edit="{{ '1' if can_escalas_editar else '0' }}">
+        <div class="alert alert-light border mb-0">Clique em <strong>Abrir escala semanal</strong> para carregar a grade.</div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="card p-3 mb-3 border-0 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div>
+        <h6 class="mb-0 section-title">Histórico de escalas</h6>
+        <small class="section-subtitle">Últimos 31 dias das modificações e snapshots da escala.</small>
+      </div>
+      <span class="badge-soft">{{ escala_historico_rows|length if escala_historico_rows else 0 }} registro(s)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Registrado em</th>
+            <th>Origem</th>
+            <th>Data</th>
+            <th>Turno</th>
+            <th>Horário</th>
+            <th>Contrato</th>
+            <th>Cooperado atual</th>
+            <th>Retirado</th>
+            <th>Entrou</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in escala_historico_rows or [] %}
+          <tr>
+            <td>{{ h.snapshot_em.strftime('%d/%m/%Y %H:%M') if h.snapshot_em else '—' }}</td>
+            <td>{{ h.origem or h.acao }}</td>
+            <td>{{ h.data }}</td>
+            <td>{{ h.turno or '—' }}</td>
+            <td>{{ h.horario or '—' }}</td>
+            <td>{{ h.contrato or '—' }}</td>
+            <td>{{ h.cooperado_nome or '—' }}</td>
+            <td>{{ h.saiu_nome or '—' }}</td>
+            <td>{{ h.entrou_nome or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="text-center text-muted">Sem histórico no período.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -4181,7 +4672,7 @@
 
   <!-- HISTÓRICO DE TROCAS (aplicadas) -->
   <div class="card p-3 mb-3">
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h5 class="mb-0 section-title">
           Trocas de Escala - Aplicadas
@@ -4193,6 +4684,23 @@
       <span class="badge-soft">
         {{ trocas_historico|length if trocas_historico else 0 }} registro(s)
       </span>
+    </div>
+    <div class="row g-2 align-items-end mt-2 mb-2">
+      <div class="col-lg-2 col-md-6">
+        <label class="form-label mb-1">Histórico trocas de</label>
+        <input type="date" class="form-control form-control-sm" name="trocas_hist_inicio" form="formTrocasHist" value="{{ trocas_hist_inicio.strftime('%Y-%m-%d') if trocas_hist_inicio else '' }}">
+      </div>
+      <div class="col-lg-2 col-md-6">
+        <label class="form-label mb-1">até</label>
+        <input type="date" class="form-control form-control-sm" name="trocas_hist_fim" form="formTrocasHist" value="{{ trocas_hist_fim.strftime('%Y-%m-%d') if trocas_hist_fim else '' }}">
+      </div>
+      <div class="col-lg-8 d-flex flex-wrap gap-2 justify-content-lg-end">
+        <form id="formTrocasHist" method="GET" action="{{ url_for('admin_dashboard') }}" class="d-flex gap-2 flex-wrap">
+          <input type="hidden" name="tab" value="escalas">
+          <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-funnel me-1"></i>Filtrar histórico</button>
+        </form>
+        <a class="btn btn-outline-success btn-sm" href="{{ url_for('admin_exportar_trocas_historico', trocas_hist_inicio=(trocas_hist_inicio.strftime('%Y-%m-%d') if trocas_hist_inicio else ''), trocas_hist_fim=(trocas_hist_fim.strftime('%Y-%m-%d') if trocas_hist_fim else '')) }}"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Exportar trocas</a>
+      </div>
     </div>
 
     {% if trocas_historico %}
@@ -4418,81 +4926,404 @@
 </section>
 
     <!-- === CONFIGURAÇÕES === -->
-    <section class="tab-pane fade {{ 'show active' if _tab=='config' else '' }}" id="config" role="tabpanel">
-      <div class="content-shell">
-        <div class="page-header">
-          <h3><i class="bi bi-gear"></i> Configurações</h3>
-          <small>Altere dados do administrador e parâmetros do sistema.</small>
-        </div>
+<section class="tab-pane fade {{ 'show active' if _tab=='config' else '' }}" id="config" role="tabpanel">
+  <div class="content-shell">
+    <div class="page-header">
+      <h3><i class="bi bi-gear"></i> Configurações</h3>
+      <small>Altere dados do administrador, parâmetros do sistema e gerencie administradores secundários.</small>
+    </div>
 
-        <div class="row g-3">
-          <div class="col-12 col-lg-6">
-            <div class="card">
-              <div class="card-body">
-                <h5 class="mb-2">Conta do Administrador</h5>
-                <p class="text-muted small mb-3">
-                  Troque o usuário e, se quiser, defina uma nova senha. Se deixar senha em branco, mantém a atual.
-                </p>
+    {% set admins = admins if admins is defined else [] %}
+    {% set admin_permissions_map = admin_permissions_map if admin_permissions_map is defined else {} %}
+    {% set ADMIN_ABAS = ADMIN_ABAS if ADMIN_ABAS is defined else [
+      'resumo',
+      'lancamentos',
+      'receitas',
+      'despesas',
+      'coop_receitas',
+      'coop_despesas',
+      'beneficios',
+      'cooperados',
+      'restaurantes',
+      'escalas',
+      'documentos',
+      'tabelas',
+      'avisos',
+      'avaliacoes',
+      'config'
+    ] %}
 
-                <form method="POST" action="{{ url_for('alterar_admin') }}" class="row g-2">
-                  <div class="col-12">
-                    <label class="form-label">Usuário do admin</label>
-                    <input class="form-control" name="usuario" value="{{ admin_user.usuario if admin_user else '' }}" required>
-                  </div>
+    <div class="row g-3">
+      <!-- Conta admin principal -->
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="mb-2">Conta do Administrador Principal</h5>
+            <p class="text-muted small mb-3">
+              Troque o usuário e, se quiser, defina uma nova senha. Se deixar senha em branco, mantém a atual.
+            </p>
 
-                  <div class="col-12 col-md-6">
-                    <label class="form-label">Nova senha</label>
-                    <input class="form-control" type="password" name="nova_senha" placeholder="(opcional)">
-                  </div>
+            <form method="POST" action="{{ url_for('alterar_admin') }}" class="row g-2" data-perm-form="can_config_editar">
+              {% if csrf_token is defined %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% endif %}
 
-                  <div class="col-12 col-md-6">
-                    <label class="form-label">Confirmar senha</label>
-                    <input class="form-control" type="password" name="confirmar_senha" placeholder="(opcional)">
-                  </div>
-
-                  <div class="col-12 d-flex justify-content-end mt-2">
-                    <button class="btn btn-royal" type="submit">
-                      <i class="bi bi-save"></i> Salvar admin
-                    </button>
-                  </div>
-                </form>
+              <div class="col-12">
+                <label class="form-label">Usuário do admin</label>
+                <input class="form-control" name="usuario" value="{{ admin_user.usuario if admin_user else '' }}" required>
               </div>
-            </div>
-          </div>
 
-          <div class="col-12 col-lg-6">
-            <div class="card">
-              <div class="card-body">
-                <h5 class="mb-2">Salário mínimo</h5>
-                <p class="text-muted small mb-3">
-                  Valor usado em cálculos internos (ex.: complementos/encargos, quando aplicável).
-                </p>
-
-                <form method="POST" action="{{ url_for('update_config') }}" class="row g-2">
-                  <div class="col-12">
-                    <label class="form-label">Salário mínimo (R$)</label>
-                    <input class="form-control" type="number" step="0.01" name="salario_minimo" value="{{ salario_minimo|default(0) }}" required>
-                  </div>
-
-                  <div class="col-12 d-flex justify-content-end mt-2">
-                    <button class="btn btn-royal" type="submit">
-                      <i class="bi bi-save"></i> Salvar salário mínimo
-                    </button>
-                  </div>
-                </form>
-
-                <div class="alert alert-light border mt-3 mb-0 small">
-                  <i class="bi bi-lightning-charge"></i>
-                  Dica: depois de salvar, você volta para esta aba automaticamente.
-                </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Nova senha</label>
+                <input class="form-control" type="password" name="nova_senha" placeholder="(opcional)">
               </div>
-            </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Confirmar senha</label>
+                <input class="form-control" type="password" name="confirmar_senha" placeholder="(opcional)">
+              </div>
+
+              <div class="col-12 d-flex justify-content-end mt-2">
+                <button class="btn btn-royal" type="submit">
+                  <i class="bi bi-save"></i> Salvar admin principal
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-
       </div>
-    </section>
 
+      <!-- Salário mínimo -->
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="mb-2">Salário mínimo</h5>
+            <p class="text-muted small mb-3">
+              Valor usado em cálculos internos (ex.: complementos/encargos, quando aplicável).
+            </p>
+
+            <form method="POST" action="{{ url_for('update_config') }}" class="row g-2" data-perm-form="can_config_editar">
+              {% if csrf_token is defined %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% endif %}
+
+              <div class="col-12">
+                <label class="form-label">Salário mínimo (R$)</label>
+                <input class="form-control" type="number" step="0.01" name="salario_minimo" value="{{ salario_minimo|default(0) }}" required>
+              </div>
+
+              <div class="col-12 d-flex justify-content-end mt-2">
+                <button class="btn btn-royal" type="submit">
+                  <i class="bi bi-save"></i> Salvar salário mínimo
+                </button>
+              </div>
+            </form>
+
+            <div class="alert alert-light border mt-3 mb-0 small">
+              <i class="bi bi-lightning-charge"></i>
+              Dica: depois de salvar, você volta para esta aba automaticamente.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMINS SECUNDÁRIOS -->
+    <div class="row g-3 mt-1">
+      <!-- Criar admin -->
+      <div class="col-12 col-xl-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="mb-2">Criar administrador</h5>
+            <p class="text-muted small mb-3">
+              Cadastre administradores secundários e depois defina exatamente o que cada um pode fazer.
+            </p>
+
+            <form method="POST" action="{{ url_for('add_admin_secundario') }}" class="row g-2" data-perm-form="can_config_criar">
+              {% if csrf_token is defined %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% endif %}
+
+              <div class="col-12">
+                <label class="form-label">Nome</label>
+                <input class="form-control" name="nome" required>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Usuário</label>
+                <input class="form-control" name="usuario" required>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Senha</label>
+                <input class="form-control" type="password" name="senha" required>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Confirmar senha</label>
+                <input class="form-control" type="password" name="confirmar_senha" required>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Status inicial</label>
+                <select class="form-select" name="ativo">
+                  <option value="1" selected>Ativo</option>
+                  <option value="0">Inativo</option>
+                </select>
+              </div>
+
+              <div class="col-12 d-flex justify-content-end mt-2">
+                <button class="btn btn-royal" type="submit">
+                  <i class="bi bi-person-plus"></i> Criar admin
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de admins -->
+      <div class="col-12 col-xl-8">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div>
+                <h5 class="mb-1">Administradores cadastrados</h5>
+                <p class="text-muted small mb-0">
+                  Gerencie status, senha e permissões dos administradores secundários.
+                </p>
+              </div>
+              <span class="badge-soft">Total: <b>{{ admins|length }}</b></span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm align-middle table-bordered table-hover">
+                <thead class="table-light">
+                  <tr class="text-nowrap">
+                    <th>Nome</th>
+                    <th>Usuário</th>
+                    <th class="text-center">Tipo</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center" style="width:280px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for adm in admins %}
+                    {% set is_master = adm.is_master if adm.is_master is defined else False %}
+                    {% set is_ativo = adm.ativo if adm.ativo is defined else True %}
+
+                    <tr>
+                      <td>{{ adm.nome if adm.nome is defined else '—' }}</td>
+                      <td>{{ adm.usuario if adm.usuario is defined else '—' }}</td>
+
+                      <td class="text-center">
+                        {% if is_master %}
+                          <span class="badge bg-warning text-dark">Master</span>
+                        {% else %}
+                          <span class="badge bg-info text-dark">Secundário</span>
+                        {% endif %}
+                      </td>
+
+                      <td class="text-center">
+                        {% if is_ativo %}
+                          <span class="badge bg-success">Ativo</span>
+                        {% else %}
+                          <span class="badge bg-secondary">Inativo</span>
+                        {% endif %}
+                      </td>
+
+                      <td class="text-center">
+                        <div class="d-flex flex-wrap justify-content-center gap-1">
+                          {% if not is_master %}
+                            <button class="btn btn-sm btn-outline-primary"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#perms-{{ adm.id }}">
+                              <i class="bi bi-shield-lock"></i> Permissões
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-warning"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#senha-admin-{{ adm.id }}">
+                              <i class="bi bi-key"></i> Senha
+                            </button>
+
+                            <form method="POST"
+                                  action="{{ url_for('admin_toggle_admin_status', usuario_id=adm.id) }}"
+                                  class="d-inline">
+                              {% if csrf_token is defined %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              {% endif %}
+                              <button type="submit"
+                                      class="btn btn-sm {{ 'btn-outline-danger' if is_ativo else 'btn-outline-success' }}">
+                                <i class="bi {{ 'bi-person-dash' if is_ativo else 'bi-person-check' }}"></i>
+                                {{ 'Desativar' if is_ativo else 'Ativar' }}
+                              </button>
+                            </form>
+
+                            <form method="POST"
+                                  action="{{ url_for('admin_delete_admin', usuario_id=adm.id) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('Excluir este administrador?');">
+                              {% if csrf_token is defined %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              {% endif %}
+                              <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Excluir
+                              </button>
+                            </form>
+                          {% else %}
+                            <span class="text-muted small">Acesso total protegido</span>
+                          {% endif %}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {% if not is_master %}
+                      <!-- Alterar senha -->
+                      <tr class="collapse" id="senha-admin-{{ adm.id }}">
+                        <td colspan="5" class="bg-light">
+                          <div class="border rounded-3 p-3">
+                            <h6 class="mb-2">Alterar senha de {{ adm.nome }}</h6>
+
+                            <form method="POST"
+                                  action="{{ url_for('admin_reset_admin_password', usuario_id=adm.id) }}"
+                                  class="row g-2">
+                              {% if csrf_token is defined %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              {% endif %}
+
+                              <div class="col-12 col-md-5">
+                                <label class="form-label">Nova senha</label>
+                                <input type="password" class="form-control" name="nova_senha" required>
+                              </div>
+
+                              <div class="col-12 col-md-5">
+                                <label class="form-label">Confirmar senha</label>
+                                <input type="password" class="form-control" name="confirmar_senha" required>
+                              </div>
+
+                              <div class="col-12 col-md-2 d-flex align-items-end">
+                                <button class="btn btn-royal w-100" type="submit">
+                                  <i class="bi bi-save"></i> Salvar
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <!-- Permissões -->
+                      <tr class="collapse" id="perms-{{ adm.id }}">
+                        <td colspan="5" class="bg-light">
+                          <div class="border rounded-3 p-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                              <div>
+                                <h6 class="mb-1">Permissões de {{ adm.nome }}</h6>
+                                <p class="text-muted small mb-0">
+                                  Marque apenas o que este administrador pode acessar e fazer.
+                                </p>
+                              </div>
+                            </div>
+
+                            <form method="POST"
+                                  action="{{ url_for('admin_salvar_permissoes', usuario_id=adm.id) }}">
+                              {% if csrf_token is defined %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              {% endif %}
+
+                              <div class="row g-3">
+                                {% for aba in ADMIN_ABAS %}
+                                  {% set perm = admin_permissions_map.get(adm.id, {}).get(aba, {}) %}
+
+                                  <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="border rounded-3 p-3 h-100">
+                                      <div class="fw-bold mb-2 text-capitalize">
+                                        {{ aba.replace('_', ' ') }}
+                                      </div>
+
+                                      <div class="form-check mb-1">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               name="perm_{{ aba }}_ver"
+                                               id="perm_{{ adm.id }}_{{ aba }}_ver"
+                                               {{ 'checked' if perm.get('ver') else '' }}>
+                                        <label class="form-check-label" for="perm_{{ adm.id }}_{{ aba }}_ver">
+                                          Ver
+                                        </label>
+                                      </div>
+
+                                      <div class="form-check mb-1">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               name="perm_{{ aba }}_criar"
+                                               id="perm_{{ adm.id }}_{{ aba }}_criar"
+                                               {{ 'checked' if perm.get('criar') else '' }}>
+                                        <label class="form-check-label" for="perm_{{ adm.id }}_{{ aba }}_criar">
+                                          Criar
+                                        </label>
+                                      </div>
+
+                                      <div class="form-check mb-1">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               name="perm_{{ aba }}_editar"
+                                               id="perm_{{ adm.id }}_{{ aba }}_editar"
+                                               {{ 'checked' if perm.get('editar') else '' }}>
+                                        <label class="form-check-label" for="perm_{{ adm.id }}_{{ aba }}_editar">
+                                          Editar
+                                        </label>
+                                      </div>
+
+                                      <div class="form-check">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               name="perm_{{ aba }}_excluir"
+                                               id="perm_{{ adm.id }}_{{ aba }}_excluir"
+                                               {{ 'checked' if perm.get('excluir') else '' }}>
+                                        <label class="form-check-label" for="perm_{{ adm.id }}_{{ aba }}_excluir">
+                                          Excluir
+                                        </label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                {% endfor %}
+                              </div>
+
+                              <div class="d-flex justify-content-end mt-3">
+                                <button class="btn btn-royal" type="submit">
+                                  <i class="bi bi-save"></i> Salvar permissões
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    {% endif %}
+
+                  {% else %}
+                    <tr>
+                      <td colspan="5" class="text-center text-muted py-3">
+                        Nenhum administrador cadastrado.
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="alert alert-light border mt-3 mb-0 small">
+              <i class="bi bi-info-circle"></i>
+              O administrador master continua com acesso total. Os secundários obedecem às permissões marcadas acima.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
 
 <style>
   .section-title { font-size: 0.95rem; font-weight: 600; }
@@ -4526,6 +5357,14 @@
 
   .search-input::placeholder { font-size: 0.78rem; }
 
+
+  .escala-week-card { background: linear-gradient(135deg, #ffffff 0%, #f7f9ff 100%); }
+  .escala-day-tabs { display:flex; flex-wrap:wrap; gap:.45rem; }
+  .table-escala-editor th, .table-escala-editor td { vertical-align: middle; }
+  .escala-inline-field { min-width: 180px; }
+  .escala-row-vazia td { background: #fff8e6; }
+  .escala-editor-row.is-hidden-day { display:none; }
+
   .escalas-wrapper { max-height: 420px; overflow-y: auto; }
 
   .table-escalas { border-collapse: separate; border-spacing: 0; }
@@ -4553,6 +5392,18 @@
   .badge-doc-na { background: #f2f3f7; color: #6c757d; border-color: #dde1ee; }
 
   .troca-pendentes-wrapper, .troca-historico-wrapper { max-height: 380px; overflow-y: auto; }
+  .escala-row-vazia { background: rgba(255, 193, 7, .10); }
+  .escala-alerta-top{ position:sticky; top:10px; z-index:5; }
+  .escala-alerta-table-wrap{ max-height:260px; overflow:auto; }
+  .escala-week-table-wrap{ max-height:560px; overflow:auto; border:1px solid var(--border); border-radius:18px; }
+  .escala-compact-table th,.escala-compact-table td{ white-space:nowrap; }
+  .escala-filter-summary{ color:var(--muted); font-size:.78rem; }
+  .escala-week-empty{ padding:18px; text-align:center; color:var(--muted); }
+  .escala-alerta-card { border-left: 4px solid #f59e0b !important; }
+  .escala-alerta-row { background: rgba(245, 158, 11, .08); }
+  .escala-alerta-toast { position: fixed; right: 18px; bottom: 18px; z-index: 2055; min-width: 320px; max-width: 420px; background: #fff7ed; border: 1px solid rgba(245, 158, 11, .28); border-radius: 16px; box-shadow: 0 18px 38px rgba(15, 23, 42, .14); padding: 14px 16px; }
+  .escala-alerta-toast strong { color: #9a3412; }
+
 
   .table-troca { border-collapse: separate; border-spacing: 0; }
   .table-troca thead th {
@@ -5278,5 +6129,387 @@
     }
   })();
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const permMap = {
+    can_lanc_criar: {{ 'true' if can_lanc_criar else 'false' }},
+    can_receitas_criar: {{ 'true' if can_receitas_criar else 'false' }},
+    can_despesas_criar: {{ 'true' if can_despesas_criar else 'false' }},
+    can_coop_receitas_criar: {{ 'true' if can_coop_receitas_criar else 'false' }},
+    can_coop_despesas_criar: {{ 'true' if can_coop_despesas_criar else 'false' }},
+    can_beneficios_criar_or_editar: {{ 'true' if (can_beneficios_criar or can_beneficios_editar) else 'false' }},
+    can_cooperados_criar: {{ 'true' if can_cooperados_criar else 'false' }},
+    can_restaurantes_criar: {{ 'true' if can_restaurantes_criar else 'false' }},
+    can_config_editar: {{ 'true' if can_config_editar else 'false' }},
+    can_config_criar: {{ 'true' if can_config_criar else 'false' }}
+  };
+  document.querySelectorAll('form[data-perm-form]').forEach(form => {
+    const key = form.getAttribute('data-perm-form');
+    if (!permMap[key]) {
+      const controls = form.querySelectorAll('input, select, textarea, button');
+      controls.forEach(el => el.disabled = true);
+      const note = document.createElement('div');
+      note.className = 'alert alert-light border small mt-2 mb-0';
+      note.innerHTML = '<i class="bi bi-eye"></i> Você tem permissão apenas para visualizar esta seção.';
+      form.prepend(note);
+      const submitBtns = form.querySelectorAll('button[type="submit"], button:not([type])');
+      submitBtns.forEach(btn => btn.style.display = 'none');
+    }
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const contratos = {{ contratos_escala_opcoes|default([])|tojson|safe }};
+  const cooperados = {{ cooperados|default([])|map(attribute='nome')|list|tojson|safe }};
+  const cooperadosObjs = {{ cooperados|default([])|map(attribute='id')|list|tojson|safe }};
+  const cooperadosFull = [
+    {% for c in cooperados or [] %}
+      {id: {{ c.id }}, nome: {{ c.nome|tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  const wrapAlertas = document.getElementById('escalaAlertasWrap');
+  const countAlertas = document.getElementById('escalaAlertasCount');
+  const clockAlertas = document.getElementById('escalaAlertasClock');
+  const audioAlerta = document.getElementById('audioAlertaEscala');
+  const toggleBtn = document.getElementById('btnToggleEscalaSemanal');
+  const panel = document.getElementById('escalaWeeklyPanel');
+  const mount = document.getElementById('escalaEditorMount');
+  const filtroNome = document.getElementById('escalaFiltroNome');
+  const filtroContrato = document.getElementById('escalaFiltroContrato');
+  const filtroLivres = document.getElementById('escalaFiltroLivres');
+  const countRows = document.getElementById('escalaWeeklyCount');
+  const statusRows = document.getElementById('escalaWeeklyStatus');
+  const dayTabs = document.getElementById('escalaDayTabs');
+  const canEdit = mount?.dataset?.canEdit === '1';
+  const csrfToken = mount?.dataset?.csrf || '';
+  const saveBase = mount?.dataset?.saveBase || '';
+
+  let rows = [];
+  let rowsLoaded = false;
+  let currentDay = 'semana';
+  let audioUnlocked = false;
+  let knownAlertIds = new Set();
+
+  function escapeHtml(v){
+    return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function unlockAudio(){
+    if (!audioAlerta || audioUnlocked) return;
+    audioUnlocked = true;
+    try {
+      audioAlerta.volume = 1;
+      const p = audioAlerta.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => { audioAlerta.pause(); audioAlerta.currentTime = 0; }).catch(() => {});
+      } else {
+        audioAlerta.pause();
+        audioAlerta.currentTime = 0;
+      }
+    } catch(_) {}
+  }
+  document.addEventListener('click', unlockAudio, { once:true });
+  document.addEventListener('keydown', unlockAudio, { once:true });
+
+  function parsePreloadedRows(){
+    try {
+      const raw = mount?.dataset?.rows || '[]';
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch(_) {
+      return [];
+    }
+  }
+
+  function dayMatches(row){
+    return currentDay === 'semana' || String(row.weekday_num || '') === String(currentDay);
+  }
+
+  function getCoopDisplay(row){
+    return String(row.cooperado_nome || row.cooperado_nome_livre || '').trim();
+  }
+
+  function rowMatches(row){
+    const nome = (filtroNome?.value || '').trim().toLowerCase();
+    const contrato = (filtroContrato?.value || '').trim().toLowerCase();
+    const livres = !!filtroLivres?.checked;
+    const coop = getCoopDisplay(row).toLowerCase();
+    const rowContrato = String(row.contrato || '').toLowerCase();
+    const isLivre = !row.cooperado_id && !String(row.cooperado_nome_livre || '').trim();
+
+    if (!dayMatches(row)) return false;
+    if (nome && !coop.includes(nome)) return false;
+    if (contrato && rowContrato !== contrato) return false;
+    if (livres && !isLivre) return false;
+    return true;
+  }
+
+  function contractOptions(selected){
+    const opts = [];
+    const seen = new Set();
+    [...contratos, selected].forEach(item => {
+      const val = String(item || '').trim();
+      if (!val || seen.has(val.toLowerCase())) return;
+      seen.add(val.toLowerCase());
+      opts.push(`<option value="${escapeHtml(val)}" ${val===selected?'selected':''}>${escapeHtml(val)}</option>`);
+    });
+    return opts.join('');
+  }
+
+  function cooperadoOptions(selectedId){
+    let html = '<option value="">Sem cooperado</option>';
+    cooperadosFull.forEach(c => {
+      const selected = String(c.id) === String(selectedId) ? 'selected' : '';
+      html += `<option value="${c.id}" ${selected}>${escapeHtml(c.nome)}</option>`;
+    });
+    return html;
+  }
+
+  function renderRows(){
+    if (!mount) return;
+    const filtered = rows.filter(rowMatches);
+    if (countRows) countRows.textContent = `${filtered.length} linha(s)`;
+    if (statusRows) statusRows.textContent = rowsLoaded ? 'Grade carregada' : 'Aguardando abertura';
+
+    if (!rowsLoaded) {
+      mount.innerHTML = '<div class="alert alert-light border mb-0">Clique em <strong>Abrir escala semanal</strong> para carregar a grade.</div>';
+      return;
+    }
+
+    if (!filtered.length) {
+      mount.innerHTML = '<div class="card border-0 shadow-sm"><div class="escala-week-empty">Nenhuma linha encontrada para esse filtro.</div></div>';
+      return;
+    }
+
+    const slotMap = new Map();
+    filtered.forEach(row => {
+      const key = `${row.data || ''}||${row.turno || ''}||${row.contrato || ''}`.toLowerCase();
+      const next = (slotMap.get(key) || 0) + 1;
+      slotMap.set(key, next);
+      row.__slot_index = next;
+    });
+
+    const tbody = filtered.map(row => {
+      const isLivre = !row.cooperado_id && !String(row.cooperado_nome_livre || '').trim();
+      const disabled = canEdit ? '' : 'disabled';
+      const nomeLivreDisabled = row.cooperado_id ? 'disabled' : '';
+      return `
+        <tr class="js-escala-row ${isLivre ? 'escala-row-vazia' : ''}" data-row-id="${row.id}">
+          <td><span class="badge rounded-pill text-bg-light border">${escapeHtml(row.weekday_label || 'Sem dia')}</span></td>
+          <td>${escapeHtml(row.data || '—')}</td>
+          <td>${escapeHtml(row.turno || '—')}</td>
+          <td>${escapeHtml(row.horario || '—')}</td>
+          <td>${escapeHtml(row.__slot_index || '—')}</td>
+          <td><select class="form-select form-select-sm js-contrato" ${disabled}>${contractOptions(row.contrato || '')}</select></td>
+          <td><select class="form-select form-select-sm js-cooperado-select" ${disabled}>${cooperadoOptions(row.cooperado_id || '')}</select></td>
+          <td><input type="text" class="form-control form-control-sm js-nome-livre" value="${escapeHtml(row.cooperado_nome_livre || '')}" placeholder="Opcional" ${disabled} ${nomeLivreDisabled}></td>
+          <td class="text-center">${canEdit ? '<button type="button" class="btn btn-success btn-sm js-salvar-linha">Salvar</button>' : '<span class="badge text-bg-light border">Visualizar</span>'}</td>
+          <td class="text-center">${canEdit ? '<button type="button" class="btn btn-outline-danger btn-sm js-retirar-coop">Retirar</button>' : '<span class="text-muted">—</span>'}</td>
+        </tr>`;
+    }).join('');
+
+    mount.innerHTML = `
+      <div class="escala-week-table-wrap">
+        <table class="table table-sm align-middle mb-0 escala-compact-table">
+          <thead>
+            <tr>
+              <th>Dia</th><th>Data</th><th>Turno</th><th>Horário</th><th class="text-center">Nº</th><th>Contrato</th><th>Cooperado</th><th>Nome livre</th><th class="text-center">Salvar</th><th class="text-center">Sair da escala</th>
+            </tr>
+          </thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>`;
+  }
+
+  async function loadRows(){
+    if (rowsLoaded) return;
+    rows = parsePreloadedRows();
+    rowsLoaded = true;
+    if (statusRows) statusRows.textContent = 'Grade carregada';
+    renderRows();
+  }
+
+  function buildSaveUrl(rowId){
+    return saveBase.replace('__ID__', String(rowId || ''));
+  }
+
+  async function salvarLinha(tr){
+    if (!tr || !canEdit) return;
+    const rowId = tr.dataset.rowId;
+    const contratoEl = tr.querySelector('.js-contrato');
+    const coopEl = tr.querySelector('.js-cooperado-select');
+    const nomeLivreEl = tr.querySelector('.js-nome-livre');
+    const btnSalvar = tr.querySelector('.js-salvar-linha');
+    const btnRetirar = tr.querySelector('.js-retirar-coop');
+    const originalSalvar = btnSalvar ? btnSalvar.innerHTML : '';
+    if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.innerHTML = 'Salvando...'; }
+    if (btnRetirar) btnRetirar.disabled = true;
+
+    const fd = new FormData();
+    fd.append('contrato', contratoEl?.value || '');
+    fd.append('cooperado_id', coopEl?.value || '');
+    fd.append('cooperado_nome_livre', nomeLivreEl?.value || '');
+    fd.append('redirect_day', currentDay);
+    fd.append('ajax', '1');
+    if (csrfToken) fd.append('csrf_token', csrfToken);
+
+    try {
+      const resp = await fetch(buildSaveUrl(rowId), {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' }
+      });
+
+      const rawText = await resp.text();
+      let data = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch (_) {
+        if (!resp.ok) {
+          throw new Error('Resposta inválida do servidor. Verifique login e permissão de editar em Escalas.');
+        }
+        throw new Error('O servidor respondeu em formato inesperado ao salvar a linha.');
+      }
+
+      if (!resp.ok || !data || !data.ok) {
+        throw new Error((data && data.message) || 'Erro ao salvar');
+      }
+
+      const row = rows.find(r => String(r.id) === String(rowId));
+      if (row) {
+        row.contrato = contratoEl?.value || row.contrato || '';
+        row.cooperado_id = coopEl?.value ? Number(coopEl.value) : null;
+        row.cooperado_nome_livre = nomeLivreEl?.value || '';
+        const coop = cooperadosFull.find(c => String(c.id) === String(coopEl?.value || ''));
+        row.cooperado_nome = coop ? coop.nome : (nomeLivreEl?.value || '');
+      }
+      renderRows();
+    } catch (err) {
+      alert(err.message || 'Não foi possível salvar a linha da escala.');
+    } finally {
+      if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.innerHTML = originalSalvar || 'Salvar'; }
+      if (btnRetirar) btnRetirar.disabled = false;
+    }
+  }
+
+  toggleBtn?.addEventListener('click', async function(){
+    const opening = panel.hidden;
+    panel.hidden = !panel.hidden;
+    this.innerHTML = opening ? '<i class="bi bi-chevron-up me-1"></i> Fechar escala semanal' : '<i class="bi bi-calendar-week me-1"></i> Abrir escala semanal';
+    if (opening) await loadRows();
+  });
+
+  dayTabs?.querySelectorAll('[data-day-filter]').forEach(btn => {
+    btn.addEventListener('click', function(){
+      currentDay = this.getAttribute('data-day-filter') || 'semana';
+      dayTabs.querySelectorAll('[data-day-filter]').forEach(x => {
+        x.classList.remove('btn-royal','active');
+        x.classList.add('btn-outline-primary');
+      });
+      this.classList.remove('btn-outline-primary');
+      this.classList.add('btn-royal','active');
+      renderRows();
+    });
+  });
+
+  [filtroNome, filtroContrato].forEach(el => el?.addEventListener('input', renderRows));
+  filtroLivres?.addEventListener('change', renderRows);
+
+  mount?.addEventListener('change', function(e){
+    const tr = e.target.closest('.js-escala-row');
+    if (!tr) return;
+    if (e.target.classList.contains('js-cooperado-select')) {
+      const nomeLivre = tr.querySelector('.js-nome-livre');
+      if (nomeLivre) {
+        const semCoop = !e.target.value;
+        nomeLivre.disabled = !semCoop || !canEdit;
+        if (!semCoop) nomeLivre.value = '';
+      }
+    }
+  });
+
+  mount?.addEventListener('click', function(e){
+    const salvarBtn = e.target.closest('.js-salvar-linha');
+    if (salvarBtn) {
+      e.preventDefault();
+      const tr = salvarBtn.closest('.js-escala-row');
+      salvarLinha(tr);
+      return;
+    }
+    const retirarBtn = e.target.closest('.js-retirar-coop');
+    if (retirarBtn) {
+      e.preventDefault();
+      const tr = retirarBtn.closest('.js-escala-row');
+      if (!tr) return;
+      const select = tr.querySelector('.js-cooperado-select');
+      const nomeLivre = tr.querySelector('.js-nome-livre');
+      if (select) select.value = '';
+      if (nomeLivre) {
+        nomeLivre.value = '';
+        nomeLivre.disabled = !canEdit ? true : false;
+      }
+      salvarLinha(tr);
+    }
+  });
+  function renderAlertas(alertas){
+    if (!wrapAlertas) return;
+    const total = Array.isArray(alertas) ? alertas.length : 0;
+    countAlertas.textContent = `${total} alerta(s)`;
+    const now = new Date();
+    clockAlertas.textContent = `Atualizado ${now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}`;
+
+    if (!total) {
+      wrapAlertas.innerHTML = '<div class="alert alert-success border-0 mb-0">Nenhum contrato sem cooperado começando dentro da próxima 1 hora.</div>';
+      return;
+    }
+
+    wrapAlertas.innerHTML = `
+      <div class="alert alert-warning border-0 shadow-sm mb-2"><strong>Atenção:</strong> existem ${total} contrato(s) sem cooperado começando em até 1 hora.</div>
+      <div class="table-responsive escala-alerta-table-wrap">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Dia</th><th>Data</th><th>Turno</th><th>Horário</th><th>Contrato</th><th>Faltam</th></tr></thead>
+          <tbody>
+            ${alertas.map(a => `<tr class="escala-alerta-row"><td>${escapeHtml(a.weekday_label || '')}</td><td>${escapeHtml(a.data || '')}</td><td>${escapeHtml(a.turno || '—')}</td><td>${escapeHtml(a.horario || '—')}</td><td><strong>${escapeHtml(a.contrato || '')}</strong></td><td>${escapeHtml(a.minutos_restantes || 0)} min</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  async function pollAlertas(){
+    if (!wrapAlertas) return;
+    const endpoint = wrapAlertas.dataset.endpoint;
+    if (!endpoint) return;
+    try {
+      const resp = await fetch(endpoint, { headers: { 'X-Requested-With':'XMLHttpRequest' } });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.message || 'Erro ao consultar alertas');
+      const alertas = Array.isArray(data.alertas) ? data.alertas : [];
+      const newIds = alertas.map(a => String(a.id));
+      const hasNew = newIds.some(id => !knownAlertIds.has(id));
+      knownAlertIds = new Set(newIds);
+      renderAlertas(alertas);
+      if (hasNew && audioUnlocked && audioAlerta) {
+        try { audioAlerta.currentTime = 0; audioAlerta.play().catch(() => {}); } catch(_) {}
+      }
+    } catch (err) {
+      clockAlertas.textContent = 'Falha ao atualizar';
+    }
+  }
+
+  try {
+    const initial = JSON.parse(wrapAlertas?.dataset?.initial || '[]');
+    knownAlertIds = new Set((initial || []).map(a => String(a.id)));
+    renderAlertas(initial || []);
+  } catch(_) {}
+  pollAlertas();
+  setInterval(pollAlertas, 60000);
+});
+</script>
+
 </body>
 </html>
