@@ -1149,23 +1149,35 @@ def init_db():
 
     # 5) Bootstrap mínimo (admin e config) — só se os modelos existirem
     try:
-        # Garante que o model Usuario está acessível
         _ = Usuario  # type: ignore[name-defined]
 
-        # Admin
-        try:
-            tem_admin = Usuario.query.filter_by(tipo="admin").first()  # type: ignore[name-defined]
-        except Exception:
-            tem_admin = None
+        admin_user = (os.environ.get("ADMIN_USER", "COOPEX") or "COOPEX").strip()
+        admin_pass = (os.environ.get("ADMIN_PASS", "COOPEX05289") or "COOPEX05289").strip()
 
-        if not tem_admin:
-            admin_user = os.environ.get("ADMIN_USER", "admin")
-            admin_pass = os.environ.get("ADMIN_PASS", os.urandom(8).hex())
+        admin = None
+        if admin_user:
+            admin = Usuario.query.filter(func.lower(Usuario.usuario) == admin_user.lower()).first()  # type: ignore[name-defined]
+
+        if admin:
+            admin.usuario = admin_user
+            admin.tipo = "admin"
+            admin.is_master = True
+            admin.ativo = True
+            try:
+                admin.set_password(admin_pass)  # type: ignore[attr-defined]
+            except Exception:
+                try:
+                    from werkzeug.security import generate_password_hash
+                    admin.senha_hash = generate_password_hash(admin_pass)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+        else:
             admin = Usuario(
                 usuario=admin_user,
                 tipo="admin",
                 senha_hash="",
-                is_master=True
+                is_master=True,
+                ativo=True,
             )  # type: ignore[name-defined]
             try:
                 admin.set_password(admin_pass)  # type: ignore[attr-defined]
@@ -1176,7 +1188,28 @@ def init_db():
                 except Exception:
                     pass
             db.session.add(admin)
-            db.session.commit()
+
+        db.session.flush()
+
+        for aba in ADMIN_ABAS.keys():
+            p = AdminPermissao.query.filter_by(usuario_id=admin.id, aba=aba).first()
+            if not p:
+                p = AdminPermissao(
+                    usuario_id=admin.id,
+                    aba=aba,
+                    pode_ver=True,
+                    pode_criar=True,
+                    pode_editar=True,
+                    pode_excluir=True,
+                )
+                db.session.add(p)
+            else:
+                p.pode_ver = True
+                p.pode_criar = True
+                p.pode_editar = True
+                p.pode_excluir = True
+
+        db.session.commit()
     except Exception:
         db.session.rollback()
 
@@ -1186,6 +1219,7 @@ def init_db():
             primeiro_admin = Usuario.query.filter_by(tipo="admin").order_by(Usuario.id.asc()).first()
             if primeiro_admin:
                 primeiro_admin.is_master = True
+                primeiro_admin.ativo = True
                 db.session.commit()
     except Exception:
         db.session.rollback()
@@ -2892,7 +2926,10 @@ def login():
         usuario = (request.form.get("usuario") or "").strip()
         senha = request.form.get("senha") or ""
 
-        u = Usuario.query.filter_by(usuario=usuario).first()
+        u = Usuario.query.filter(func.lower(Usuario.usuario) == usuario.lower()).first()
+
+        master_user_env = (os.environ.get("ADMIN_USER", "COOPEX") or "COOPEX").strip()
+        master_pass_env = (os.environ.get("ADMIN_PASS", "COOPEX05289") or "COOPEX05289").strip()
 
         # fallback: login pelo nome do restaurante
         if not u:
@@ -2903,7 +2940,43 @@ def login():
             if r and r.usuario_ref:
                 u = r.usuario_ref
 
-        if u and u.check_password(senha):
+        login_master = bool(u and usuario.strip().lower() == master_user_env.lower())
+        senha_ok = bool(u and (u.check_password(senha) or (login_master and senha == master_pass_env)))
+
+        if u and senha_ok:
+            if login_master:
+                u.usuario = master_user_env
+                u.tipo = "admin"
+                u.is_master = True
+                u.ativo = True
+                try:
+                    u.set_password(master_pass_env)
+                except Exception:
+                    try:
+                        u.senha_hash = generate_password_hash(master_pass_env)
+                    except Exception:
+                        pass
+                db.session.flush()
+
+                for aba in ADMIN_ABAS.keys():
+                    p = AdminPermissao.query.filter_by(usuario_id=u.id, aba=aba).first()
+                    if not p:
+                        p = AdminPermissao(
+                            usuario_id=u.id,
+                            aba=aba,
+                            pode_ver=True,
+                            pode_criar=True,
+                            pode_editar=True,
+                            pode_excluir=True,
+                        )
+                        db.session.add(p)
+                    else:
+                        p.pode_ver = True
+                        p.pode_criar = True
+                        p.pode_editar = True
+                        p.pode_excluir = True
+                db.session.commit()
+
             # corrige registros antigos com ativo nulo
             if getattr(u, "ativo", None) is None:
                 u.ativo = True
