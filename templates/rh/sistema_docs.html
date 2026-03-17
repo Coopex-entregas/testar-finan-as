@@ -1,0 +1,117 @@
+{% extends "admin/base_admin.html" %}
+{% set current_tab = "rh" %}
+{% set current_rh = "docs" %}
+{% block title %}Coopex-RH • Documentos do Sistema{% endblock %}
+{% block header_title %}Estatuto / Regimento{% endblock %}
+{% block header_sub %}Envie PDF/DOCX para indexar e pesquisar{% endblock %}
+
+{% block content %}
+<section class="grid">
+  <article class="card span-12">
+    <div class="card-head">
+      <h3>Enviar documento</h3>
+      <span class="badge badge-royal">Upload</span>
+    </div>
+
+    <form method="post" enctype="multipart/form-data"
+          style="display:grid;grid-template-columns:repeat(12,1fr);gap:10px;">
+      <div style="grid-column:span 3;">
+        <label class="muted" style="font-size:12px;font-weight:900;display:block;margin-bottom:6px;">
+          Tipo
+        </label>
+        <select name="tipo"
+                style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.15);background:#fff;">
+          <option value="estatuto">Estatuto</option>
+          <option value="regimento">Regimento</option>
+        </select>
+      </div>
+
+      <div style="grid-column:span 5;">
+        <label class="muted" style="font-size:12px;font-weight:900;display:block;margin-bottom:6px;">
+          Título
+        </label>
+        <input name="titulo" placeholder="Ex.: Estatuto 2025"
+               style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.15);">
+      </div>
+
+      <div style="grid-column:span 4;">
+        <label class="muted" style="font-size:12px;font-weight:900;display:block;margin-bottom:6px;">
+          Arquivo (PDF/DOCX)
+        </label>
+        <input type="file" name="arquivo" accept=".pdf,.docx" required>
+      </div>
+
+      <div style="grid-column:span 12;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-royal" type="submit">Enviar e Indexar</button>
+
+        {# Botão para reindexar todos os documentos já enviados #}
+        <form method="post" action="{{ url_for('admin_rh_docs_reindex') }}"
+              style="display:inline;">
+          <button class="btn btn-soft" type="submit">
+            Reindexar todos (reler texto dos PDFs/DOCX)
+          </button>
+        </form>
+
+        <span class="muted" style="font-size:12px;">
+          Obs.: PDFs escaneados (somente imagem) podem ficar sem texto extraído. Nesses casos,
+          a pesquisa não encontra nada.
+        </span>
+      </div>
+    </form>
+  </article>
+
+  <article class="card span-12">
+    <div class="card-head">
+      <h3>Arquivos enviados</h3>
+      <span class="badge">{{ docs|length }}</span>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th>Título</th>
+          <th>Arquivo</th>
+          <th>Indexado?</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in docs %}
+          <tr>
+            <td class="muted">{{ d.tipo }}</td>
+            <td><strong>{{ d.titulo }}</strong></td>
+            <td class="muted">{{ d.filename }}</td>
+            <td>
+              {% if d.extracted_text and d.extracted_text|length > 80 %}
+                <span class="badge badge-royal">
+                  OK • {{ d.extracted_text|length }} caracteres
+                </span>
+              {% elif d.extracted_text %}
+                <span class="badge badge-warning">
+                  Curto • {{ d.extracted_text|length }} chars
+                </span>
+              {% else %}
+                <span class="badge badge-error">
+                  Sem texto
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <a class="btn btn-soft"
+                 href="{{ url_for('serve_upload', filename=d.path) }}"
+                 target="_blank">
+                Abrir
+              </a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" class="muted">Nenhum documento enviado.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "admin/base_admin.html" %}
+{% set current_tab = "rh" %}
+{% set current_rh = "cooperados" %}
+{% block title %}Coopex-RH • Cooperados{% endblock %}
+{% block header_title %}Cooperados{% endblock %}
+{% block header_sub %}Lista, pesquisa e acesso à ficha de matrícula{% endblock %}
+
+{% block content %}
+<style>
+  .pill-ok{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);color:rgba(16,185,129,.95);padding:6px 10px;border-radius:999px;font-weight:900;white-space:nowrap;}
+  .pill-bad{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:rgba(239,68,68,.95);padding:6px 10px;border-radius:999px;font-weight:900;white-space:nowrap;}
+  .pill-warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:rgba(245,158,11,.95);padding:6px 10px;border-radius:999px;font-weight:900;white-space:nowrap;}
+  .nowrap{white-space:nowrap;}
+</style>
+
+<section class="grid">
+  <article class="card span-12">
+    <div class="card-head">
+      <h3>Lista</h3>
+      <span class="badge">{{ cooperados|length }}</span>
+    </div>
+
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0;">
+      <input class="input" name="q" placeholder="Nome..." value="{{ q or '' }}" style="min-width:220px;">
+      <input class="input" name="cpf" placeholder="CPF..." value="{{ cpf or '' }}" style="min-width:180px;">
+      <input class="input" name="tel" placeholder="Telefone..." value="{{ tel or '' }}" style="min-width:180px;">
+      <input class="input" name="mat" placeholder="Matrícula..." value="{{ mat or '' }}" style="min-width:160px;">
+      <button class="btn btn-royal" type="submit">Buscar</button>
+      <a class="btn" href="{{ url_for('admin_rh_cooperados_new') }}">Novo cooperado</a>
+    </form>
+
+    <div style="overflow:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th class="nowrap">CPF</th>
+            <th class="nowrap">CNH Nº</th>
+            <th class="nowrap">CNH Validade</th>
+            <th class="nowrap">RENAVAM</th>
+            <th class="nowrap">RENAVAM Validade</th>
+            <th class="nowrap">Anexos</th>
+            <th class="nowrap">Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cooperados %}
+            {% set cnh_exp = c.cnh_validade and c.cnh_validade < hoje %}
+            {% set ren_exp = c.renavam_validade and c.renavam_validade < hoje %}
+            {% set tem_vencido = cnh_exp or ren_exp %}
+            {% set tem_docs = (c.anexos|length) > 0 %}
+
+            <tr>
+              <td>
+                <a class="btn btn-soft" style="padding:6px 10px;" href="{{ url_for('admin_rh_cooperado_detalhe', cooperado_id=c.id) }}">
+                  {{ c.nome }}
+                </a>
+                <div class="muted" style="margin-top:4px;">Matrícula: {{ c.matricula or "—" }}</div>
+              </td>
+
+              <td class="nowrap">{{ c.cpf }}</td>
+
+              <td class="nowrap">{{ c.cnh_numero or "—" }}</td>
+
+              <td class="nowrap">
+                {{ c.cnh_validade.strftime("%d/%m/%Y") if c.cnh_validade else "—" }}
+                {% if c.cnh_validade %}
+                  <span class="{{ 'pill-bad' if cnh_exp else 'pill-ok' }}">{{ 'VENCIDA' if cnh_exp else 'OK' }}</span>
+                {% else %}
+                  <span class="pill-warn">SEM DATA</span>
+                {% endif %}
+              </td>
+
+              <td class="nowrap">{{ c.renavam or "—" }}</td>
+
+              <td class="nowrap">
+                {{ c.renavam_validade.strftime("%d/%m/%Y") if c.renavam_validade else "—" }}
+                {% if c.renavam_validade %}
+                  <span class="{{ 'pill-bad' if ren_exp else 'pill-ok' }}">{{ 'VENCIDO' if ren_exp else 'OK' }}</span>
+                {% else %}
+                  <span class="pill-warn">SEM DATA</span>
+                {% endif %}
+              </td>
+
+              <td class="nowrap">
+                {% if tem_docs %}
+                  <span class="pill-ok">{{ c.anexos|length }} arquivo(s)</span>
+                {% else %}
+                  <span class="pill-warn">Nenhum</span>
+                {% endif %}
+              </td>
+
+              <td class="nowrap">
+                {% if tem_vencido %}
+                  <span class="pill-bad">DOCUMENTO VENCIDO</span>
+                {% else %}
+                  <span class="pill-ok">REGULAR</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" class="muted">Nenhum cooperado encontrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}
