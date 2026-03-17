@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
   <!-- Bootstrap / Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
@@ -15,80 +15,90 @@
   <style>
     :root{
       --royal-blue:#2747d9;
+      --royal-blue-2:#3358f0;
       --royal-dark:#16258a;
-      --hover-blue:#3b61e3;
-      --sidebar-w:260px;
-      --text-muted:#8f9bb8;
+      --royal-soft:#eef3ff;
+      --bg:#f4f7fc;
+      --card:#ffffff;
+      --text:#182033;
+      --muted:#7b879f;
+      --border:#e6ebf5;
+      --success:#12b76a;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+      --shadow:0 10px 30px rgba(17,24,39,.08);
+      --sidebar-w:278px;
+      --radius:20px;
     }
 
-    *{box-sizing:border-box;}
+    *{ box-sizing:border-box; }
+    html{ scroll-behavior:smooth; }
 
     body{
       margin:0;
-      font-family:'Roboto',sans-serif;
-      background:#f3f5fb;
-      color:#1f2430;
+      font-family:'Inter',sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(39,71,217,.10), transparent 28%),
+        linear-gradient(180deg, #f7f9fe 0%, #f2f5fb 100%);
+      color:var(--text);
       overflow-x:hidden;
     }
 
-    .layout{
-      display:flex;
-      min-height:100vh;
-    }
-
-    /* SIDEBAR ----------------------------------------------------------------*/
+    .layout{ display:flex; min-height:100vh; }
 
     .sidebar{
       position:fixed;
-      top:0;
-      left:0;
-      height:100vh;
+      top:0; left:0;
       width:var(--sidebar-w);
-      background:linear-gradient(180deg,var(--royal-blue),var(--royal-dark));
-      color:#fff;
+      height:100vh;
       padding:18px 14px;
-      display:flex;
-      flex-direction:column;
-      box-shadow:0 0 22px rgba(0,0,0,.25);
+      background:linear-gradient(180deg, rgba(51,88,240,1) 0%, rgba(39,71,217,1) 38%, rgba(22,37,138,1) 100%);
+      color:#fff;
+      box-shadow:0 0 26px rgba(0,0,0,.22);
       z-index:1020;
       overflow-y:auto;
-    }
-
-    .brand{
       display:flex;
       flex-direction:column;
-      gap:2px;
-      margin-bottom:12px;
-      padding:0 4px;
+    }
+
+    .sidebar::-webkit-scrollbar{ width:8px; }
+    .sidebar::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
+
+    .brand{
+      position:relative;
+      padding:16px;
+      margin-bottom:14px;
+      border-radius:18px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(8px);
     }
     .brand-title{
-      font-family:'Orbitron',sans-serif;
-      font-size:1.25rem;
-      letter-spacing:2px;
-      text-transform:uppercase;
       margin:0;
+      font-family:'Orbitron',sans-serif;
+      font-size:1.08rem;
+      letter-spacing:.9px;
+      text-transform:uppercase;
+      line-height:1.28;
     }
     .brand-sub{
-      font-size:.75rem;
-      opacity:.8;
+      display:block;
+      margin-top:6px;
+      font-size:.74rem;
+      opacity:.82;
     }
 
-    .sidebar-nav{
-      margin-top:8px;
-      padding:0;
-    }
-
+    .sidebar-nav{ padding:0; margin:0; }
     .nav-section-label{
-      font-size:.7rem;
-      letter-spacing:.08em;
+      font-size:.68rem;
+      letter-spacing:.12em;
       text-transform:uppercase;
       color:rgba(255,255,255,.60);
-      margin:12px 6px 6px;
+      margin:14px 8px 8px;
     }
-
     .sidebar-divider{
       border-color:rgba(255,255,255,.08);
-      margin:10px 0 6px;
+      margin:12px 0 8px;
     }
 
     .nav-link-main,
@@ -98,237 +108,326 @@
       justify-content:space-between;
       width:100%;
       border:0;
-      border-radius:10px;
-      padding:8px 10px;
-      margin:2px 0;
+      border-radius:14px;
+      padding:10px 12px;
+      margin:4px 0;
       background:transparent;
       color:#fff;
-      font-size:.9rem;
-      text-align:left;
       text-decoration:none;
+      font-size:.92rem;
       cursor:pointer;
-      transition:background .15s,transform .05s;
+      transition:all .18s ease;
     }
     .nav-link-main:hover,
     .nav-link-group-toggle:hover{
-      background:rgba(255,255,255,.08);
+      background:rgba(255,255,255,.10);
+      transform:translateY(-1px);
+      color:#fff;
     }
-    .nav-link-main.active{
-      background:rgba(0,0,0,.20);
-      box-shadow:0 0 0 1px rgba(255,255,255,.22);
-    }
-    .nav-link-main:active,
-    .nav-link-group-toggle:active{
-      transform:scale(.98);
+    .nav-link-main.active,
+    .nav-sublink.active{
+      background:rgba(255,255,255,.16) !important;
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow:0 8px 18px rgba(0,0,0,.10);
+      color:#fff !important;
     }
 
-    .nav-link-left{
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
+    .nav-link-left{ display:flex; align-items:center; gap:10px; }
     .nav-link-icon{
-      width:18px;
+      width:22px;
       display:flex;
       justify-content:center;
+      align-items:center;
+      font-size:1rem;
+      flex-shrink:0;
     }
-    .nav-link-label{
-      white-space:nowrap;
-    }
+    .nav-caret{ font-size:.82rem; opacity:.72; }
 
-    .nav-caret{
-      font-size:.8rem;
-      opacity:.7;
-    }
-
-    .nav-sublinks{
-      padding-left:30px;
-      margin-bottom:4px;
-    }
-
+    .nav-sublinks{ padding-left:16px; margin-bottom:6px; }
     .nav-sublink{
       display:flex;
       align-items:center;
       gap:8px;
-      padding:6px 8px;
-      margin:2px 0;
-      border-radius:8px;
-      font-size:.85rem;
-      color:rgba(255,255,255,.85);
+      padding:8px 10px;
+      margin:4px 0;
+      border-radius:12px;
+      color:rgba(255,255,255,.84);
       text-decoration:none;
-      transition:background .15s,color .15s,transform .05s;
+      font-size:.84rem;
+      transition:all .18s ease;
     }
     .nav-sublink:hover{
-      background:rgba(255,255,255,.08);
       color:#fff;
-    }
-    .nav-sublink.active{
-      background:rgba(0,0,0,.20);
-      color:#fff;
-      box-shadow:0 0 0 1px rgba(255,255,255,.22);
+      background:rgba(255,255,255,.10);
+      transform:translateX(2px);
     }
 
-    .sidebar-footer{
-      margin-top:auto;
-      padding-top:10px;
-    }
-
-    /* MAIN -------------------------------------------------------------------*/
+    .sidebar-footer{ margin-top:auto; padding-top:10px; }
 
     .main{
       flex:1;
       margin-left:var(--sidebar-w);
-      padding:18px 22px;
+      padding:20px 20px 30px;
+      width:calc(100% - var(--sidebar-w));
     }
 
-    .content-shell{
-      max-width:1320px;
-      margin:0 auto 32px;
+    .content-shell,
+    .main > .tab-content,
+    .main .tab-pane > .content-shell,
+    .main .tab-pane > .container-fluid{
+      max-width:none !important;
+      width:100%;
+      margin:0 auto 26px;
     }
 
-    .page-header{
-      margin-bottom:16px;
-    }
-    .page-header h3{
-      margin:0;
-      font-size:1.35rem;
-      font-weight:600;
-    }
-    .page-header small{
-      color:var(--text-muted);
-      font-size:.85rem;
+    .card,
+    .card-modern{
+      background:var(--card);
+      border:1px solid var(--border) !important;
+      border-radius:var(--radius) !important;
+      box-shadow:var(--shadow) !important;
+      overflow:hidden;
     }
 
-    .card{
-      border-radius:12px;
-      border:0;
-      box-shadow:0 2px 8px rgba(15,23,42,.09);
-      background:#fff;
+    .card-body{ padding:18px !important; }
+
+    .section-title,
+    h5.m-0,
+    h6.m-0{
+      font-size:1rem !important;
+      font-weight:800 !important;
+      color:#162033;
+    }
+
+    .section-subtitle,
+    .text-muted-2,
+    .text-muted,
+    small.text-muted,
+    .muted{
+      color:var(--muted) !important;
+    }
+
+    .form-label{
+      display:block;
+      margin:0 0 6px;
+      font-size:.78rem !important;
+      font-weight:700 !important;
+      color:#45506a !important;
+    }
+
+    .form-control,
+    .form-select,
+    .input-group-text{
+      min-height:42px;
+      border-radius:14px !important;
+      border:1px solid var(--border) !important;
+      background:#fbfcff !important;
+      box-shadow:none !important;
+    }
+
+    .form-control:focus,
+    .form-select:focus{
+      border-color:#98abff !important;
+      box-shadow:0 0 0 .18rem rgba(39,71,217,.12) !important;
+      background:#fff !important;
     }
 
     .btn-royal{
-      background:var(--royal-blue);
-      color:#fff;
-      border-color:var(--royal-blue);
+      background:linear-gradient(135deg,var(--royal-blue),var(--royal-blue-2)) !important;
+      color:#fff !important;
+      border:0 !important;
+      border-radius:14px !important;
+      padding:10px 14px !important;
+      font-weight:700 !important;
+      box-shadow:0 10px 20px rgba(39,71,217,.16);
     }
-    .btn-royal:hover{
-      background:var(--hover-blue);
-      border-color:var(--hover-blue);
-      color:#fff;
+    .btn-royal:hover{ color:#fff !important; transform:translateY(-1px); }
+
+    .btn,.btn-sm{ border-radius:12px !important; }
+
+    .table-responsive{
+      overflow:auto;
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:#fff;
     }
+
+    .table thead th,
+    .table-light th{
+      position:sticky;
+      top:0;
+      z-index:1;
+      background:#f8faff !important;
+      border-bottom:1px solid var(--border) !important;
+      color:#4b5565 !important;
+      font-size:.76rem !important;
+      font-weight:800 !important;
+      letter-spacing:.04em;
+      white-space:nowrap;
+      padding:.88rem .8rem !important;
+      text-transform:uppercase;
+    }
+
+    .table tbody td,
+    .table tfoot td,
+    .table th,
+    .table td{
+      padding:.82rem .8rem !important;
+      border-color:#eef2f8 !important;
+      vertical-align:middle;
+      font-size:.9rem;
+    }
+
+    .table tbody tr:hover{ background:#f8fbff !important; }
 
     .badge-soft{
-      background:#eef2ff;
-      color:#223;
-      border-radius:999px;
-      padding:.15rem .55rem;
-      font-size:.75rem;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:34px;
+      padding:6px 10px;
+      border-radius:999px !important;
+      font-size:.75rem !important;
+      font-weight:800 !important;
+      background:#eef3ff !important;
+      color:#2747d9 !important;
+      border:none !important;
     }
-
-    /* ====== Avisos específicos ============================================= */
 
     .chip{
       display:inline-flex;
       align-items:center;
-      gap:.35rem;
-      padding:.25rem .75rem;
+      gap:8px;
+      padding:8px 12px;
       border-radius:999px;
-      background:#eef2ff;
-      font-size:.8rem;
-      color:#384152;
+      background:#eef3ff;
+      color:#2747d9;
+      font-size:.78rem;
+      font-weight:700;
+      border:1px solid #d9e4ff;
     }
 
     .form-help{
-      color:#6c757d;
-      font-size:.8rem;
-    }
-
-    .listbox{
-      max-height:260px;
-      overflow:auto;
-      border:1px solid rgba(15,23,42,.06);
-      border-radius:12px;
-      padding:.25rem;
-      background:#fff;
-    }
-    .listbox .item{
-      display:flex;
-      align-items:center;
-      gap:.5rem;
-      padding:.35rem .5rem;
-      border-radius:10px;
-      font-size:.9rem;
-    }
-    .listbox .item:hover{
-      background:#f4f6ff;
-    }
-    .avatar{
-      width:28px;
-      height:28px;
-      border-radius:50%;
-      object-fit:cover;
-      border:1px solid rgba(15,23,42,.08);
-    }
-
-    .section-title{
-      font-weight:600;
-      font-size:.95rem;
-    }
-    .muted{color:#6c757d;}
-    .count{font-variant-numeric:tabular-nums;}
-
-    .aviso-card .title{
-      font-weight:600;
-      font-size:1rem;
-    }
-    .aviso-card .meta{
-      color:#6c757d;
-      font-size:.85rem;
-    }
-    .aviso-card .meta i{
-      font-size:.9rem;
+      margin-top:6px;
+      font-size:.74rem;
+      color:var(--muted);
     }
 
     .search-wrap{
-      max-width:520px;
-    }
-
-    .empty{
-      color:#6c757d;
-    }
-
-    .kpi-card-icon{
-      font-size:2rem;
-      opacity:.85;
+      max-width:460px;
     }
 
     .sticky-actions{
       position:sticky;
       bottom:0;
+      z-index:5;
+      background:linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.95) 30%, rgba(255,255,255,1) 100%);
+      padding-top:14px;
+      margin-top:18px;
+    }
+
+    .listbox{
+      max-height:280px;
+      overflow:auto;
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:#fbfcff;
+      padding:8px;
+    }
+
+    .listbox::-webkit-scrollbar{ width:8px; }
+    .listbox::-webkit-scrollbar-thumb{ background:#dce6fb; border-radius:999px; }
+
+    .item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid transparent;
+      transition:.18s ease;
+      cursor:pointer;
+      margin-bottom:6px;
       background:#fff;
-      padding-top:12px;
-      margin-top:8px;
-      border-top:1px solid rgba(15,23,42,.06);
+    }
+
+    .item:last-child{ margin-bottom:0; }
+
+    .item:hover{
+      background:#f4f7ff;
+      border-color:#dfe8ff;
+    }
+
+    .item input[type="checkbox"]{
+      margin-top:0;
+      flex-shrink:0;
+    }
+
+    .avatar{
+      width:38px !important;
+      height:38px !important;
+      min-width:38px !important;
+      min-height:38px !important;
+      max-width:38px !important;
+      max-height:38px !important;
+      border-radius:50% !important;
+      object-fit:cover !important;
+      display:block;
+      background:#eef2ff;
+      flex-shrink:0;
+    }
+
+    .aviso-card .title{
+      font-size:1rem;
+      font-weight:800;
+      color:#172033;
+    }
+
+    .aviso-card .meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+      margin-top:6px;
+      font-size:.78rem;
+      color:var(--muted);
+    }
+
+    .kpi-card-icon{
+      font-size:2rem;
+      opacity:.9;
+    }
+
+    .empty{
+      color:var(--muted);
+      border-style:dashed !important;
+    }
+
+    .page-header small{
+      color:var(--muted);
+    }
+
+    .tab-pane{ animation:fadePane .2s ease; }
+    @keyframes fadePane{
+      from{ opacity:.35; transform:translateY(3px); }
+      to{ opacity:1; transform:none; }
     }
 
     @media (max-width: 991.98px){
-      :root{ --sidebar-w:72px; }
+      :root{ --sidebar-w:74px; }
 
-      .sidebar{
-        padding:18px 8px;
-      }
-      .brand-sub,
-      .brand-title,
-      .nav-section-label,
-      .nav-link-label{
-        display:none;
-      }
-      .nav-sublinks{
-        padding-left:12px;
-      }
+      .sidebar{ padding:18px 8px; }
+      .brand-title,.brand-sub,.nav-section-label,.nav-link-label{ display:none; }
+      .nav-sublinks{ padding-left:10px; }
+
       .main{
         margin-left:var(--sidebar-w);
+        width:calc(100% - var(--sidebar-w));
         padding:16px 10px;
+      }
+
+      .listbox{
+        max-height:240px;
       }
     }
   </style>
@@ -349,13 +448,11 @@
 
       <div class="nav-section-label">Visão Geral</div>
 
-      <!-- Resumo -->
       <a class="nav-sublink"
          href="{{ url_for('admin_dashboard', tab='resumo') }}">
         <i class="bi bi-graph-up"></i> <span class="nav-link-label">Resumo</span>
       </a>
 
-      <!-- Avaliações -->
       <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}"
          href="{{ url_for('admin_avaliacoes') }}">
         <div class="nav-link-left">
@@ -366,7 +463,6 @@
 
       <hr class="sidebar-divider">
 
-      <!-- FINANCEIRO ------------------------------------------------------->
       <button class="nav-link-group-toggle"
               type="button"
               data-bs-toggle="collapse"
@@ -380,38 +476,31 @@
       </button>
 
       <div id="menuFinanceiro" class="collapse show nav-sublinks">
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='lancamentos') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='lancamentos') }}">
           <i class="bi bi-journal-text"></i> <span class="nav-link-label">Lançamentos</span>
         </a>
 
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='receitas') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='receitas') }}">
           <i class="bi bi-cash"></i> <span class="nav-link-label">Receitas Coop</span>
         </a>
 
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='despesas') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='despesas') }}">
           <i class="bi bi-cart-dash"></i> <span class="nav-link-label">Despesas Coop</span>
         </a>
 
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='coop_receitas') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='coop_receitas') }}">
           <i class="bi bi-cash-coin"></i> <span class="nav-link-label">Receitas Cooperados</span>
         </a>
 
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='coop_despesas') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='coop_despesas') }}">
           <i class="bi bi-people"></i> <span class="nav-link-label">Despesas Cooperados</span>
         </a>
 
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='beneficios') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='beneficios') }}">
           <i class="bi bi-heart-pulse"></i> <span class="nav-link-label">Benefícios</span>
         </a>
       </div>
 
-      <!-- CADASTROS -------------------------------------------------------->
       <button class="nav-link-group-toggle"
               type="button"
               data-bs-toggle="collapse"
@@ -425,13 +514,11 @@
       </button>
 
       <div id="menuCadastros" class="collapse show nav-sublinks">
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='cooperados') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='cooperados') }}">
           <i class="bi bi-person-badge"></i> <span class="nav-link-label">Cooperados</span>
         </a>
 
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='restaurantes') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='restaurantes') }}">
           <i class="bi bi-shop"></i> <span class="nav-link-label">Estabelecimentos</span>
         </a>
 
@@ -446,7 +533,6 @@
         </a>
       </div>
 
-      <!-- OPERAÇÃO --------------------------------------------------------->
       <button class="nav-link-group-toggle"
               type="button"
               data-bs-toggle="collapse"
@@ -460,8 +546,7 @@
       </button>
 
       <div id="menuOperacao" class="collapse show nav-sublinks">
-        <a class="nav-sublink"
-           href="{{ url_for('admin_dashboard', tab='escalas') }}">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='escalas') }}">
           <i class="bi bi-calendar2-week"></i> <span class="nav-link-label">Escalas</span>
         </a>
 
@@ -473,7 +558,6 @@
 
       <hr class="sidebar-divider">
 
-      <!-- Config + Sair ------------------------------------------------------>
       <div class="sidebar-footer">
         <a class="nav-link-main {% if request.endpoint == 'admin_dashboard' and request.args.get('tab') == 'config' %}active{% endif %}"
            href="{{ url_for('admin_dashboard', tab='config') }}">
@@ -483,8 +567,7 @@
           </div>
         </a>
 
-        <a class="nav-link-main"
-           href="{{ url_for('logout') }}">
+        <a class="nav-link-main" href="{{ url_for('logout') }}">
           <div class="nav-link-left">
             <span class="nav-link-icon"><i class="bi bi-box-arrow-right"></i></span>
             <span class="nav-link-label">Sair</span>
@@ -499,7 +582,6 @@
   <main class="main">
     <div class="content-shell">
 
-      <!-- Cabeçalho da página -->
       <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
           <h3 class="mb-0 d-flex align-items-center gap-2">
@@ -525,7 +607,6 @@
           </div>
 
           <form id="formNovoAviso" method="POST" action="{{ url_for('admin_avisos') }}">
-            <!-- Conteúdo do aviso -->
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label">Título</label>
@@ -560,11 +641,20 @@
                   </label>
                 </div>
               </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Início do aviso</label>
+                <input id="novoInicioEm" name="inicio_em" type="datetime-local" class="form-control">
+                <div class="form-help">Deixe em branco para publicar imediatamente.</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Fim do aviso</label>
+                <input id="novoFimEm" name="fim_em" type="datetime-local" class="form-control">
+                <div class="form-help">Opcional. Após este momento o aviso deixa de aparecer.</div>
+              </div>
             </div>
 
             <hr class="my-3">
 
-            <!-- Destino do aviso -->
             <div class="row g-3">
               <div class="col-12">
                 <div class="section-title mb-1">Destino do aviso</div>
@@ -610,6 +700,9 @@
                     </button>
                   </div>
 
+                  <div class="form-help mt-2">
+                    Mesmo selecionando vários cooperados, o sistema cria apenas <strong>1 aviso</strong> e controla as leituras por destinatário.
+                  </div>
                   <div class="row g-2 mt-2">
                     <div class="col-12 col-md-6">
                       <input type="text" id="buscaCoop" class="form-control form-control-sm" placeholder="Buscar cooperado por nome...">
@@ -620,7 +713,7 @@
                     {% for c in cooperados %}
                     <label class="item">
                       <input class="form-check-input chk-coop" type="checkbox" name="dest_cooperados[]" value="{{ c.id }}">
-                      <img class="avatar" src="{{ c.foto_url or url_for('static', filename='img/default.png') }}" alt="">
+                      <img class="avatar border" src="{{ c.foto_url or url_for('static', filename='img/default.png') }}" alt="{{ c.nome }}">
                       <span class="flex-fill">{{ c.nome }}</span>
                     </label>
                     {% else %}
@@ -699,6 +792,9 @@
                           <i class="bi bi-x-circle"></i> Limpar
                         </button>
                       </div>
+                      <div class="form-help mt-2">
+                        Mesmo selecionando vários cooperados, será criado apenas <strong>1 aviso</strong> para esse grupo.
+                      </div>
                       <div class="row g-2 mt-2">
                         <div class="col-12">
                           <input type="text" id="buscaAmbCoop" class="form-control form-control-sm" placeholder="Buscar cooperado...">
@@ -708,7 +804,7 @@
                         {% for c in cooperados %}
                         <label class="item">
                           <input class="form-check-input chk-amb-coop" type="checkbox" name="dest_cooperados_ambos[]" value="{{ c.id }}">
-                          <img class="avatar" src="{{ c.foto_url or url_for('static', filename='img/default.png') }}" alt="">
+                          <img class="avatar border" src="{{ c.foto_url or url_for('static', filename='img/default.png') }}" alt="{{ c.nome }}">
                           <span class="flex-fill">{{ c.nome }}</span>
                         </label>
                         {% else %}
@@ -761,7 +857,7 @@
                 </div>
               </div>
 
-            </div><!-- /row destino -->
+            </div>
 
             <div class="sticky-actions d-flex flex-wrap gap-2 justify-content-end">
               <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPreviewNovo" data-bs-toggle="modal" data-bs-target="#novoPreviewModal">
@@ -778,7 +874,6 @@
         </div>
       </div>
 
-      <!-- Modal de pré-visualização do NOVO aviso -->
       <div class="modal fade" id="novoPreviewModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
@@ -805,14 +900,15 @@
         </div>
       </div>
 
-      <!-- ====== LISTA DE AVISOS EXISTENTES ================================ -->
       {% set total = avisos|length %}
       {% set ativos_list = avisos|selectattr('ativo')|list %}
       {% set qtd_ativos = ativos_list|length %}
       {% set qtd_inativos = total - qtd_ativos %}
 
+      {% set total_lidos = avisos|sum(attribute='total_lidos') %}
+      {% set total_pendentes = avisos|sum(attribute='total_pendentes') %}
       <div class="row g-3 align-items-stretch mt-1">
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
           <div class="card p-3 h-100">
             <div class="d-flex justify-content-between align-items-center">
               <div>
@@ -823,16 +919,22 @@
             </div>
           </div>
         </div>
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
           <div class="card p-3 h-100">
             <div class="fw-bold small text-success">Ativos</div>
             <div class="display-6 text-success">{{ qtd_ativos }}</div>
           </div>
         </div>
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
           <div class="card p-3 h-100">
-            <div class="fw-bold small text-secondary">Inativos</div>
-            <div class="display-6 text-secondary">{{ qtd_inativos }}</div>
+            <div class="fw-bold small text-primary">Leituras registradas</div>
+            <div class="display-6 text-primary">{{ total_lidos }}</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-3">
+          <div class="card p-3 h-100">
+            <div class="fw-bold small text-warning">Leituras pendentes</div>
+            <div class="display-6 text-warning">{{ total_pendentes }}</div>
           </div>
         </div>
       </div>
@@ -855,6 +957,13 @@
                 {% if a.atualizado_em %}
                   · <i class="bi bi-pencil-square"></i> Atualizado {{ a.atualizado_em.strftime('%d/%m/%Y %H:%M') }}
                 {% endif %}
+                · <i class="bi bi-bullseye"></i> {{ a.destino_resumo }}
+                {% if a.inicio_em %}
+                  · <i class="bi bi-clock"></i> Início {{ a.inicio_em.strftime('%d/%m/%Y %H:%M') }}
+                {% endif %}
+                {% if a.fim_em %}
+                  · Expira {{ a.fim_em.strftime('%d/%m/%Y %H:%M') }}
+                {% endif %}
               </div>
               <div class="mt-2 text-muted" style="white-space:pre-line">
                 {{ conteudo[:280] }}{% if conteudo|length > 280 %}…{% endif %}
@@ -863,6 +972,12 @@
                 <span class="badge {{ 'bg-success-subtle text-success' if a.ativo else 'bg-secondary-subtle text-secondary' }}">
                   {{ 'Ativo' if a.ativo else 'Inativo' }}
                 </span>
+                {% if a.agendado %}
+                  <span class="badge bg-warning-subtle text-warning">Agendado</span>
+                {% endif %}
+                {% if a.expirado %}
+                  <span class="badge bg-danger-subtle text-danger">Encerrado</span>
+                {% endif %}
                 {% if a.prioridade %}
                   <span class="badge-soft">Prioridade: {{ a.prioridade|capitalize }}</span>
                 {% else %}
@@ -871,6 +986,7 @@
                 {% if a.exigir_confirmacao %}
                   <span class="badge-soft"><i class="bi bi-check2-square"></i> Confirmação</span>
                 {% endif %}
+                <span class="badge-soft"><i class="bi bi-eye"></i> {{ a.total_lidos }}/{{ a.total_destinatarios }} leitura(s)</span>
               </div>
             </div>
 
@@ -888,6 +1004,9 @@
               <button class="btn btn-sm btn-royal mt-1" data-bs-toggle="modal" data-bs-target="#previewModal{{ a.id }}">
                 <i class="bi bi-search"></i> Visualizar
               </button>
+              <button class="btn btn-sm btn-outline-primary mt-1" data-bs-toggle="modal" data-bs-target="#leiturasModal{{ a.id }}">
+                <i class="bi bi-people"></i> Quem leu
+              </button>
 
               <form method="POST"
                     action="{{ url_for('admin_avisos_excluir', aviso_id=a.id) }}"
@@ -901,7 +1020,6 @@
           </div>
         </div>
 
-        <!-- Modal de pré-visualização do AVISO existente -->
         <div class="modal fade" id="previewModal{{ a.id }}" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -915,6 +1033,12 @@
                   {% if a.prioridade %} · Prioridade: {{ a.prioridade|capitalize }}{% endif %}
                   {% if a.exigir_confirmacao %} · <i class="bi bi-check2-square"></i> Exige confirmação{% endif %}
                 </div>
+                <div class="small mb-2">
+                  <span class="text-muted">Destino:</span> {{ a.destino_resumo }}
+                  {% if a.inicio_em %}<br><span class="text-muted">Início:</span> {{ a.inicio_em.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+                  {% if a.fim_em %}<br><span class="text-muted">Fim:</span> {{ a.fim_em.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+                  <br><span class="text-muted">Leituras:</span> {{ a.total_lidos }}/{{ a.total_destinatarios }}
+                </div>
                 <div style="white-space:pre-line">{{ conteudo }}</div>
               </div>
               <div class="modal-footer border-0">
@@ -923,6 +1047,90 @@
             </div>
           </div>
         </div>
+        
+        <div class="modal fade" id="leiturasModal{{ a.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header border-0">
+                <div>
+                  <h5 class="modal-title mb-1"><i class="bi bi-people-fill"></i> Leituras do aviso</h5>
+                  <div class="small text-muted">{{ titulo }} · {{ a.total_lidos }}/{{ a.total_destinatarios }} leitura(s)</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <div class="modal-body pt-0">
+                <div class="row g-3">
+                  <div class="col-12 col-lg-6">
+                    <div class="card p-3 h-100">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="section-title"><i class="bi bi-people"></i> Cooperados</div>
+                        <span class="chip">{{ a.leituras_cooperados|selectattr('lido')|list|length }}/{{ a.leituras_cooperados|length }}</span>
+                      </div>
+                      <div class="listbox">
+                        {% if a.leituras_cooperados %}
+                          {% for item in a.leituras_cooperados %}
+                          <div class="item" style="cursor:default">
+                            <div class="flex-fill">
+                              <div class="fw-semibold">{{ item.nome }}</div>
+                              <div class="small text-muted">
+                                {% if item.lido and item.lido_em %}
+                                  Leu em {{ item.lido_em.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                  Ainda não leu
+                                {% endif %}
+                              </div>
+                            </div>
+                            <span class="badge {{ 'bg-success-subtle text-success' if item.lido else 'bg-warning-subtle text-warning' }}">
+                              {{ 'Lido' if item.lido else 'Pendente' }}
+                            </span>
+                          </div>
+                          {% endfor %}
+                        {% else %}
+                          <div class="text-muted p-2">Este aviso não foi enviado para cooperados.</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-lg-6">
+                    <div class="card p-3 h-100">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="section-title"><i class="bi bi-shop"></i> Estabelecimentos</div>
+                        <span class="chip">{{ a.leituras_restaurantes|selectattr('lido')|list|length }}/{{ a.leituras_restaurantes|length }}</span>
+                      </div>
+                      <div class="listbox">
+                        {% if a.leituras_restaurantes %}
+                          {% for item in a.leituras_restaurantes %}
+                          <div class="item" style="cursor:default">
+                            <div class="flex-fill">
+                              <div class="fw-semibold">{{ item.nome }}</div>
+                              <div class="small text-muted">
+                                {% if item.lido and item.lido_em %}
+                                  Leu em {{ item.lido_em.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                  Ainda não leu
+                                {% endif %}
+                              </div>
+                            </div>
+                            <span class="badge {{ 'bg-success-subtle text-success' if item.lido else 'bg-warning-subtle text-warning' }}">
+                              {{ 'Lido' if item.lido else 'Pendente' }}
+                            </span>
+                          </div>
+                          {% endfor %}
+                        {% else %}
+                          <div class="text-muted p-2">Este aviso não foi enviado para estabelecimentos.</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer border-0">
+                <button class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {% else %}
         <div class="card p-4 text-center empty">
           <i class="bi bi-info-circle"></i> Nenhum aviso cadastrado.
@@ -930,14 +1138,15 @@
         {% endfor %}
       </div>
 
-    </div> <!-- /content-shell -->
+    </div>
   </main>
 
-</div> <!-- /layout -->
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // ====== Filtro local de avisos ======
   const busca = document.getElementById('busca');
   const lista = document.getElementById('listaAvisos');
 
@@ -958,7 +1167,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tFilter = setTimeout(filtroAvisos, 80);
   });
 
-  // ====== Alterna blocos de destino ======
   const destCoops = document.getElementById('destCoops');
   const destRests = document.getElementById('destRests');
   const destAmbos = document.getElementById('destAmbos');
@@ -975,8 +1183,6 @@ document.addEventListener('DOMContentLoaded', () => {
   [destCoops, destRests, destAmbos].forEach(el => el?.addEventListener('change', aplicarModoDestino));
   aplicarModoDestino();
 
-  // ====== util contadores/busca ======
-  // COOPERADOS
   const coopSelCount = document.getElementById('coopSelCount');
   const listaCoops = document.getElementById('listaCoops');
   const buscaCoop = document.getElementById('buscaCoop');
@@ -1012,7 +1218,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // RESTAURANTES
   const restSelCount = document.getElementById('restSelCount');
   const listaRests = document.getElementById('listaRests');
   const buscaRest = document.getElementById('buscaRest');
@@ -1048,7 +1253,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // AMBOS
   const ambCoopSelCount = document.getElementById('ambCoopSelCount');
   const ambRestSelCount = document.getElementById('ambRestSelCount');
   const listaAmbCoops = document.getElementById('listaAmbCoops');
@@ -1120,12 +1324,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ====== Pré-visualização do NOVO aviso ======
   const novoTitulo = document.getElementById('novoTitulo');
   const novoMensagem = document.getElementById('novoMensagem');
   const novoPrioridade = document.getElementById('novoPrioridade');
   const novoAtivo = document.getElementById('novoAtivo');
   const novoConfirmacao = document.getElementById('novoConfirmacao');
+  const novoInicioEm = document.getElementById('novoInicioEm');
+  const novoFimEm = document.getElementById('novoFimEm');
 
   const prevNovoTitulo = document.getElementById('prevNovoTitulo');
   const prevNovoMensagem = document.getElementById('prevNovoMensagem');
@@ -1150,7 +1355,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return n ? `${n} restaurante(s) selecionado(s)` : 'Nenhum restaurante selecionado';
     }
 
-    // modo === 'ambos'
     const alcCoop = document.querySelector('input[name="coop_alcance_ambos"]:checked')?.value;
     const alcRest = document.querySelector('input[name="rest_alcance_ambos"]:checked')?.value;
     const nC = document.querySelectorAll('#listaAmbCoops .chk-amb-coop:checked').length;
@@ -1186,6 +1390,22 @@ document.addEventListener('DOMContentLoaded', () => {
     b2.style.marginLeft = '8px';
     frag.appendChild(b2);
 
+    if (novoInicioEm?.value){
+      const b4 = document.createElement('span');
+      b4.className = 'badge-soft';
+      b4.style.marginLeft = '8px';
+      b4.innerHTML = '<i class="bi bi-clock"></i> Início agendado';
+      frag.appendChild(b4);
+    }
+
+    if (novoFimEm?.value){
+      const b5 = document.createElement('span');
+      b5.className = 'badge-soft';
+      b5.style.marginLeft = '8px';
+      b5.innerHTML = '<i class="bi bi-calendar-x"></i> Com expiração';
+      frag.appendChild(b5);
+    }
+
     if (novoConfirmacao?.checked){
       const b3 = document.createElement('span');
       b3.className = 'badge-soft';
@@ -1197,16 +1417,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const agora = new Date();
     const pad = n => String(n).padStart(2,'0');
-    prevNovoMeta.textContent =
-      `${pad(agora.getDate())}/${pad(agora.getMonth()+1)}/${agora.getFullYear()} ` +
-      `${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
+    let metaTxt = `${pad(agora.getDate())}/${pad(agora.getMonth()+1)}/${agora.getFullYear()} ${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
+    if (novoInicioEm?.value) metaTxt += ` · Início ${novoInicioEm.value.replace('T',' ')}`;
+    if (novoFimEm?.value) metaTxt += ` · Fim ${novoFimEm.value.replace('T',' ')}`;
+    prevNovoMeta.textContent = metaTxt;
 
     prevDestinoTexto.textContent = resumoDestinoTexto();
   }
 
   document.getElementById('btnPreviewNovo')?.addEventListener('click', atualizarPreviewNovo);
   [
-    novoTitulo, novoMensagem, novoPrioridade, novoAtivo, novoConfirmacao,
+    novoTitulo, novoMensagem, novoPrioridade, novoAtivo, novoConfirmacao, novoInicioEm, novoFimEm,
     destCoops, destRests, destAmbos
   ].forEach(el => {
     el?.addEventListener('input', atualizarPreviewNovo);
@@ -1215,17 +1436,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   atualizarPreviewNovo();
 
-  // contadores iniciais
   function bootCounts(){
-    const ev = new Event('change');
-    document.getElementById('listaCoops')?.dispatchEvent(ev);
-    document.getElementById('listaRests')?.dispatchEvent(ev);
-    document.getElementById('listaAmbCoops')?.dispatchEvent(ev);
-    document.getElementById('listaAmbRests')?.dispatchEvent(ev);
+    atualizarContadorCoop();
+    atualizarContadorRest();
+    atualizarContadorAmbCoop();
+    atualizarContadorAmbRest();
   }
   bootCounts();
 
-  // Publicar direto pelo botão dentro do modal
   document.getElementById('btnConfirmarPublicacao')?.addEventListener('click', () => {
     document.getElementById('formNovoAviso')?.submit();
   });
