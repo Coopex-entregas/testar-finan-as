@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}Painel Admin - Coopex{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    :root{--royal-blue:#2747d9;--royal-blue-2:#3358f0;--royal-dark:#16258a;--royal-soft:#eef3ff;--bg:#f4f7fc;--card:#ffffff;--text:#182033;--muted:#7b879f;--border:#e6ebf5;--success:#12b76a;--warning:#f59e0b;--danger:#ef4444;--shadow:0 10px 30px rgba(17,24,39,.08);--sidebar-w:278px;--radius:20px;}
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:'Inter',sans-serif;background:radial-gradient(circle at top right, rgba(39,71,217,.10), transparent 28%),linear-gradient(180deg,#f7f9fe 0%,#f2f5fb 100%);color:var(--text);overflow-x:hidden}
+    .layout{display:flex;min-height:100vh}.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;padding:18px 14px;background:linear-gradient(180deg, rgba(51,88,240,1) 0%, rgba(39,71,217,1) 38%, rgba(22,37,138,1) 100%);color:#fff;box-shadow:0 0 26px rgba(0,0,0,.22);z-index:1020;overflow-y:auto;display:flex;flex-direction:column}.sidebar::-webkit-scrollbar{width:8px}.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
+    .brand{position:relative;padding:16px;margin-bottom:14px;border-radius:18px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}.brand-title{margin:0;font-family:'Orbitron',sans-serif;font-size:1.08rem;letter-spacing:.9px;text-transform:uppercase;line-height:1.28}.brand-sub{display:block;margin-top:6px;font-size:.74rem;opacity:.82}
+    .sidebar-nav{padding:0;margin:0}.nav-section-label{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.60);margin:14px 8px 8px}.sidebar-divider{border-color:rgba(255,255,255,.08);margin:12px 0 8px}
+    .nav-link-main,.nav-link-group-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-radius:14px;padding:10px 12px;margin:4px 0;background:transparent;color:#fff;text-decoration:none;font-size:.92rem;cursor:pointer;transition:all .18s ease}.nav-link-main:hover,.nav-link-group-toggle:hover{background:rgba(255,255,255,.10);transform:translateY(-1px);color:#fff}.nav-link-main.active,.nav-sublink.active,.nav-rh-sub.active{background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.18);box-shadow:0 8px 18px rgba(0,0,0,.10);color:#fff!important}
+    .nav-link-left{display:flex;align-items:center;gap:10px}.nav-link-icon{width:22px;display:flex;justify-content:center;align-items:center;font-size:1rem;flex-shrink:0}.nav-caret{font-size:.82rem;opacity:.72}.nav-sublinks{padding-left:16px;margin-bottom:6px}.nav-sublink{display:flex;align-items:center;gap:8px;padding:8px 10px;margin:4px 0;border-radius:12px;color:rgba(255,255,255,.84);text-decoration:none;font-size:.84rem;transition:all .18s ease}.nav-sublink:hover{color:#fff;background:rgba(255,255,255,.10);transform:translateX(2px)}
+    .sidebar-footer{margin-top:auto;padding-top:10px}.main{flex:1;margin-left:var(--sidebar-w);padding:20px 20px 30px;width:calc(100% - var(--sidebar-w))}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 20px;border-radius:28px;background:linear-gradient(135deg, rgba(39,71,217,1) 0%, rgba(51,88,240,1) 52%, rgba(22,37,138,1) 100%);color:#fff;box-shadow:0 18px 40px rgba(39,71,217,.22);overflow:hidden;margin-bottom:18px}.panel-head-title{margin:0;font-size:1.55rem;font-weight:800;display:flex;align-items:center;gap:10px}.panel-head-sub{margin-top:6px;color:rgba(255,255,255,.86);font-size:.95rem}
+    .card,.card-modern{background:var(--card);border:1px solid var(--border)!important;border-radius:var(--radius)!important;box-shadow:var(--shadow)!important;overflow:hidden}.card{padding:18px}.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-6{grid-column:span 6}.span-4{grid-column:span 4}.span-3{grid-column:span 3}
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.card-head h3{margin:0;font-size:1rem;font-weight:800}.badge{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:.75rem;font-weight:800;background:#eef2ff;color:#3047d6;border:1px solid rgba(48,71,214,.12)}.badge-royal,.badge-ok,.badge-warn,.badge-warning,.badge-error{color:#fff;border:none}.badge-royal{background:#3047d6}.badge-ok{background:#12b76a}.badge-warn,.badge-warning{background:#f59e0b}.badge-error{background:#ef4444}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border:1px solid var(--border);background:#fff;color:var(--text);padding:10px 14px;border-radius:14px;font-size:.88rem;font-weight:700;transition:all .18s ease;cursor:pointer}.btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(17,24,39,.08)}.btn-royal{background:#3047d6;color:#fff;border-color:#3047d6}.btn-soft{background:#eef3ff;color:#3047d6;border-color:rgba(48,71,214,.14)}.card-actions{display:flex;gap:10px;flex-wrap:wrap}.muted{color:var(--muted)}
+    .input,input:not([type=file]):not([type=checkbox]):not([type=radio]),textarea,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.15);background:#fff}.table{width:100%;border-collapse:separate;border-spacing:0}.table th,.table td{padding:12px 10px;border-bottom:1px solid #e9edf6;vertical-align:top;font-size:.9rem}.table thead th{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;background:#f5f7fb;border-bottom:1px solid #e4e7f0}.table tbody tr:hover{background:#f8f9ff}
+    .rh-subnav{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.nav-rh-sub{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;text-decoration:none;font-size:.88rem;font-weight:800;background:#fff;color:#3047d6;border:1px solid rgba(48,71,214,.12);box-shadow:var(--shadow)}.nav-rh-sub:hover{transform:translateY(-1px);color:#1f3fc3}.nav-rh-sub.active{background:#3047d6!important;color:#fff!important;border-color:#3047d6!important}
+    @media (max-width:991px){.sidebar{position:relative;width:100%;height:auto}.main{margin-left:0;width:100%}.layout{display:block}.span-8,.span-6,.span-4,.span-3{grid-column:span 12}}
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<div class="brand"><h1 class="brand-title">PAINEL COOPEX</h1><span class="brand-sub">Administração Central</span></div>
+<nav class="sidebar-nav nav flex-column">
+<div class="nav-section-label">Visão Geral</div>
+<a class="nav-link-main {{ 'active' if current_tab=='resumo' else '' }}" href="{{ url_for('admin_dashboard', tab='resumo') }}#resumo"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-graph-up"></i></span><span class="nav-link-label">Resumo</span></div></a>
+<a class="nav-link-main {{ 'active' if request.endpoint == 'admin_avaliacoes' else '' }}" href="{{ url_for('admin_avaliacoes') }}"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-stars"></i></span><span class="nav-link-label">Avaliações</span></div></a>
+<hr class="sidebar-divider">
+<button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuFinanceiro" aria-expanded="true"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span><span class="nav-link-label">Financeiro</span></div><span class="nav-caret"><i class="bi bi-chevron-down"></i></span></button>
+<div id="menuFinanceiro" class="collapse show nav-sublinks">
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='lancamentos') }}#lancamentos"><i class="bi bi-journal-text"></i><span class="nav-link-label">Lançamentos</span></a>
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='receitas') }}#receitas"><i class="bi bi-credit-card"></i><span class="nav-link-label">Receitas Coop</span></a>
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='despesas') }}#despesas"><i class="bi bi-cart-dash"></i><span class="nav-link-label">Despesas Coop</span></a>
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='coop_receitas') }}#coop_receitas"><i class="bi bi-wallet2"></i><span class="nav-link-label">Receitas Cooperados</span></a>
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='coop_despesas') }}#coop_despesas"><i class="bi bi-bag-dash"></i><span class="nav-link-label">Despesas Cooperados</span></a>
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='beneficios') }}#beneficios"><i class="bi bi-heart-pulse"></i><span class="nav-link-label">Benefícios</span></a>
+</div>
+<a class="nav-link-main {{ 'active' if current_tab=='rh' or (request.endpoint and request.endpoint.startswith('admin_rh_')) else '' }}" href="{{ url_for('admin_rh_dashboard') }}"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-people-fill"></i></span><span class="nav-link-label">RH</span></div></a>
+<button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuCadastros" aria-expanded="true"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-people"></i></span><span class="nav-link-label">Cadastros</span></div><span class="nav-caret"><i class="bi bi-chevron-down"></i></span></button>
+<div id="menuCadastros" class="collapse show nav-sublinks">
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='cooperados') }}#cooperados"><i class="bi bi-person-badge"></i><span class="nav-link-label">Cooperados</span></a>
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='restaurantes') }}#restaurantes"><i class="bi bi-shop-window"></i><span class="nav-link-label">Estabelecimentos</span></a>
+<a class="nav-sublink {{ 'active' if current_tab=='rh' or (request.endpoint and request.endpoint.startswith('admin_rh_')) else '' }}" href="{{ url_for('admin_rh_dashboard') }}"><i class="bi bi-people-fill"></i><span class="nav-link-label">RH</span></a>
+<a class="nav-sublink {{ 'active' if request.endpoint == 'admin_documentos' else '' }}" href="{{ url_for('admin_documentos') }}"><i class="bi bi-folder2"></i><span class="nav-link-label">Documentos</span></a>
+<a class="nav-sublink {{ 'active' if request.endpoint == 'admin_tabelas' else '' }}" href="{{ url_for('admin_tabelas') }}"><i class="bi bi-table"></i><span class="nav-link-label">Tabelas</span></a>
+</div>
+<button class="nav-link-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#menuOperacao" aria-expanded="true"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span><span class="nav-link-label">Operação</span></div><span class="nav-caret"><i class="bi bi-chevron-down"></i></span></button>
+<div id="menuOperacao" class="collapse show nav-sublinks">
+<a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='escalas') }}#escalas"><i class="bi bi-calendar-week"></i><span class="nav-link-label">Escalas</span></a>
+<a class="nav-sublink {{ 'active' if request.endpoint == 'admin_avisos' else '' }}" href="{{ url_for('admin_avisos') }}"><i class="bi bi-megaphone"></i><span class="nav-link-label">Avisos</span></a>
+</div>
+<hr class="sidebar-divider">
+<div class="sidebar-footer">
+<a class="nav-link-main" href="{{ url_for('admin_dashboard', tab='config') }}#config"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-gear"></i></span><span class="nav-link-label">Configurações</span></div></a>
+<a class="nav-link-main" href="{{ url_for('logout') }}"><div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-box-arrow-right"></i></span><span class="nav-link-label">Sair</span></div></a>
+</div>
+</nav>
+</aside>
+<main class="main">
+<div class="panel-head"><div><h1 class="panel-head-title"><i class="bi bi-people-fill"></i> {% block header_title %}RH{% endblock %}</h1><div class="panel-head-sub">{% block header_sub %}{% endblock %}</div></div><div class="d-none d-md-flex align-items-center gap-2"><span class="badge badge-royal">Sistema Único</span></div></div>
+<div class="rh-subnav">
+<a class="nav-rh-sub {{ 'active' if current_rh=='dashboard' else '' }}" href="{{ url_for('admin_rh_dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+<a class="nav-rh-sub {{ 'active' if current_rh=='cooperados' else '' }}" href="{{ url_for('admin_rh_cooperados_list') }}"><i class="bi bi-card-list"></i> Cooperados</a>
+<a class="nav-rh-sub {{ 'active' if current_rh=='cadastro' else '' }}" href="{{ url_for('admin_rh_cooperados_new') }}"><i class="bi bi-person-vcard"></i> Cadastro / Ficha</a>
+<a class="nav-rh-sub {{ 'active' if current_rh=='vencimentos' else '' }}" href="{{ url_for('admin_rh_cooperados_vencimentos') }}"><i class="bi bi-calendar2-check"></i> Vencimentos</a>
+<a class="nav-rh-sub {{ 'active' if current_rh=='docs' else '' }}" href="{{ url_for('admin_rh_documentos_sistema') }}"><i class="bi bi-folder2-open"></i> Estatuto / Regimento</a>
+<a class="nav-rh-sub {{ 'active' if current_rh=='pesquisa' else '' }}" href="{{ url_for('admin_rh_pesquisa') }}"><i class="bi bi-search"></i> Pesquisa</a>
+<a class="nav-rh-sub {{ 'active' if current_rh=='notificacoes' else '' }}" href="{{ url_for('admin_rh_notificacoes') }}"><i class="bi bi-megaphone"></i> Notificações</a>
+</div>
+{% block content %}{% endblock %}
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>
