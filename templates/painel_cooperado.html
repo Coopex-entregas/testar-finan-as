@@ -5,596 +5,675 @@
   <title>Painel — Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#2747d9">
-
-  <!-- Fonts & Icons (CDN) -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
-  <!-- Prefetch -->
-  <link rel="preconnect" href="https://financas-dxsu.onrender.com" crossorigin>
-
   <style>
     :root{
-      --royal:#2747d9;      /* azul royal */
-      --royal-2:#2e52ff;    /* hover */
-      --ink:#0f172a;        /* título */
-      --muted:#6b7280;      /* texto fraco */
-      --bg:#f6f8ff;         /* fundo suave */
-      --card:#ffffff;       /* card branco */
-      --ok:#16a34a;         /* sucesso */
-      --bad:#dc2626;        /* erro */
-      --soft:#eef2ff;       /* chip */
-      --line:#00000012;     /* borda leve */
+      --royal:#2747d9;
+      --royal-2:#3157ff;
+      --royal-3:#1838bb;
+      --royal-soft:#eef3ff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --bg:#f4f7ff;
+      --card:#ffffff;
+      --line:rgba(15,23,42,.08);
+      --ok:#16a34a;
+      --bad:#dc2626;
+      --warn:#f59e0b;
+      --shadow:0 10px 30px rgba(39,71,217,.10);
+      --radius:18px;
+      --radius-sm:14px;
     }
 
+    *{box-sizing:border-box}
     html,body{height:100%;overflow-x:hidden}
-    body{background:var(--bg);color:#111;font-family:'Roboto',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";}
-    .navbar{background:var(--royal)}
-    .btn-royal{background:var(--royal);color:#fff;border:0}
-    .btn-royal:hover{background:var(--royal-2);color:#fff}
-    .card{border:0;background:var(--card);border-radius:16px;box-shadow:0 8px 28px #0000000d}
-    .muted{color:var(--muted)}
-    .mono{font-variant-numeric:tabular-nums}
-    .chip{display:inline-flex;align-items:center;gap:.35rem;background:var(--soft);color:#111;border-radius:999px;padding:.25rem .6rem;font-weight:700}
-    .mobile-wrap{max-width:520px;margin:0 auto}
-    .desktop-warning{display:none}
-    @media (min-width:992px){.desktop-warning{display:block}}
-
-    /* Navbar compacto (só avatar + KPIs à direita) */
-    .nav-actions .pill{display:inline-flex;align-items:center;gap:.35rem;background:#ffffff;color:#111;border-radius:999px;padding:.2rem .55rem;font-weight:700;box-shadow:0 1px 6px #0001}
-    .nav-actions .bi-star-fill{color:#f5c518}
-    .nav-actions .bi-bag-check-fill{color:#16a34a}
-
-    /* Tabs */
-    .sticky-tabs{position:sticky;top:0;z-index:10;background:linear-gradient(#f6f8ff,#f6f8ff)}
-    .nav-tabs{border:0;gap:.25rem}
-    .nav-tabs .nav-link{border:0;background:transparent;color:#1e293b;font-weight:700}
-    .nav-tabs .nav-link.active{background:#fff;color:#111;border-radius:12px 12px 0 0;box-shadow:0 -6px 16px #00000010}
-
-    /* Drawer */
-    #menuLateral{display:none;position:fixed;inset:0 auto 0 0;width:270px;background:#fff;box-shadow:6px 0 30px #0000001a;z-index:200;transform:translateX(-100%);transition:transform .25s ease}
-    #menuLateral.aberto{display:block;transform:translateX(0)}
-    #fundoMenu{display:none;position:fixed;inset:0;background:#0006;z-index:199}
-    #fundoMenu.aberto{display:block}
-
-    /* Resumo (KPI) */
-    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .kpi-card{border:1px solid var(--line);border-radius:14px;padding:.75rem}
-    .kpi-title{color:#334155;font-weight:700;font-size:.84rem;margin-bottom:.15rem}
-    .kpi-value{font-weight:800;font-size:1.15rem}
-    .kpi-sub{font-size:.78rem;color:var(--muted)}
-
-    /* Docs */
-    .doc-ok{background:#e8fff1;border:1px solid #bff0d1}
-    .doc-bad{background:#ffecec;border:1px solid #ffb3b3}
-    .badge-soft{background:var(--soft);color:#111;border-radius:999px;padding:.15rem .55rem}
-
-    /* Escala — cartões responsivos (sem cortar) */
-    .esc-card{display:flex;gap:12px;padding:10px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:#fff}
-    .esc-bar{width:6px;border-radius:8px;background:var(--stripe,#e5e7eb)}
-    .esc-body{flex:1;min-width:0}
-    .esc-title{font-weight:700;color:var(--ink);word-break:break-word;overflow-wrap:anywhere}
-    .esc-meta{color:var(--muted);font-size:.9rem;word-break:break-word;overflow-wrap:anywhere}
-    .esc-actions{display:flex;align-items:center;justify-content:flex-end}
-    .esc-chip{display:inline-block;font-size:.75rem;background:#f1f5ff;color:#1f3a8a;border:1px solid #dbe4ff;border-radius:999px;padding:.2rem .5rem}
-    .esc-status-today{background:rgba(34,197,94,.10)}
-    .esc-status-past{background:rgba(239,68,68,.07)}
-    .esc-status-future{background:rgba(59,130,246,.08)}
-
-    .btn-xs{padding:2px 8px;font-size:.78rem;border-radius:10px}
-
-    /* Rating */
-    .rating-stars{display:flex;gap:.25rem}
-    .rating-stars .bi-star,.rating-stars .bi-star-fill{font-size:1.2rem}
-    .rating-stars .bi-star-fill{color:#f5c518}
-    .rating-stars .bi-star{color:#d0d4dc}
-    .star-btn{border:0;background:transparent;line-height:1;cursor:pointer}
-
-    /* Offcanvas Finanças */
-    .offcanvas{border-top-left-radius:16px;border-top-right-radius:16px}
-    .soft-card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 22px #0000000d}
-    .title-muted{font-size:.8rem;color:#6b7280;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
-
-    /* Calculadora */
-    .calc-wrap{background:#000;border-radius:24px;overflow:hidden;box-shadow:0 12px 30px #0007}
-    .calc-status{color:#9aa0a6;text-align:right;padding:10px 16px;font-size:.9rem;min-height:24px}
-    .calc-display{color:#fff;text-align:right;font-weight:300;padding:0 16px 18px 16px;font-size:2.4rem;min-height:64px}
-    .calc-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}
-    .calc-btn{border:0;border-radius:32px;padding:16px 0;font-size:1.3rem;font-weight:600;cursor:pointer;user-select:none}
-    .k-gray{background:#a5a5a5;color:#000}.k-dark{background:#333;color:#fff}.k-orange{background:#fe9505;color:#fff}.k-zero{grid-column:span 2;text-align:left;padding-left:24px}.k-active{filter:brightness(1.15)}.k-ghost{background:#4f4f4f;color:#fff}
-
-    /* CxB */
-    .cxbox .form-label{font-weight:600}
-    .cxbox .result-badge{display:inline-block;background:var(--soft);border-radius:10px;padding:.25rem .5rem;font-weight:700}
-
-    /* Notas */
-    .notes-wrap{display:flex;gap:.5rem;height:60vh;min-height:420px}
-    .notes-list{width:38%;max-width:260px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto}
-    .notes-editor{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
-    .notes-toolbar{display:flex;gap:.4rem;padding:.5rem;border-bottom:1px solid var(--line);background:#f8f9fe;align-items:center}
-    .note-card{padding:.55rem .65rem;border-bottom:1px solid #00000010}
-    .note-card.active{background:#eef2ff}
-    @media (max-width:575px){.notes-wrap{flex-direction:column}.notes-list{width:100%;max-width:none;height:180px}.notes-editor{height:calc(60vh - 190px)}}
-
-    /* Print safety */
-    @media print{
-      *{box-shadow:none !important;text-shadow:none !important}
-      .no-print,.navbar,#menuLateral,#fundoMenu,.offcanvas,.modal,.toast{display:none !important}
+    body{
+      margin:0;
+      background:
+        radial-gradient(circle at top right, rgba(39,71,217,.10), transparent 24%),
+        linear-gradient(180deg, #f8faff 0%, #f4f7ff 100%);
+      color:var(--ink);
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     }
-    html.printing body{-webkit-filter:blur(6px) saturate(.7) brightness(1.05);filter:blur(6px) saturate(.7) brightness(1.05)}
+
+    .mobile-wrap{max-width:520px;margin:0 auto;min-height:100vh;padding-bottom:28px}
+    .mono{font-variant-numeric:tabular-nums}
+    .muted{color:var(--muted)}
+    .soft-hide{display:none!important}
+
+    .topbar{
+      position:sticky;top:0;z-index:60;
+      background:linear-gradient(135deg,var(--royal) 0%, #355cff 100%);
+      box-shadow:0 8px 24px rgba(39,71,217,.22);
+      border-bottom-left-radius:22px;
+      border-bottom-right-radius:22px;
+      overflow:hidden;
+    }
+    .topbar::before{
+      content:"";position:absolute;inset:auto -18% -45% auto;width:180px;height:180px;
+      background:radial-gradient(circle, rgba(255,255,255,.22), transparent 68%);
+      pointer-events:none;
+    }
+    .topbar-inner{position:relative;padding:12px 14px 14px 14px}
+    .top-row{display:flex;align-items:center;gap:10px}
+    .avatar-btn{
+      width:44px;height:44px;border-radius:50%;padding:0;border:0;background:transparent;
+      box-shadow:0 0 0 2px rgba(255,255,255,.18);
+      overflow:hidden;flex:0 0 44px;
+    }
+    .avatar-btn img{width:100%;height:100%;object-fit:cover;display:block}
+    .brand-block{min-width:0;flex:1}
+    .brand-kicker{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.72);font-weight:700}
+    .brand-title{font-size:1rem;font-weight:800;color:#fff;line-height:1.15;margin-top:1px}
+    .top-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+    .pill-metric{
+      min-width:72px;
+      background:rgba(255,255,255,.16);
+      border:1px solid rgba(255,255,255,.20);
+      backdrop-filter:blur(8px);
+      color:#fff;border-radius:14px;padding:6px 8px;
+      display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+    }
+    .pill-metric small{font-size:.62rem;color:rgba(255,255,255,.76);font-weight:700;line-height:1}
+    .pill-metric strong{font-size:.9rem;font-weight:800;line-height:1.1;margin-top:3px}
+    .score-badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:22px;height:22px;border-radius:50%;margin-bottom:4px;
+      box-shadow:inset 0 1px 1px rgba(255,255,255,.35), 0 4px 10px rgba(2,6,23,.18)
+    }
+    .score-badge i{font-size:.82rem;line-height:1}
+    .score-gold{background:linear-gradient(135deg,#ffd84d 0%,#f5b301 100%);color:#fff7d6}
+    .score-silver{background:linear-gradient(135deg,#d8dee9 0%,#9aa4b2 100%);color:#ffffff}
+    .score-bronze{background:linear-gradient(135deg,#d69a62 0%,#a85d28 100%);color:#fff3ea}
+    .score-danger{background:linear-gradient(135deg,#ff7878 0%,#dc2626 100%);color:#fff}
+    .btn-ghost-light{
+      border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.14);color:#fff;
+      border-radius:12px;padding:8px 10px;font-weight:700
+    }
+    .btn-ghost-light:hover{background:rgba(255,255,255,.20);color:#fff}
+
+    .menu-drawer{display:none;position:fixed;inset:0 auto 0 0;width:min(290px,86vw);background:#fff;z-index:220;transform:translateX(-100%);transition:.24s ease;box-shadow:10px 0 30px rgba(15,23,42,.18)}
+    .menu-drawer.aberto{display:block;transform:translateX(0)}
+    .menu-backdrop{display:none;position:fixed;inset:0;background:rgba(2,6,23,.42);z-index:210}
+    .menu-backdrop.aberto{display:block}
+    .menu-head{padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+    .menu-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--royal-soft)}
+    .menu-title{font-weight:800;color:var(--ink)}
+    .menu-sub{font-size:.8rem;color:var(--muted)}
+    .menu-links{padding:12px}
+    .menu-link{
+      display:flex;align-items:center;gap:12px;width:100%;text-decoration:none;
+      background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;
+      color:var(--ink);font-weight:700;margin-bottom:10px;
+      box-shadow:0 6px 16px rgba(15,23,42,.04)
+    }
+    .menu-link i{color:var(--royal);font-size:1.15rem}
+
+    .hero-cards{padding:12px 12px 6px 12px}
+    .hero-grid{
+      display:grid;grid-template-columns:1.1fr .9fr .9fr;gap:10px;
+    }
+    .hero-card{
+      background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:12px 12px 11px;
+      min-width:0;
+    }
+    .hero-card.primary{
+      background:linear-gradient(145deg,#ffffff 0%,#f7faff 100%);
+      border-color:rgba(39,71,217,.12)
+    }
+    .hero-label{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+    .hero-value{font-size:1.18rem;font-weight:800;line-height:1.1;color:var(--ink);margin-top:4px}
+    .hero-sub{font-size:.74rem;color:var(--muted);margin-top:4px}
+    .hero-value.tight{font-size:1rem}
+
+    .surface{padding:8px 12px}
+    .surface-card{
+      background:rgba(255,255,255,.88);backdrop-filter:blur(10px);
+      border:1px solid rgba(15,23,42,.06);
+      border-radius:20px;box-shadow:var(--shadow)
+    }
+
+    .filter-card{padding:14px}
+    .form-label{font-size:.78rem;font-weight:700;color:#334155;margin-bottom:6px}
+    .form-control,.form-select{
+      border-radius:14px;border:1px solid rgba(15,23,42,.10);
+      min-height:44px;font-size:.95rem;box-shadow:none
+    }
+    .form-control:focus,.form-select:focus{border-color:rgba(39,71,217,.45);box-shadow:0 0 0 4px rgba(39,71,217,.10)}
+    .btn-royal{
+      background:linear-gradient(135deg,var(--royal) 0%, var(--royal-2) 100%);
+      color:#fff;border:0;border-radius:14px;min-height:44px;font-weight:800;box-shadow:0 10px 20px rgba(39,71,217,.22)
+    }
+    .btn-royal:hover{color:#fff;filter:brightness(1.03)}
+
+    .flash-stack{padding:8px 12px 0}
+    .flash-stack .alert{border:0;border-radius:16px;box-shadow:0 8px 20px rgba(15,23,42,.06);font-size:.92rem}
+
+    .tab-shell{padding:10px 12px 0}
+    .tabs-rail{
+      display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;
+      background:rgba(255,255,255,.86);border:1px solid rgba(15,23,42,.06);backdrop-filter:blur(10px);
+      padding:6px;border-radius:18px;box-shadow:var(--shadow)
+    }
+    .tab-btn{
+      border:0;background:transparent;border-radius:14px;padding:9px 4px 8px;
+      min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+      color:#5b6475;font-weight:800;transition:.18s ease;
+    }
+    .tab-btn i{font-size:1rem;line-height:1}
+    .tab-btn span{
+      font-size:.58rem;line-height:1.05;text-align:center;white-space:normal;
+      word-break:break-word;letter-spacing:.01em
+    }
+    .tab-btn.active{
+      background:linear-gradient(135deg,var(--royal) 0%,var(--royal-2) 100%);
+      color:#fff;box-shadow:0 8px 18px rgba(39,71,217,.22)
+    }
+
+    .tab-panel-wrap{padding:10px 12px 24px}
+    .tab-pane-custom{display:none}
+    .tab-pane-custom.active{display:block}
+
+    .section-card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .section-title{font-size:1rem;font-weight:800;color:var(--ink);margin:0}
+    .section-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--royal-soft);color:var(--royal-3);font-size:.76rem;font-weight:800}
+
+    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .kpi-card{border:1px solid var(--line);border-radius:16px;padding:12px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%)}
+    .kpi-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;font-weight:800;color:var(--muted)}
+    .kpi-value{font-size:1.02rem;font-weight:800;line-height:1.15;color:var(--ink);margin-top:5px}
+    .kpi-sub{font-size:.74rem;color:var(--muted);margin-top:4px}
+    .kpi-card.span-2{grid-column:1/-1}
+
+    .list-stack{display:flex;flex-direction:column;gap:10px}
+    .item-card{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:13px}
+    .item-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .item-title{font-weight:800;color:var(--ink);font-size:.96rem;word-break:break-word}
+    .item-meta,.item-small{font-size:.8rem;color:var(--muted);word-break:break-word}
+    .item-amount{font-weight:800;font-size:.98rem;white-space:nowrap}
+    .item-amount.success{color:var(--ok)}
+    .item-amount.danger{color:var(--bad)}
+
+    .doc-block{padding:12px;border-radius:16px;border:1px solid var(--line)}
+    .doc-ok{background:#ecfff3;border-color:rgba(22,163,74,.16)}
+    .doc-bad{background:#fff0f0;border-color:rgba(220,38,38,.16)}
+
+    .esc-card{display:flex;gap:10px;padding:12px;border-radius:18px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);margin-bottom:10px}
+    .esc-bar{width:5px;border-radius:999px;background:var(--stripe,#dbe4ff)}
+    .esc-body{flex:1;min-width:0}
+    .esc-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+    .esc-title{font-weight:800;color:var(--ink);font-size:.95rem;word-break:break-word}
+    .esc-meta{font-size:.82rem;color:var(--muted);margin-top:5px;word-break:break-word}
+    .esc-badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;background:var(--royal-soft);color:var(--royal-3);font-size:.68rem;font-weight:800}
+    .btn-xs{border-radius:12px;padding:7px 10px;font-size:.78rem;font-weight:700}
+
+    .status-soft{border-radius:999px;padding:5px 10px;font-size:.72rem;font-weight:800}
+    .status-pendente{background:#fff7e6;color:#9a6700}
+    .status-aprovada{background:#eafaf0;color:#166534}
+    .status-recusada{background:#fef1f1;color:#991b1b}
+
+    .rating-stars{display:flex;gap:.18rem;flex-wrap:wrap}
+    .star-btn{border:0;background:transparent;padding:0;cursor:pointer}
+    .rating-stars .bi-star,.rating-stars .bi-star-fill{font-size:1.15rem}
+    .rating-stars .bi-star-fill{color:#f5c518}
+    .rating-stars .bi-star{color:#cbd5e1}
+
+    .soft-card{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+    .title-muted{font-size:.76rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+
+    .calc-wrap{background:#0f172a;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(15,23,42,.34)}
+    .calc-status{color:#94a3b8;text-align:right;padding:10px 16px;font-size:.9rem;min-height:24px}
+    .calc-display{color:#fff;text-align:right;font-weight:300;padding:0 16px 18px 16px;font-size:2.3rem;min-height:64px}
+    .calc-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}
+    .calc-btn{border:0;border-radius:32px;padding:16px 0;font-size:1.25rem;font-weight:700}
+    .k-gray{background:#cbd5e1;color:#0f172a}.k-dark{background:#1e293b;color:#fff}.k-orange{background:var(--royal-2);color:#fff}.k-zero{grid-column:span 2;text-align:left;padding-left:24px}
+
+    .notes-wrap{display:flex;gap:.6rem;height:60vh;min-height:420px}
+    .notes-list{width:38%;max-width:260px;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:auto}
+    .notes-editor{flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+    .notes-toolbar{display:flex;gap:.4rem;flex-wrap:wrap;padding:.6rem;border-bottom:1px solid var(--line);background:#f8faff;align-items:center}
+    .note-card{padding:.55rem .65rem;border-bottom:1px solid rgba(15,23,42,.06)}
+    .note-card.active{background:#eef3ff}
+
+    .offcanvas{border-top-left-radius:22px;border-top-right-radius:22px}
+
+    @media (max-width:380px){
+      .topbar-inner{padding:10px 10px 12px}
+      .hero-cards{padding:10px 10px 6px}
+      .hero-grid{grid-template-columns:1fr 1fr;gap:8px}
+      .hero-card.primary{grid-column:1/-1}
+      .surface,.tab-shell,.tab-panel-wrap,.flash-stack{padding-left:10px;padding-right:10px}
+      .tabs-rail{gap:5px;padding:5px}
+      .tab-btn{padding:8px 2px 7px}
+      .tab-btn span{font-size:.54rem}
+      .kpi-grid{gap:8px}
+      .kpi-card{padding:10px}
+      .kpi-value{font-size:.95rem}
+    }
+
+    @media (max-width:575px){
+      .notes-wrap{flex-direction:column;height:auto;min-height:0}
+      .notes-list{width:100%;max-width:none;height:180px}
+      .notes-editor{height:calc(60vh - 190px)}
+    }
+
+    @media print{
+      .no-print,.menu-drawer,.menu-backdrop,.modal,.toast,.offcanvas{display:none!important}
+      .tab-pane-custom{display:block!important}
+      body{background:#fff}
+      .section-card,.item-card,.surface-card,.hero-card{box-shadow:none!important}
+    }
   </style>
 </head>
 <body>
 {% set _unread = unread if unread is defined else (avisos_nao_lidos_count if avisos_nao_lidos_count is defined else (avisos_unread_count if avisos_unread_count is defined else 0)) %}
 {% set unread = _unread|int %}
-
-{# ==== MÉTRICAS CABEÇALHO ==== #}
 {% set _qtd_prod = total_entregas_vida %}
-{% set ns = namespace(sum=0, cnt=0) %}
-{% for l in producoes %}
-  {% if l.minha_avaliacao is not none %}
-    {% set ns.sum = ns.sum + l.minha_avaliacao %}
-    {% set ns.cnt = ns.cnt + 1 %}
-  {% endif %}
-{% endfor %}
-{% set media_minhas = (ns.sum / ns.cnt) if ns.cnt>0 else None %}
-{% set _score_header = (media_minhas if media_minhas is not none else (cooperado_score|default(5.0))) %}
-{% set _score_title  = ('Média pessoal (período filtrado)' if media_minhas is not none else 'Sua pontuação geral') %}
+{% set _score_header = nota_vida|default(5.0) %}
+{% set _score_title = 'Sua pontuação geral' %}
+{% if _score_header >= 4.5 %}
+  {% set _score_icon = 'bi-star-fill' %}
+  {% set _score_badge_class = 'score-gold' %}
+  {% set _score_label = 'Destaque' %}
+{% elif _score_header >= 3 %}
+  {% set _score_icon = 'bi-star-fill' %}
+  {% set _score_badge_class = 'score-silver' %}
+  {% set _score_label = 'Bom nível' %}
+{% elif _score_header > 1 %}
+  {% set _score_icon = 'bi-star-fill' %}
+  {% set _score_badge_class = 'score-bronze' %}
+  {% set _score_label = 'Atenção' %}
+{% else %}
+  {% set _score_icon = 'bi-exclamation-triangle-fill' %}
+  {% set _score_badge_class = 'score-danger' %}
+  {% set _score_label = 'Crítico' %}
+{% endif %}
+{% set _active_tab_req = request.args.get('active_tab', '') if request is defined else '' %}
 
-<!-- ===== MENU LATERAL (drawer) ===== -->
-<div id="menuLateral" aria-label="Menu lateral">
-  <div class="p-3 border-bottom d-flex align-items-center gap-2">
-    <img src="{{ cooperado.foto_url or url_for('static', filename='img/default.png') }}"
-         alt="Foto do usuário"
-         style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--royal)">
-    <!-- Nome removido a pedido: apenas a foto no topo -->
-    <button class="btn-close ms-auto" id="fecharMenu" aria-label="Fechar"></button>
+<div id="menuLateral" class="menu-drawer" aria-label="Menu lateral">
+  <div class="menu-head">
+    <img class="menu-avatar" src="{{ cooperado.foto_url or url_for('static', filename='img/default.png') }}" alt="Foto">
+    <div class="flex-grow-1 min-w-0">
+      <div class="menu-title">{{ cooperado.nome if cooperado and cooperado.nome else 'Cooperado' }}</div>
+      <div class="menu-sub">Painel Coopex</div>
+    </div>
+    <button class="btn-close" id="fecharMenu" aria-label="Fechar"></button>
   </div>
-
-  <ul class="list-unstyled m-0 p-2">
-    <li class="my-2">
-      <a href="{{ url_for('documentos_publicos') }}"
-         class="btn btn-royal w-100 d-flex align-items-center gap-2 text-white"
-         style="font-weight:600; font-size:1.1rem; border-radius:12px; box-shadow:0 2px 12px #2747d918;">
-        <i class="bi bi-folder-symlink-fill" style="font-size:1.4rem"></i>
-        <span class="text-white">Documentos</span>
-      </a>
-    </li>
-
-    <li class="my-2">
-      <a href="{{ url_for('tabelas_publicas') }}"
-         class="btn btn-royal w-100 d-flex align-items-center gap-2 text-white"
-         style="font-weight:600; font-size:1.1rem; border-radius:12px; box-shadow:0 2px 12px #2747d918;">
-        <i class="bi bi-table" style="font-size:1.4rem"></i>
-        <span class="text-white">Tabelas</span>
-      </a>
-    </li>
-
-    <li class="my-2">
-      <a href="{{ url_for('portal_cooperado_avisos') }}"
-         class="btn btn-royal w-100 d-flex align-items-center gap-2 text-white"
-         style="font-weight:600; font-size:1.1rem; border-radius:12px; box-shadow:0 2px 12px #2747d918;">
-        <i class="bi bi-megaphone-fill" style="font-size:1.4rem"></i>
-        <span class="text-white">Avisos</span>
-        {% if unread > 0 %}
-          <span class="badge rounded-pill bg-danger ms-auto">{{ unread }}</span>
-        {% endif %}
-      </a>
-    </li>
-    
-    <!-- Atalhos utilitários -->
-    <li class="mt-3 mb-1">
-      <button class="btn btn-outline-primary w-100 d-flex align-items-center gap-2 text-start"
-              style="border-radius:12px;"
-              data-bs-toggle="modal" data-bs-target="#calcModal">
-        <i class="bi bi-calculator fs-5"></i><span>Calculadora</span>
-      </button>
-    </li>
-
-    <li class="mb-1">
-      <button class="btn btn-outline-primary w-100 d-flex align-items-center gap-2 text-start"
-              style="border-radius:12px;"
-              data-bs-toggle="offcanvas" data-bs-target="#financasSheet">
-        <i class="bi bi-wallet2 fs-5"></i><span>Finanças pessoais</span>
-      </button>
-    </li>
-
-    <li class="mb-1">
-      <button class="btn btn-outline-primary w-100 d-flex align-items-center gap-2 text-start"
-              style="border-radius:12px;"
-              data-bs-toggle="modal" data-bs-target="#cxbModal">
-        <i class="bi bi-cash-coin fs-5"></i><span>Custo x Benefício</span>
-      </button>
-    </li>
-
-    <li class="mb-1">
-      <button class="btn btn-outline-primary w-100 d-flex align-items-center gap-2 text-start"
-              style="border-radius:12px;"
-              data-bs-toggle="modal" data-bs-target="#notesModal">
-        <i class="bi bi-sticky fs-5"></i><span>Bloco de Notas</span>
-      </button>
-    </li>
-  </ul>
+  <div class="menu-links">
+    <a href="{{ url_for('documentos_publicos') }}" class="menu-link"><i class="bi bi-folder2-open"></i><span>Documentos</span></a>
+    <a href="{{ url_for('tabelas_publicas') }}" class="menu-link"><i class="bi bi-table"></i><span>Tabelas</span></a>
+    <a href="{{ url_for('portal_cooperado_avisos') }}" class="menu-link"><i class="bi bi-megaphone"></i><span>Avisos</span>{% if unread>0 %}<span class="badge rounded-pill bg-danger ms-auto">{{ unread }}</span>{% endif %}</a>
+    <button class="menu-link" type="button" data-bs-toggle="modal" data-bs-target="#calcModal"><i class="bi bi-calculator"></i><span>Calculadora</span></button>
+    <button class="menu-link" type="button" data-bs-toggle="offcanvas" data-bs-target="#financasSheet"><i class="bi bi-wallet2"></i><span>Finanças pessoais</span></button>
+    <button class="menu-link" type="button" data-bs-toggle="modal" data-bs-target="#cxbModal"><i class="bi bi-cash-coin"></i><span>Custo x benefício</span></button>
+    <button class="menu-link" type="button" data-bs-toggle="modal" data-bs-target="#notesModal"><i class="bi bi-sticky"></i><span>Bloco de notas</span></button>
+  </div>
 </div>
-<div id="fundoMenu" aria-hidden="true"></div>
-
-<!-- Aviso de layout mobile -->
-<div class="desktop-warning text-center p-2" style="background:#fff4d6;border-bottom:1px solid #ffe6a3">
-  <small><i class="bi bi-phone"></i> Painel otimizado para celular.</small>
-</div>
+<div id="fundoMenu" class="menu-backdrop" aria-hidden="true"></div>
 
 <div class="mobile-wrap">
-  <!-- ===== NAVBAR (só foto + KPIs à direita) ===== -->
-  <nav class="navbar navbar-dark">
-    <div class="container-fluid d-flex align-items-center flex-nowrap">
-      <!-- Avatar abre o menu -->
-      <button class="btn p-0 me-2" id="abrirMenu" title="Abrir menu" aria-label="Abrir menu" style="border-radius:50%;outline:none;border:none;background:transparent">
-        <img src="{{ cooperado.foto_url or url_for('static', filename='img/default.png') }}"
-             alt="Abrir menu"
-             style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid #ffffff55">
-      </button>
-
-      <!-- Centro vazio (removeu label 'Cooperado') -->
-      <div class="flex-grow-1"></div>
-
-      <!-- Ações à direita -->
-      <div class="nav-actions d-flex align-items-center gap-2 flex-shrink-0">
-        <span class="pill" title="{{ _score_title }}">
-          <i class="bi bi-star-fill" aria-hidden="true"></i>
-          <div class="kpi-value mono">{{ "%.2f"|format(nota_vida)|replace('.',',') }}</div>
-        </span>
-        <span class="pill" title="Total de Comandas">
-          <i class="bi bi-bag-check-fill" aria-hidden="true"></i>
-          <span class="mono">{{ _qtd_prod }}</span>
-        </span>
-        <a class="btn btn-sm btn-light" href="{{ url_for('logout') }}">Sair</a>
-      </div>
-    </div>
-  </nav>
-</div>
-
-<!-- ===== BANNER: novos avisos ===== -->
-{% if unread>0 %}
-<div class="p-2 pt-3">
-  <div class="alert alert-warning d-flex align-items-center justify-content-between mb-2" style="border-radius:12px">
-    <div class="d-flex align-items-center gap-2">
-      <i class="bi bi-megaphone-fill"></i>
-      <span>Você tem <b>{{ unread }}</b> novo(s) aviso(s).</span>
-    </div>
-    <a class="btn btn-sm btn-warning" href="{{ url_for('portal_cooperado_avisos') }}"><i class="bi bi-eye"></i> Ver avisos</a>
-  </div>
-</div>
-{% endif %}
-
-<!-- ===== FILTRO PERÍODO ===== -->
-<form class="card p-3 m-2 mt-3" method="GET" action="{{ url_for('portal_cooperado') }}">
-  <div class="row g-2 align-items-end">
-    <div class="col-6">
-      <label class="form-label mb-0">Início</label>
-      <input type="date" class="form-control" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
-    </div>
-    <div class="col-6">
-      <label class="form-label mb-0">Fim</label>
-      <input type="date" class="form-control" name="data_fim" value="{{ request.args.get('data_fim','') }}">
-    </div>
-    <div class="col-12 d-grid">
-      <button class="btn btn-royal"><i class="bi bi-funnel"></i> Aplicar Período</button>
-    </div>
-  </div>
-  <small class="muted">Os totais abaixo consideram o período filtrado.</small>
-</form>
-
-<!-- ===== Abas ===== -->
-<div class="sticky-tabs px-2">
-  <ul class="nav nav-tabs nav-fill" id="painelTabs" role="tablist">
-    <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#resumo" type="button" role="tab" aria-controls="resumo" aria-selected="true">Resumo</button></li>
-    <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#producoes" type="button" role="tab" aria-controls="producoes" aria-selected="false">Produções</button></li>
-    <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ajustes" type="button" role="tab" aria-controls="ajustes" aria-selected="false">Ajustes Coop</button></li>
-    <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#escalas" type="button" role="tab" aria-controls="escalas" aria-selected="false">Escalas</button></li>
-    <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#trocas" type="button" role="tab" aria-controls="trocas" aria-selected="false">Trocas</button></li>
-  </ul>
-</div>
-
-<div class="tab-content p-2 pb-4" id="painelTabsContent">
-  <!-- ===== RESUMO ===== -->
-  <div class="tab-pane fade show active" id="resumo" role="tabpanel" aria-labelledby="resumo-tab">
-    <div class="card p-3">
-      <!-- Grid de KPIs: limpo e separado dos nomes -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-title">Total de Comandas</div>
-          <div class="kpi-value mono">{{ _qtd_prod }}</div>
-          <div class="kpi-sub">Quantidade</div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="top-row">
+        <button class="avatar-btn" id="abrirMenu" title="Abrir menu" aria-label="Abrir menu">
+          <img src="{{ cooperado.foto_url or url_for('static', filename='img/default.png') }}" alt="Avatar">
+        </button>
+        <div class="brand-block">
+          <div class="brand-kicker">coopex</div>
+          <div class="brand-title">Painel do cooperado</div>
         </div>
-
-        <div class="kpi-card">
-          <div class="kpi-title">Média de avaliação</div>
-          <div class="kpi-value mono">{{ "%.2f"|format(nota_vida)|replace('.',',') }}</div>
-          <div class="kpi-sub">{{ _score_title }}</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-title">Total Bruto</div>
-          <div class="kpi-value mono">R$ {{ "%.2f"|format(total_bruto|default(0)) }}</div>
-          <div class="kpi-sub">Recebido</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-title">Descontos Individuais</div>
-          <div class="kpi-value mono">R$ {{ "%.2f"|format(total_descontos|default(0)) }}</div>
-          <div class="kpi-sub">No período</div>
-        </div>
-
-        <!-- INSS separado: 4% -->
-        <div class="kpi-card">
-          <div class="kpi-title">INSS (4%)</div>
-          <div class="kpi-value mono">R$ {{ "%.2f"|format(inss_valor|default(0)) }}</div>
-          <div class="kpi-sub">Desconto estimado</div>
-        </div>
-
-        <!-- SEST/SENAT separado: 0,5% -->
-        <div class="kpi-card">
-          <div class="kpi-title">SEST/SENAT (0,5%)</div>
-          <div class="kpi-value mono">R$ {{ "%.2f"|format(sest_senat_valor|default(0)) }}</div>
-          <div class="kpi-sub">Desconto estimado</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-title">Complemento INSS (meta)</div>
-          <div class="kpi-value mono">R$ {{ "%.2f"|format(inss_complemento|default(0)) }}</div>
-          <div class="kpi-sub">Sugestão</div>
-        </div>
-
-        <div class="kpi-card" style="grid-column:1/-1">
-          <div class="kpi-title">Total Líquido</div>
-          <div class="kpi-value mono text-success">R$ {{ "%.2f"|format(total_liquido|default(0)) }}</div>
-          <div class="kpi-sub">Após descontos</div>
+        <div class="top-actions">
+          <div class="pill-metric" title="{{ _score_title }}">
+            <span class="score-badge {{ _score_badge_class }}"><i class="bi {{ _score_icon }}"></i></span>
+            <small>NOTA</small>
+            <strong class="mono">{{ '%.2f'|format(_score_header)|replace('.',',') }}</strong>
+          </div>
+          <div class="pill-metric">
+            <small>ENTREGAS</small>
+            <strong class="mono">{{ _qtd_prod }}</strong>
+          </div>
+          <a class="btn btn-sm btn-ghost-light" href="{{ url_for('logout') }}">Sair</a>
         </div>
       </div>
     </div>
+  </header>
+
+  <section class="hero-cards">
+    <div class="hero-grid">
+      <div class="hero-card primary">
+        <div class="hero-label">Líquido do período</div>
+        <div class="hero-value mono">R$ {{ '%.2f'|format(total_liquido|default(0)) }}</div>
+        <div class="hero-sub">Após descontos aplicados</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-label">Bruto</div>
+        <div class="hero-value tight mono">R$ {{ '%.2f'|format(total_bruto|default(0)) }}</div>
+        <div class="hero-sub">Total recebido</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-label">Avisos</div>
+        <div class="hero-value tight mono">{{ unread }}</div>
+        <div class="hero-sub">Não lidos</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="flash-stack">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'warning' if category=='message' else category }} mb-2">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if unread > 0 %}
+    <div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0">
+      <div><i class="bi bi-megaphone-fill me-1"></i> Você tem <b>{{ unread }}</b> aviso(s) novo(s).</div>
+      <a class="btn btn-sm btn-warning" href="{{ url_for('portal_cooperado_avisos') }}">Ver</a>
+    </div>
+    {% endif %}
   </div>
 
-  <!-- ===== PRODUÇÕES ===== -->
-  <div class="tab-pane fade" id="producoes" role="tabpanel" aria-labelledby="producoes-tab">
-    <div class="card p-3 mb-2 d-flex justify-content-between align-items-center">
-      <h6 class="mb-0">Produções no período</h6>
-      <span class="chip mono">Total: R$ {{ "%.2f"|format(total_bruto|default(0)) }}</span>
-    </div>
-
-    <div class="card-list">
-      {% for lanc in producoes %}
-        <div class="card p-3">
-          <div class="d-flex justify-content-between">
-            <div class="me-2" style="min-width:0">
-              <div class="fw-bold" style="word-break:break-word;overflow-wrap:anywhere">{{ lanc.descricao }}</div>
-              <div class="muted">
-                <i class="bi bi-shop"></i> <span style="word-break:break-word;overflow-wrap:anywhere">{{ lanc.restaurante.nome }}</span>
-                &nbsp;·&nbsp; <i class="bi bi-calendar-event"></i> {{ lanc.data.strftime('%d/%m/%Y') }}
-                {% if lanc.hora_inicio or lanc.hora_fim %}
-                  &nbsp;·&nbsp; <i class="bi bi-clock"></i> {{ lanc.hora_inicio }}{% if lanc.hora_fim %}–{{ lanc.hora_fim }}{% endif %}
-                {% endif %}
-              </div>
-
-              <!-- Avaliação (mantida) -->
-              <div class="mt-2">
-                {% set minha = lanc.minha_avaliacao %}
-                {% if minha is not none %}
-                  <div class="small text-muted">Sua avaliação</div>
-                  <div class="d-flex align-items-center gap-1">
-                    {% for i in range(1,6) %}
-                      <i class="bi {{ 'bi-star-fill text-warning' if i<=minha else 'bi-star text-secondary' }}"></i>
-                    {% endfor %}
-                    <div class="kpi-value mono">{{ "%.2f"|format(nota_vida)|replace('.',',') }}</div>
-                  </div>
-                {% else %}
-                  <form method="post" action="{{ url_for('producoes_avaliar', lanc_id=lanc.id) }}" class="avaliar-form" aria-label="Avaliar restaurante">
-                    <input type="hidden" name="nota" value="">
-                    <input type="hidden" name="av_geral" value="">
-                    <input type="hidden" name="av_ambiente" value="">
-                    <input type="hidden" name="av_tratamento" value="">
-                    <input type="hidden" name="av_suporte" value="">
-                    <!-- compat legada -->
-                    <input type="hidden" name="av_apresentacao" value="">
-                    <input type="hidden" name="av_educacao" value="">
-                    <input type="hidden" name="av_eficiencia" value="">
-                    <input type="hidden" name="av_pontualidade" value="">
-
-                    <div class="row g-2">
-                      <div class="col-12 col-sm-4">
-                        <div class="small fw-semibold text-muted">Ambiente</div>
-                        <div class="rating-stars selectable stars-group" data-field="av_ambiente" role="radiogroup">
-                          {% for i in range(1,6) %}<button type="button" class="star-btn" data-value="{{ i }}"><i class="bi bi-star"></i></button>{% endfor %}
-                        </div>
-                      </div>
-                      <div class="col-12 col-sm-4">
-                        <div class="small fw-semibold text-muted">Tratamento</div>
-                        <div class="rating-stars selectable stars-group" data-field="av_tratamento" role="radiogroup">
-                          {% for i in range(1,6) %}<button type="button" class="star-btn" data-value="{{ i }}"><i class="bi bi-star"></i></button>{% endfor %}
-                        </div>
-                      </div>
-                      <div class="col-12 col-sm-4">
-                        <div class="small fw-semibold text-muted">Suporte</div>
-                        <div class="rating-stars selectable stars-group" data-field="av_suporte" role="radiogroup">
-                          {% for i in range(1,6) %}<button type="button" class="star-btn" data-value="{{ i }}"><i class="bi bi-star"></i></button>{% endfor %}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="mt-2">
-                      <textarea name="av_comentario" class="form-control form-control-sm" rows="2" placeholder="Comentário (opcional)"></textarea>
-                    </div>
-
-                    <div class="d-flex align-items-center gap-2 mt-2">
-                      <button type="submit" class="btn btn-xs btn-outline-primary" disabled>Enviar</button>
-                      <small class="text-muted">Você só pode avaliar uma vez.</small>
-                    </div>
-                  </form>
-                {% endif %}
-              </div>
-            </div>
-
-            <div class="text-end">
-              <div class="h6 m-0 mono">R$ {{ "%.2f"|format(lanc.valor) }}</div>
-              <small class="muted">INSS (4%): R$ {{ "%.2f"|format((lanc.valor or 0)*0.04) }}</small><br>
-              <small class="muted">SEST/SENAT (0,5%): R$ {{ "%.2f"|format((lanc.valor or 0)*0.005) }}</small>
-            </div>
+  <section class="surface">
+    <div class="surface-card filter-card">
+      <form method="GET" action="{{ url_for('portal_cooperado') }}" id="periodoForm">
+        <input type="hidden" name="active_tab" id="activeTabInput" value="{{ _active_tab_req or 'resumo' }}">
+        <div class="row g-2 align-items-end">
+          <div class="col-6">
+            <label class="form-label">Início</label>
+            <input type="date" class="form-control" name="data_inicio" value="{{ (data_inicio.strftime('%Y-%m-%d') if data_inicio else request.args.get('data_inicio','')) }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Fim</label>
+            <input type="date" class="form-control" name="data_fim" value="{{ (data_fim.strftime('%Y-%m-%d') if data_fim else request.args.get('data_fim','')) }}">
+          </div>
+          <div class="col-12 d-grid mt-1">
+            <button class="btn btn-royal" type="submit"><i class="bi bi-funnel me-1"></i>Aplicar período</button>
           </div>
         </div>
-      {% else %}
-        <div class="card p-3 text-center muted">Nenhuma produção neste período.</div>
-      {% endfor %}
+        <div class="hero-sub mt-2">O painel permanece na mesma aba até você mudar.</div>
+      </form>
     </div>
-  </div>
+  </section>
 
-  <!-- ===== AJUSTES COOP ===== -->
-  <div class="tab-pane fade" id="ajustes" role="tabpanel" aria-labelledby="ajustes-tab">
-    <div class="card p-3 mb-2 d-flex justify-content-between align-items-center">
-      <h6 class="mb-0">Créditos da Cooperativa</h6>
-      <span class="chip mono">Total: R$ {{ "%.2f"|format((receitas_coop|sum(attribute='valor'))|default(0)) }}</span>
+  <section class="tab-shell no-print">
+    <div class="tabs-rail" id="painelTabs">
+      <button class="tab-btn" type="button" data-tab="resumo"><i class="bi bi-grid-1x2"></i><span>Resumo</span></button>
+      <button class="tab-btn" type="button" data-tab="producoes"><i class="bi bi-bag-check"></i><span>Produções</span></button>
+      <button class="tab-btn" type="button" data-tab="ajustes"><i class="bi bi-sliders2"></i><span>Ajust. Coop</span></button>
+      <button class="tab-btn" type="button" data-tab="escalas"><i class="bi bi-calendar3"></i><span>Escalas</span></button>
+      <button class="tab-btn" type="button" data-tab="trocas"><i class="bi bi-arrow-left-right"></i><span>Trocas</span></button>
     </div>
-    <div class="card-list mb-3">
-      {% for rc in receitas_coop %}
-      <div class="card p-3 d-flex justify-content-between">
-        <div>
-          <div class="fw-bold"><i class="bi bi-plus-circle"></i> {{ rc.descricao }}</div>
-          {% if rc.data %}<small class="muted"><i class="bi bi-calendar-event"></i> {{ rc.data.strftime('%d/%m/%Y') }}</small>{% endif %}
+  </section>
+
+  <main class="tab-panel-wrap" id="painelTabsContent">
+    <section class="tab-pane-custom" id="tab-resumo">
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Visão geral</h2>
+          <span class="section-chip"><i class="bi bi-stars"></i> Coopex</span>
         </div>
-        <div class="text-end fw-bold mono text-success">+ R$ {{ "%.2f"|format(rc.valor) }}</div>
-      </div>
-      {% else %}
-      <div class="card p-3 text-center muted">Nenhum crédito lançado para você.</div>
-      {% endfor %}
-    </div>
-
-    <div class="card p-3 mb-2 d-flex justify-content-between align-items-center">
-      <h6 class="mb-0">Descontos / Despesas da Cooperativa</h6>
-      <span class="chip mono">Total: R$ {{ "%.2f"|format((despesas_coop|sum(attribute='valor'))|default(0)) }}</span>
-    </div>
-    <div class="card-list">
-      {% for d in despesas_coop %}
-      <div class="card p-3 d-flex justify-content-between">
-        <div>
-          <div class="fw-bold"><i class="bi bi-dash-circle"></i> {{ d.descricao }}</div>
-          {% if d.data %}<small class="muted"><i class="bi bi-calendar-event"></i> {{ d.data.strftime('%d/%m/%Y') }}</small>{% endif %}
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-title">Total de comandas</div>
+            <div class="kpi-value mono">{{ _qtd_prod }}</div>
+            <div class="kpi-sub">Quantidade total</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Média de avaliação</div>
+            <div class="kpi-value mono">{{ '%.2f'|format(nota_vida|default(0))|replace('.',',') }}</div>
+            <div class="kpi-sub">{{ _score_title }} · {{ _score_label }}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Total bruto</div>
+            <div class="kpi-value mono">R$ {{ '%.2f'|format(total_bruto|default(0)) }}</div>
+            <div class="kpi-sub">Recebido no período</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Descontos</div>
+            <div class="kpi-value mono">R$ {{ '%.2f'|format(total_descontos|default(0)) }}</div>
+            <div class="kpi-sub">Individuais</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">INSS (4%)</div>
+            <div class="kpi-value mono">R$ {{ '%.2f'|format(inss_valor|default(0)) }}</div>
+            <div class="kpi-sub">Estimado</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">SEST/SENAT</div>
+            <div class="kpi-value mono">R$ {{ '%.2f'|format(sest_senat_valor|default(0)) }}</div>
+            <div class="kpi-sub">0,5%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Complemento INSS</div>
+            <div class="kpi-value mono">R$ {{ '%.2f'|format(inss_complemento|default(0)) }}</div>
+            <div class="kpi-sub">Meta sugerida</div>
+          </div>
+          <div class="kpi-card span-2">
+            <div class="kpi-title">Total líquido</div>
+            <div class="kpi-value mono" style="color:var(--ok);font-size:1.2rem">R$ {{ '%.2f'|format(total_liquido|default(0)) }}</div>
+            <div class="kpi-sub">Após descontos e encargos</div>
+          </div>
         </div>
-        <div class="text-end fw-bold mono text-danger">− R$ {{ "%.2f"|format(d.valor) }}</div>
       </div>
-      {% else %}
-      <div class="card p-3 text-center muted">Nenhum desconto aplicado no período.</div>
-      {% endfor %}
-    </div>
-  </div>
+    </section>
 
-  <!-- ===== ESCALAS (cartões mobile) ===== -->
-  <div class="tab-pane fade" id="escalas" role="tabpanel" aria-labelledby="escalas-tab">
-    <div class="card p-3 mb-3">
-      {% set cnh_ok = doc_cnh.ok %}
-      {% set placa_ok = doc_placa.ok %}
-      {% set show_prazo = (not cnh_ok) or (not placa_ok) %}
+    <section class="tab-pane-custom" id="tab-producoes">
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Produções no período</h2>
+          <span class="section-chip mono">R$ {{ '%.2f'|format(total_bruto|default(0)) }}</span>
+        </div>
+        <div class="list-stack">
+          {% for lanc in producoes %}
+          <div class="item-card">
+            <div class="item-row">
+              <div class="flex-grow-1 min-w-0">
+                <div class="item-title">{{ lanc.descricao }}</div>
+                <div class="item-meta mt-1">
+                  <i class="bi bi-shop me-1"></i>{{ lanc.restaurante.nome }}
+                  &nbsp;·&nbsp;<i class="bi bi-calendar-event me-1"></i>{{ lanc.data.strftime('%d/%m/%Y') }}
+                  {% if lanc.hora_inicio or lanc.hora_fim %}
+                  &nbsp;·&nbsp;<i class="bi bi-clock me-1"></i>{{ lanc.hora_inicio }}{% if lanc.hora_fim %}–{{ lanc.hora_fim }}{% endif %}
+                  {% endif %}
+                </div>
+              </div>
+              <div class="text-end">
+                <div class="item-amount mono">R$ {{ '%.2f'|format(lanc.valor) }}</div>
+                <div class="item-small">INSS: R$ {{ '%.2f'|format((lanc.valor or 0)*0.04) }}</div>
+                <div class="item-small">SEST: R$ {{ '%.2f'|format((lanc.valor or 0)*0.005) }}</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              {% if lanc.minha_avaliacao is not none %}
+                <div class="item-small mb-1">Sua avaliação</div>
+                <div class="d-flex align-items-center gap-1">
+                  {% for i in range(1,6) %}
+                    <i class="bi {{ 'bi-star-fill text-warning' if i<=lanc.minha_avaliacao else 'bi-star text-secondary' }}"></i>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <form method="post" action="{{ url_for('producoes_avaliar', lanc_id=lanc.id) }}" class="avaliar-form" aria-label="Avaliar restaurante">
+                  <input type="hidden" name="active_tab" value="producoes">
+                  <input type="hidden" name="nota" value="">
+                  <input type="hidden" name="av_geral" value="">
+                  <input type="hidden" name="av_ambiente" value="">
+                  <input type="hidden" name="av_tratamento" value="">
+                  <input type="hidden" name="av_suporte" value="">
+                  <input type="hidden" name="av_apresentacao" value="">
+                  <input type="hidden" name="av_educacao" value="">
+                  <input type="hidden" name="av_eficiencia" value="">
+                  <input type="hidden" name="av_pontualidade" value="">
+                  <div class="row g-2">
+                    <div class="col-12 col-sm-4">
+                      <div class="item-small fw-semibold mb-1">Ambiente</div>
+                      <div class="rating-stars selectable stars-group" data-field="av_ambiente">
+                        {% for i in range(1,6) %}<button type="button" class="star-btn" data-value="{{ i }}"><i class="bi bi-star"></i></button>{% endfor %}
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-4">
+                      <div class="item-small fw-semibold mb-1">Tratamento</div>
+                      <div class="rating-stars selectable stars-group" data-field="av_tratamento">
+                        {% for i in range(1,6) %}<button type="button" class="star-btn" data-value="{{ i }}"><i class="bi bi-star"></i></button>{% endfor %}
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-4">
+                      <div class="item-small fw-semibold mb-1">Suporte</div>
+                      <div class="rating-stars selectable stars-group" data-field="av_suporte">
+                        {% for i in range(1,6) %}<button type="button" class="star-btn" data-value="{{ i }}"><i class="bi bi-star"></i></button>{% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <textarea name="av_comentario" class="form-control form-control-sm" rows="2" placeholder="Comentário opcional"></textarea>
+                  </div>
+                  <div class="d-flex align-items-center justify-content-between gap-2 mt-2">
+                    <small class="item-small">Você só pode avaliar uma vez.</small>
+                    <button type="submit" class="btn btn-xs btn-outline-primary" disabled>Enviar</button>
+                  </div>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+          {% else %}
+          <div class="item-card text-center muted">Nenhuma produção neste período.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
 
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0"><i class="bi bi-file-earmark-check"></i> Documentos</h6>
-        {% if show_prazo %}
-          <span class="badge-soft">
-            {% if not cnh_ok %}
-              CNH:
-              {% if doc_cnh.dias_para_prazo is defined %}
-                faltam <b>{{ doc_cnh.dias_para_prazo }}</b> dias
-              {% else %}fora do prazo{% endif %}
-            {% endif %}
-            {% if (not cnh_ok) and (not placa_ok) %} · {% endif %}
-            {% if not placa_ok %}
-              Placa:
-              {% if doc_placa.dias_para_prazo is defined %}
-                faltam <b>{{ doc_placa.dias_para_prazo }}</b> dias
-              {% else %}fora do prazo{% endif %}
-            {% endif %}
-          </span>
+    <section class="tab-pane-custom" id="tab-ajustes">
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Créditos da cooperativa</h2>
+          <span class="section-chip mono">R$ {{ '%.2f'|format((receitas_coop|sum(attribute='valor'))|default(0)) }}</span>
+        </div>
+        <div class="list-stack">
+          {% for rc in receitas_coop %}
+          <div class="item-card">
+            <div class="item-row">
+              <div>
+                <div class="item-title"><i class="bi bi-plus-circle me-1"></i>{{ rc.descricao }}</div>
+                {% if rc.data %}<div class="item-meta mt-1">{{ rc.data.strftime('%d/%m/%Y') }}</div>{% endif %}
+              </div>
+              <div class="item-amount success mono">+ R$ {{ '%.2f'|format(rc.valor) }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="item-card text-center muted">Nenhum crédito lançado para você.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Descontos e despesas</h2>
+          <span class="section-chip mono">R$ {{ '%.2f'|format((despesas_coop|sum(attribute='valor'))|default(0)) }}</span>
+        </div>
+        <div class="list-stack">
+          {% for d in despesas_coop %}
+          <div class="item-card">
+            <div class="item-row">
+              <div>
+                <div class="item-title"><i class="bi bi-dash-circle me-1"></i>{{ d.descricao }}</div>
+                {% if d.data %}<div class="item-meta mt-1">{{ d.data.strftime('%d/%m/%Y') }}</div>{% endif %}
+              </div>
+              <div class="item-amount danger mono">− R$ {{ '%.2f'|format(d.valor) }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="item-card text-center muted">Nenhum desconto aplicado no período.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-pane-custom" id="tab-escalas">
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Documentos</h2>
+          <span class="section-chip"><i class="bi bi-shield-check"></i> Situação</span>
+        </div>
+
+        {% set cnh_ok = doc_cnh.ok %}
+        {% set placa_ok = doc_placa.ok %}
+
+        <div class="doc-block {{ 'doc-ok' if cnh_ok else 'doc-bad' }} mb-2">
+          <div class="item-title">CNH — {{ 'Em dia' if cnh_ok else 'Vencida ou pendente' }}</div>
+          <div class="item-meta mt-1">Nº: <b>{{ doc_cnh.numero or '—' }}</b> · Validade: <b>{{ doc_cnh.vencimento.strftime('%d/%m/%Y') if doc_cnh.vencimento else '—' }}</b></div>
+        </div>
+        <div class="doc-block {{ 'doc-ok' if placa_ok else 'doc-bad' }}">
+          <div class="item-title">Placa — {{ 'Em dia' if placa_ok else 'Vencida ou pendente' }}</div>
+          <div class="item-meta mt-1">Nº: <b>{{ doc_placa.numero or '—' }}</b> · Validade: <b>{{ doc_placa.vencimento.strftime('%d/%m/%Y') if doc_placa.vencimento else '—' }}</b></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Minhas escalas</h2>
+          <span class="section-chip">Semana atual</span>
+        </div>
+        {% if minha_escala %}
+          {% for e in minha_escala %}
+            {% set stripe = (e.cor or e.status_color or '#dbe4ff') %}
+            {% set data_curta = e.data_curta or (e.data_fmt[:5] if e.data_fmt else (e.data[:5] if e.data else '')) %}
+            {% set dow = (e.dia_semana or e.dow or '')|upper %}
+            <div class="esc-card" style="--stripe: {{ stripe }}">
+              <div class="esc-bar"></div>
+              <div class="esc-body">
+                <div class="esc-top">
+                  <div class="min-w-0 flex-grow-1">
+                    <div class="esc-title">{{ data_curta }} {% if dow %}<span class="esc-badge ms-1">{{ dow }}</span>{% endif %}</div>
+                    <div class="esc-meta">
+                      <div><i class="bi bi-sunrise-fill me-1"></i>{{ e.turno or '—' }}</div>
+                      <div><i class="bi bi-clock me-1"></i>{{ e.horario_fmt or e.horario or '—' }}</div>
+                      <div><i class="bi bi-briefcase me-1"></i>{{ e.contrato or '—' }}</div>
+                    </div>
+                  </div>
+                  <button class="btn btn-xs btn-outline-primary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#trocaModal"
+                          data-escala-id="{{ e.id }}"
+                          data-escala-desc="{{ (data_curta or '') ~ ((' - ' ~ dow) if dow else '') ~ ' • ' ~ (e.turno or '') ~ ' • ' ~ (e.horario_fmt or e.horario or '') ~ ' • ' ~ (e.contrato or '') }}">
+                    Trocar
+                  </button>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="item-card text-center muted">Nenhuma escala disponível.</div>
         {% endif %}
       </div>
+    </section>
 
-      <div class="p-3 rounded mb-2 {{ 'doc-ok' if cnh_ok else 'doc-bad' }}">
-        <div class="d-flex align-items-start">
-          <div class="me-2 fs-5">{% if cnh_ok %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</div>
-          <div class="flex-fill">
-            <div class="fw-bold mb-1">CNH — {{ 'Em dia' if cnh_ok else 'Vencida ou pendente' }}</div>
-            <div class="small muted">Nº: <b>{{ doc_cnh.numero or '—' }}</b> · Validade: <b>{{ doc_cnh.vencimento.strftime('%d/%m/%Y') if doc_cnh.vencimento else '—' }}</b></div>
-            {% if not cnh_ok %}<div class="small text-danger mt-1"><i class="bi bi-exclamation-triangle-fill"></i> Regularize para não travar repasses.</div>
-            {% else %}<div class="small text-success mt-1"><i class="bi bi-shield-check"></i> Tudo certo com a CNH.</div>{% endif %}
-          </div>
+    <section class="tab-pane-custom" id="tab-trocas">
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Solicitações recebidas</h2>
+          <span class="section-chip">{{ trocas_recebidas_pendentes|length }} pendente(s)</span>
         </div>
-      </div>
-
-      <div class="p-3 rounded {{ 'doc-ok' if placa_ok else 'doc-bad' }}">
-        <div class="d-flex align-items-start">
-          <div class="me-2 fs-5">{% if placa_ok %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</div>
-          <div class="flex-fill">
-            <div class="fw-bold mb-1">Placa — {{ 'Em dia' if placa_ok else 'Vencida ou pendente' }}</div>
-            <div class="small muted">Nº: <b>{{ doc_placa.numero or '—' }}</b> · Validade: <b>{{ doc_placa.vencimento.strftime('%d/%m/%Y') if doc_placa.vencimento else '—' }}</b></div>
-            {% if not placa_ok %}<div class="small text-danger mt-1"><i class="bi bi-exclamation-triangle-fill"></i> Atualize a placa/validade para evitar bloqueios.</div>
-            {% else %}<div class="small text-success mt-1"><i class="bi bi-shield-check"></i> Tudo certo com a placa.</div>{% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Lista de Escala (cards) -->
-    {% if minha_escala %}
-      {% for e in minha_escala %}
-        {% set stripe = (e.cor or e.status_color or '#e5e7eb') %}
-        {% set data_curta = e.data_curta or (e.data_fmt[:5] if e.data_fmt else (e.data[:5] if e.data else '')) %}
-        {% set dow = (e.dia_semana or e.dow or '')|upper %}
-        <div class="esc-card {% if e.status == 'today' %}esc-status-today{% elif e.status == 'past' %}esc-status-past{% else %}esc-status-future{% endif %}" style="--stripe: {{ stripe }}">
-          <div class="esc-bar" aria-hidden="true"></div>
-          <div class="esc-body">
-            <div class="esc-title">
-              {{ data_curta }}
-              {% if dow %}<span class="esc-chip ms-1">{{ dow }}</span>{% endif %}
-            </div>
-            <div class="esc-meta mt-1">
-              <div><i class="bi bi-sunrise-fill"></i> {{ e.turno or '—' }}</div>
-              <div><i class="bi bi-clock"></i> {{ e.horario_fmt or e.horario or '—' }}</div>
-              <div style="word-break:break-word;overflow-wrap:anywhere"><i class="bi bi-briefcase"></i> {{ e.contrato or '—' }}</div>
-            </div>
-          </div>
-          <div class="esc-actions">
-            <button class="btn btn-xs btn-outline-primary"
-                    data-bs-toggle="modal"
-                    data-bs-target="#trocaModal"
-                    data-escala-id="{{ e.id }}"
-                    data-escala-desc="{{ (data_curta or '') ~ ((' - ' ~ dow) if dow else '') ~ ' • ' ~ (e.turno or '') ~ ' • ' ~ (e.horario_fmt or e.horario or '') ~ ' • ' ~ (e.contrato or '') }}">
-              <i class="bi bi-arrow-left-right"></i> Trocar
-            </button>
-          </div>
-        </div>
-      {% endfor %}
-    {% else %}
-      <div class="card p-3 text-center muted">Nenhuma escala disponível.</div>
-    {% endif %}
-    <div class="mt-1 small muted"><i class="bi bi-info-circle"></i> As solicitações de troca ficam visíveis para o administrador.</div>
-  </div>
-
-  <!-- ===== TROCAS ===== -->
-  <div class="tab-pane fade" id="trocas" role="tabpanel" aria-labelledby="trocas-tab">
-    <div class="card p-3 mb-3">
-      <div class="d-flex align-items-center justify-content-between">
-        <h6 class="mb-0"><i class="bi bi-inbox"></i> Solicitações recebidas</h6>
-        <span class="badge-soft">{{ trocas_recebidas_pendentes|length }} pendente(s)</span>
-      </div>
-      <div class="mt-2">
         {% if trocas_recebidas_pendentes %}
-          {% for t in trocas_recebidas_pendentes %}
-            <div class="border rounded p-2 mb-2">
-              <div class="d-flex align-items-center justify-content-between">
-                <div class="me-2" style="min-width:0">
-                  <div class="fw-semibold" style="word-break:break-word;overflow-wrap:anywhere">{{ t.solicitante.nome }}</div>
-                  <div class="small muted" style="word-break:break-word;overflow-wrap:anywhere">{{ t.origem_desc }}</div>
-                  {% if t.mensagem %}<div class="small" style="word-break:break-word;overflow-wrap:anywhere">{{ t.mensagem }}</div>{% endif %}
-                  <div class="small muted"><i class="bi bi-clock"></i> {{ t.criada_em.strftime('%d/%m/%Y %H:%M') }}</div>
+          <div class="list-stack">
+            {% for t in trocas_recebidas_pendentes %}
+            <div class="item-card">
+              <div class="item-row">
+                <div class="flex-grow-1 min-w-0">
+                  <div class="item-title">{{ t.solicitante.nome }}</div>
+                  <div class="item-meta mt-1">{{ t.origem_desc }}</div>
+                  {% if t.mensagem %}<div class="item-small mt-1">{{ t.mensagem }}</div>{% endif %}
+                  <div class="item-small mt-1">{{ t.criada_em.strftime('%d/%m/%Y %H:%M') }}</div>
                 </div>
-                <div class="text-end">
-                  <button class="btn btn-sm btn-success mb-1"
+                <div class="text-end d-flex flex-column gap-2">
+                  <button class="btn btn-sm btn-success"
                           data-bs-toggle="modal"
                           data-bs-target="#aceitarTrocaModal"
                           data-troca-id="{{ t.id }}"
@@ -602,63 +681,62 @@
                           data-origem-weekday="{{ t.origem_weekday }}"
                           data-origem-turno="{{ t.origem_turno }}"
                           data-origem-bucket="{{ t.origem_turno_bucket }}">
-                    <i class="bi bi-check2"></i> Aceitar
+                    Aceitar
                   </button>
-                  <form class="d-inline" method="POST" action="{{ url_for('recusar_troca', troca_id=t.id) }}">
-                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i> Recusar</button>
+                  <form method="POST" action="{{ url_for('recusar_troca', troca_id=t.id) }}">
+                    <input type="hidden" name="active_tab" value="trocas">
+                    <button class="btn btn-sm btn-outline-danger">Recusar</button>
                   </form>
                 </div>
               </div>
             </div>
-          {% endfor %}
+            {% endfor %}
+          </div>
         {% else %}
-          <div class="text-center muted">Nenhuma solicitação recebida.</div>
+          <div class="item-card text-center muted">Nenhuma solicitação recebida.</div>
         {% endif %}
       </div>
-    </div>
 
-    <div class="card p-3">
-      <div class="d-flex align-items-center justify-content-between">
-        <h6 class="mb-0"><i class="bi bi-send"></i> Minhas solicitações enviadas</h6>
-        <span class="badge-soft">{{ trocas_enviadas|length }}</span>
-      </div>
-      <div class="mt-2">
+      <div class="section-card">
+        <div class="section-head">
+          <h2 class="section-title">Solicitações enviadas</h2>
+          <span class="section-chip">{{ trocas_enviadas|length }}</span>
+        </div>
         {% if trocas_enviadas %}
-          {% for t in trocas_enviadas %}
-            <div class="border rounded p-2 mb-2">
-              <div class="d-flex align-items-center justify-content-between">
-                <div class="me-2" style="min-width:0">
-                  <div class="fw-semibold" style="word-break:break-word;overflow-wrap:anywhere">Para: {{ t.destino.nome }}</div>
-                  <div class="small muted" style="word-break:break-word;overflow-wrap:anywhere">{{ t.origem_desc }}</div>
-                  {% if t.mensagem %}<div class="small" style="word-break:break-word;overflow-wrap:anywhere">{{ t.mensagem }}</div>{% endif %}
-                  <div class="small muted"><i class="bi bi-clock"></i> {{ t.criada_em.strftime('%d/%m/%Y %H:%M') }}</div>
+          <div class="list-stack">
+            {% for t in trocas_enviadas %}
+            <div class="item-card">
+              <div class="item-row">
+                <div class="flex-grow-1 min-w-0">
+                  <div class="item-title">Para: {{ t.destino.nome }}</div>
+                  <div class="item-meta mt-1">{{ t.origem_desc }}</div>
+                  {% if t.mensagem %}<div class="item-small mt-1">{{ t.mensagem }}</div>{% endif %}
+                  <div class="item-small mt-1">{{ t.criada_em.strftime('%d/%m/%Y %H:%M') }}</div>
                 </div>
                 <div class="text-end">
                   {% if t.status == 'pendente' %}
-                    <span class="badge bg-warning-subtle text-warning">Pendente</span>
+                    <span class="status-soft status-pendente">Pendente</span>
                   {% elif t.status == 'aprovada' %}
-                    <span class="badge bg-success-subtle text-success">Aprovada</span>
+                    <span class="status-soft status-aprovada">Aprovada</span>
                   {% else %}
-                    <span class="badge bg-danger-subtle text-danger">Recusada</span>
+                    <span class="status-soft status-recusada">Recusada</span>
                   {% endif %}
                 </div>
               </div>
             </div>
-          {% endfor %}
+            {% endfor %}
+          </div>
         {% else %}
-          <div class="text-center muted">Nenhuma solicitação enviada.</div>
+          <div class="item-card text-center muted">Nenhuma solicitação enviada.</div>
         {% endif %}
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
+
+  <div class="text-center py-2 muted"><small>© {{ current_year|default('') }} Coopex</small></div>
 </div>
 
-<!-- Rodapé -->
-<div class="text-center py-3 muted"><small>© {{ current_year|default('') }} Coopex</small></div>
-
-<!-- ===== MODAIS ===== -->
-
-<!-- Trocar escala -->
+<!-- MODAIS ORIGINAIS -->
 <div class="modal fade" id="trocaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -668,11 +746,11 @@
           <button class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body">
+          <input type="hidden" name="active_tab" value="trocas">
           <input type="hidden" name="from_escala_id" id="fromEscalaId">
           <input type="hidden" name="to_cooperado_id" id="toCooperadoId">
-
           <div class="mb-2">
-            <div class="small muted">Seu plantão</div>
+            <div class="item-small">Seu plantão</div>
             <div class="fw-semibold" id="fromEscalaDesc">—</div>
           </div>
           <hr>
@@ -682,7 +760,6 @@
             <div class="border rounded mt-2" style="max-height:220px;overflow:auto">
               <ul class="list-group list-group-flush" id="coopList"></ul>
             </div>
-            <small class="text-muted">A pessoa selecionada receberá esta proposta.</small>
           </div>
           <div class="mb-2">
             <label class="form-label mb-1">Mensagem (opcional)</label>
@@ -690,7 +767,7 @@
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-between">
-          <small class="text-muted"><i class="bi bi-eye"></i> O admin visualiza as solicitações.</small>
+          <small class="text-muted">O admin visualiza as solicitações.</small>
           <div>
             <button class="btn btn-light" data-bs-dismiss="modal" type="button">Cancelar</button>
             <button class="btn btn-royal" id="btnEnviarTroca" type="submit" disabled>Enviar</button>
@@ -701,7 +778,6 @@
   </div>
 </div>
 
-<!-- Aceitar troca -->
 <div class="modal fade" id="aceitarTrocaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -711,8 +787,9 @@
           <button class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body">
+          <input type="hidden" name="active_tab" value="trocas">
           <input type="hidden" name="destino_escala_id" id="destinoEscalaId">
-          <div class="mb-2 small muted">Plantão do solicitante</div>
+          <div class="mb-2 item-small">Plantão do solicitante</div>
           <div class="fw-semibold" id="origemTrocaDesc">—</div>
           <hr>
           <div class="mb-2">
@@ -731,7 +808,6 @@
   </div>
 </div>
 
-<!-- Calculadora -->
 <div class="modal fade modal-narrow" id="calcModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content p-2" style="border:0;background:transparent">
@@ -743,29 +819,23 @@
           <button class="calc-btn k-gray" data-act="back"><i class="bi bi-backspace"></i></button>
           <button class="calc-btn k-gray" data-act="percent">%</button>
           <button class="calc-btn k-orange" data-op="divide">÷</button>
-
           <button class="calc-btn k-dark" data-num="7">7</button>
           <button class="calc-btn k-dark" data-num="8">8</button>
           <button class="calc-btn k-dark" data-num="9">9</button>
           <button class="calc-btn k-orange" data-op="multiply">×</button>
-
           <button class="calc-btn k-dark" data-num="4">4</button>
           <button class="calc-btn k-dark" data-num="5">5</button>
           <button class="calc-btn k-dark" data-num="6">6</button>
           <button class="calc-btn k-orange" data-op="minus">−</button>
-
           <button class="calc-btn k-dark" data-num="1">1</button>
           <button class="calc-btn k-dark" data-num="2">2</button>
           <button class="calc-btn k-dark" data-num="3">3</button>
           <button class="calc-btn k-orange" data-op="plus">+</button>
-
           <button class="calc-btn k-dark k-zero" data-num="0">0</button>
           <button class="calc-btn k-dark" data-dot=".">.</button>
           <button class="calc-btn k-orange" data-act="equal">=</button>
         </div>
       </div>
-
-      <!-- Fita -->
       <div class="soft-card mt-2 p-2">
         <div class="d-flex justify-content-between">
           <div class="title-muted">Histórico</div>
@@ -777,7 +847,6 @@
   </div>
 </div>
 
-<!-- Custo x Benefício -->
 <div class="modal fade" id="cxbModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content soft-card p-2">
@@ -786,8 +855,7 @@
         <h5 class="modal-title ms-2"><i class="bi bi-cash-coin"></i> Custo x Benefício</h5>
         <button class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
-
-      <div class="card p-3 cxbox mb-2">
+      <div class="card p-3 mb-2">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h6 class="mb-0">Calculadora</h6>
           <div class="d-flex gap-1">
@@ -795,56 +863,40 @@
             <button class="btn btn-sm btn-outline-secondary" id="cxShareSum"><i class="bi bi-share"></i> Compartilhar</button>
           </div>
         </div>
-
         <div class="row g-2">
           <div class="col-6"><label class="form-label">Preço gasolina (R$/L)</label><input type="number" step="0.01" min="0" id="cxPreco" class="form-control" placeholder="5,99"></div>
           <div class="col-6"><label class="form-label">Consumo (km/L)</label><input type="number" step="0.1" min="0" id="cxKmPorLitro" class="form-control" placeholder="35"></div>
           <div class="col-6"><label class="form-label">Km rodados</label><input type="number" step="0.1" min="0" id="cxKmFeitos" class="form-control" placeholder="120"></div>
           <div class="col-6"><label class="form-label">Quanto ganhou (R$)</label><input type="number" step="0.01" min="0" id="cxGanho" class="form-control" placeholder="180,00"></div>
         </div>
-
         <hr class="my-2">
-
         <div class="row g-2">
-          <div class="col-6"><div class="small muted">Custo com combustível</div><div class="result-badge mono" id="cxCusto">R$ 0,00</div></div>
-          <div class="col-6"><div class="small muted">Custo por km</div><div class="result-badge mono" id="cxCustoKm">R$ 0,00/km</div></div>
-          <div class="col-6"><div class="small muted">Lucro</div><div class="result-badge mono text-success" id="cxLucro">R$ 0,00</div></div>
-          <div class="col-6"><div class="small muted">Lucro por km</div><div class="result-badge mono text-success" id="cxLucroKm">R$ 0,00/km</div></div>
-          <div class="col-12"><div class="small muted">Margem</div><div class="result-badge mono" id="cxMargem">0%</div></div>
+          <div class="col-6"><div class="small muted">Custo com combustível</div><div class="section-chip mono" id="cxCusto">R$ 0,00</div></div>
+          <div class="col-6"><div class="small muted">Custo por km</div><div class="section-chip mono" id="cxCustoKm">R$ 0,00/km</div></div>
+          <div class="col-6"><div class="small muted">Lucro</div><div class="section-chip mono" id="cxLucro">R$ 0,00</div></div>
+          <div class="col-6"><div class="small muted">Lucro por km</div><div class="section-chip mono" id="cxLucroKm">R$ 0,00/km</div></div>
+          <div class="col-12"><div class="small muted">Margem</div><div class="section-chip mono" id="cxMargem">0%</div></div>
         </div>
-
-        <div class="d-grid mt-3">
-          <button class="btn btn-royal" id="cxSalvar"><i class="bi bi-save"></i> Salvar resultado</button>
-        </div>
+        <div class="d-grid mt-3"><button class="btn btn-royal" id="cxSalvar"><i class="bi bi-save"></i> Salvar resultado</button></div>
       </div>
-
       <div class="card p-3">
         <div class="d-flex align-items-center justify-content-between">
           <h6 class="mb-0"><i class="bi bi-clock-history"></i> Histórico</h6>
           <button class="btn btn-sm btn-outline-danger" id="cxLimpar"><i class="bi bi-trash"></i> Limpar</button>
         </div>
-
         <div id="cxHistorico" class="mt-2"></div>
-
         <hr class="my-2">
-
         <div class="row g-2">
-          <div class="col-6"><div class="small muted">Total km</div><div class="result-badge mono" id="cxTotKm">0</div></div>
-          <div class="col-6"><div class="small muted">Total ganho</div><div class="result-badge mono" id="cxTotGanho">R$ 0,00</div></div>
-          <div class="col-6"><div class="small muted">Total custo</div><div class="result-badge mono" id="cxTotCusto">R$ 0,00</div></div>
-          <div class="col-6"><div class="small muted">Total lucro</div><div class="result-badge mono text-success" id="cxTotLucro">R$ 0,00</div></div>
+          <div class="col-6"><div class="small muted">Total km</div><div class="section-chip mono" id="cxTotKm">0</div></div>
+          <div class="col-6"><div class="small muted">Total ganho</div><div class="section-chip mono" id="cxTotGanho">R$ 0,00</div></div>
+          <div class="col-6"><div class="small muted">Total custo</div><div class="section-chip mono" id="cxTotCusto">R$ 0,00</div></div>
+          <div class="col-6"><div class="small muted">Total lucro</div><div class="section-chip mono" id="cxTotLucro">R$ 0,00</div></div>
         </div>
-      </div>
-
-      <div class="modal-footer border-0">
-        <button class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
-        <button class="btn btn-royal" data-bs-dismiss="modal"><i class="bi bi-arrow-left"></i> Voltar</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Notas -->
 <div class="modal fade" id="notesModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
     <div class="modal-content soft-card p-2">
@@ -853,53 +905,45 @@
         <h5 class="modal-title ms-2">Bloco de Notas</h5>
         <button class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
-
       <div class="notes-wrap">
         <div class="notes-list" id="notesList"></div>
         <div class="notes-editor">
           <div class="notes-toolbar">
             <button class="btn btn-sm btn-outline-primary" id="ntNew"><i class="bi bi-file-earmark-plus"></i> Nova</button>
-            <button class="btn btn-sm btn-outline-secondary" id="ntDuplicate" title="Duplicar"><i class="bi bi-files"></i></button>
-            <button class="btn btn-sm btn-outline-warning" id="ntPin" title="Fixar/Desfixar"><i class="bi bi-pin-angle"></i></button>
-            <button class="btn btn-sm btn-outline-danger" id="ntDelete" title="Apagar"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="ntDuplicate"><i class="bi bi-files"></i></button>
+            <button class="btn btn-sm btn-outline-warning" id="ntPin"><i class="bi bi-pin-angle"></i></button>
+            <button class="btn btn-sm btn-outline-danger" id="ntDelete"><i class="bi bi-trash"></i></button>
             <span class="vr"></span>
-            <button class="btn btn-sm btn-outline-secondary" data-cmd="bold" title="Negrito"><i class="bi bi-type-bold"></i></button>
-            <button class="btn btn-sm btn-outline-secondary" data-cmd="italic" title="Itálico"><i class="bi bi-type-italic"></i></button>
-            <button class="btn btn-sm btn-outline-secondary" data-cmd="underline" title="Sublinhado"><i class="bi bi-type-underline"></i></button>
-            <button class="btn btn-sm btn-outline-secondary" id="ntH1" title="Título"><i class="bi bi-type-h1"></i></button>
-            <button class="btn btn-sm btn-outline-secondary" id="ntBullets" title="Lista"><i class="bi bi-list-ul"></i></button>
-            <button class="btn btn-sm btn-outline-secondary" id="ntChecklist" title="Checklist"><i class="bi bi-square-check"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" data-cmd="bold"><i class="bi bi-type-bold"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" data-cmd="italic"><i class="bi bi-type-italic"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" data-cmd="underline"><i class="bi bi-type-underline"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="ntH1"><i class="bi bi-type-h1"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="ntBullets"><i class="bi bi-list-ul"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="ntChecklist"><i class="bi bi-square-check"></i></button>
             <span class="vr"></span>
-            <button class="btn btn-sm btn-outline-secondary" id="ntShare" title="Compartilhar"><i class="bi bi-share"></i></button>
-            <button class="btn btn-sm btn-outline-secondary" id="ntExport" title="Exportar JSON"><i class="bi bi-download"></i></button>
-            <label class="btn btn-sm btn-outline-secondary mb-0" title="Importar JSON"><i class="bi bi-upload"></i><input type="file" id="ntImport" accept="application/json" hidden></label>
-            <button class="btn btn-sm btn-outline-secondary" id="ntPrint" title="Imprimir"><i class="bi bi-printer"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="ntShare"><i class="bi bi-share"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="ntExport"><i class="bi bi-download"></i></button>
+            <label class="btn btn-sm btn-outline-secondary mb-0"><i class="bi bi-upload"></i><input type="file" id="ntImport" accept="application/json" hidden></label>
+            <button class="btn btn-sm btn-outline-secondary" id="ntPrint"><i class="bi bi-printer"></i></button>
           </div>
           <input class="form-control border-0 border-bottom rounded-0 fw-bold" id="ntTitle" placeholder="Título">
           <div class="notes-content" id="ntContent" contenteditable="true" spellcheck="true" style="flex:1;padding:.8rem"></div>
         </div>
       </div>
-
-      <div class="modal-footer border-0">
-        <button class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
-        <button class="btn btn-royal" data-bs-dismiss="modal"><i class="bi bi-arrow-left"></i> Voltar</button>
-      </div>
     </div>
   </div>
 </div>
 
-<!-- FINANÇAS PESSOAIS (OFFCANVAS) -->
 <div class="offcanvas offcanvas-bottom" tabindex="-1" id="financasSheet" aria-labelledby="financasSheetLabel" style="height:92vh">
   <div class="offcanvas-header">
     <button class="btn btn-link text-muted me-2" data-bs-dismiss="offcanvas"><i class="bi bi-arrow-left"></i> Voltar</button>
-    <h5 class="offcanvas-title" id="financasSheetLabel"><i class="bi bi-wallet2 me-1"></i> Finanças (pessoais)</h5>
+    <h5 class="offcanvas-title" id="financasSheetLabel"><i class="bi bi-wallet2 me-1"></i> Finanças pessoais</h5>
     <div class="d-flex gap-2">
       <button class="btn btn-sm btn-outline-secondary" id="finExport"><i class="bi bi-filetype-csv"></i> CSV</button>
       <button class="btn btn-sm btn-outline-secondary" id="finDicasBtn"><i class="bi bi-lightbulb"></i> Dicas</button>
-      <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="offcanvas"><i class="bi bi-x-lg"></i> Fechar</button>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="offcanvas"><i class="bi bi-x-lg"></i></button>
     </div>
   </div>
-
   <div class="offcanvas-body" style="background:#f7f9fc;overflow:auto">
     <div class="container">
       <section class="soft-card p-3 mb-3">
@@ -922,7 +966,6 @@
           </div>
         </div>
       </section>
-
       <section class="soft-card p-3 mb-3">
         <h6 class="mb-2">Novo lançamento</h6>
         <div class="row g-2">
@@ -931,9 +974,7 @@
           <div class="col-7"><label class="form-label mb-1">Categoria</label><input type="text" id="finCat" class="form-control" placeholder="Combustível, Alimentação..."></div>
           <div class="col-5"><label class="form-label mb-1">Valor</label><input type="number" step="0.01" min="0" id="finValor" class="form-control" placeholder="0,00"></div>
           <div class="col-12"><label class="form-label mb-1">Descrição (opcional)</label><input type="text" id="finDesc" class="form-control" placeholder="Observações"></div>
-
           <div class="col-12"><div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" id="finParcSw"><label class="form-check-label" for="finParcSw">Parcelar</label></div></div>
-
           <div class="col-12" id="finParcWrap" style="display:none">
             <div class="soft-card p-2">
               <div class="row g-2">
@@ -950,11 +991,9 @@
               </div>
             </div>
           </div>
-
           <div class="col-12 d-grid mt-2"><button class="btn btn-royal" id="finAdd"><i class="bi bi-plus-circle"></i> Salvar lançamento</button></div>
         </div>
       </section>
-
       <section class="soft-card p-3 mb-3">
         <div class="d-flex align-items-center justify-content-between">
           <h6 class="mb-2">Lançamentos do mês</h6>
@@ -962,7 +1001,6 @@
         </div>
         <div id="finLista"></div>
       </section>
-
       <section class="soft-card p-3">
         <h6 class="mb-2">Onde você gasta mais</h6>
         <div id="finTopCats" class="small"></div>
@@ -971,7 +1009,6 @@
   </div>
 </div>
 
-<!-- Dicas de economia -->
 <div class="modal fade" id="finDicasModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-narrow">
     <div class="modal-content soft-card p-2">
@@ -981,173 +1018,110 @@
       </div>
       <div class="modal-body">
         <ul class="m-0 ps-3">
-          <li>Corte silencioso: cancele assinaturas que quase não usa.</li>
-          <li>Combustível: agrupe entregas/rotas; calibre pneus mensalmente.</li>
-          <li>Alimentação: troque refeição fora por marmita 3x/semana.</li>
-          <li>Meta automática: “poupança” recorrente no 1º dia útil.</li>
-          <li>Telecom: renegocie plano a cada 6–12 meses.</li>
-          <li>Compras: regra das 24h para evitar impulsos.</li>
+          <li>Cancele o que quase não usa.</li>
+          <li>Calibre pneus e economize combustível.</li>
+          <li>Separe automaticamente um valor por mês.</li>
+          <li>Use a regra das 24h antes de comprar.</li>
+          <li>Renegocie serviços e planos antigos.</li>
         </ul>
       </div>
       <div class="modal-footer border-0">
-        <button class="btn btn-royal" data-bs-dismiss="modal">Ok, entendi</button>
+        <button class="btn btn-royal" data-bs-dismiss="modal">Ok</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- TOAST de avisos -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
   <div id="toastAvisos" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" data-unread-endpoint="/avisos/unread_count">
     <div class="toast-header">
       <i class="bi bi-megaphone-fill me-2"></i>
       <strong class="me-auto">Novos avisos</strong>
-      <small class="toast-time">agora</small>
       <button class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Fechar"></button>
     </div>
     <div class="toast-body">
-      <span class="toast-msg">Você tem <span id="toastCount">{{ unread }}</span> aviso(s) não lido(s).</span>
+      Você tem <span id="toastCount">{{ unread }}</span> aviso(s) não lido(s).
       <a href="{{ url_for('portal_cooperado_avisos') }}" class="link-primary fw-semibold ms-1">Ver agora</a>
     </div>
   </div>
 </div>
 
-<!-- Som -->
 <audio id="avisoSound" preload="auto" playsinline>
   <source src="{{ url_for('static', filename='sounds/notify.mp3') }}" type="audio/mpeg">
 </audio>
 
-<!-- ===== SCRIPTS ===== -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-/* Tabs: garante funcionamento mesmo em arquivo aberto direto */
-document.addEventListener('DOMContentLoaded', () => {
-  const tabButtons = document.querySelectorAll('#painelTabs [data-bs-toggle="tab"]');
-  tabButtons.forEach(btn => {
-    const tab = new bootstrap.Tab(btn);
-    btn.addEventListener('click', (e) => { e.preventDefault(); tab.show(); });
-  });
-});
-</script>
-
-<!-- Menu lateral (avatar = gatilho) -->
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const menuLateral = document.getElementById('menuLateral');
-  const fundoMenu   = document.getElementById('fundoMenu');
-  const abrir       = document.getElementById('abrirMenu');
-  const fechar      = document.getElementById('fecharMenu');
-
-  function openMenu(){ menuLateral?.classList.add('aberto'); fundoMenu?.classList.add('aberto'); }
-  function closeMenu(){ menuLateral?.classList.remove('aberto'); fundoMenu?.classList.remove('aberto'); }
-
-  abrir?.addEventListener('click', openMenu);
-  fechar?.addEventListener('click', closeMenu);
-  fundoMenu?.addEventListener('click', closeMenu);
-});
-</script>
-
-<!-- <script>
-document.addEventListener("DOMContentLoaded", function () {
-  const toastEl = document.getElementById("toastAvisos");
-  const audio = document.getElementById("avisoSound");
-  const countEl = document.getElementById("toastCount");
-  const endpoint = toastEl?.getAttribute("data-unread-endpoint") || "/avisos/unread_count";
-
-  if (!toastEl || !audio) return;
-
-  const toast = new bootstrap.Toast(toastEl, { autohide: false });
-
-  let prev = Number({{ unread|tojson }}) || 0;
-  let audioPending = false;
-  let audioUnlocked = false;
-  let loginToastShown = false;
-
-  function renderCount(c) {
-    if (countEl) countEl.textContent = String(c);
-  }
-
-  function showToast(c) {
-    renderCount(c);
-    if (c > 0) toast.show();
-    else toast.hide();
-  }
-
-  async function playSound() {
-    try {
-      audio.currentTime = 0;
-      await audio.play();
-      audioPending = false;
-    } catch (e) {
-      audioPending = true;
-    }
-  }
-
-  async function unlockAudioOnce() {
-    if (audioUnlocked) return;
-    try {
-      audio.muted = true;
-      audio.currentTime = 0;
-      await audio.play();
-      audio.pause();
-      audio.currentTime = 0;
-      audio.muted = false;
-      audioUnlocked = true;
-
-      if (audioPending) {
-        playSound();
-      }
-    } catch (e) {}
-  }
-
-  ["click", "touchstart", "keydown"].forEach(evt => {
-    window.addEventListener(evt, unlockAudioOnce, { once: true, passive: true });
-  });
-
-  // Ao entrar no painel
-  showToast(prev);
-  if (prev > 0 && !loginToastShown) {
-    loginToastShown = true;
-    playSound();
-  }
-
-  async function checkUnread() {
-    try {
-      const resp = await fetch(endpoint, {
-        headers: { "Accept": "application/json" },
-        cache: "no-store",
-        credentials: "same-origin"
-      });
-      if (!resp.ok) return;
-
-      const data = await resp.json();
-      const c = Number(data.unread ?? data.count ?? 0) || 0;
-
-      showToast(c);
-
-      if (prev === null) {
-        prev = c;
-        return;
-      }
-
-      if ((prev === 0 && c > 0) || c > prev) {
-        playSound();
-      }
-
-      prev = c;
-    } catch (e) {}
-  }
-
-  checkUnread();
-  setInterval(checkUnread, 8000);
-});
-</script>
-<!-- Troca de escala (enviar) -->
 <script>
 const COOPS_FINAL = {{ cooperados_json | default([]) | tojson }};
 const MY_ESCALA   = {{ minha_escala_json | default([]) | tojson }};
+</script>
+<script>
+(function(){
+  const drawer=document.getElementById('menuLateral');
+  const backdrop=document.getElementById('fundoMenu');
+  const openBtn=document.getElementById('abrirMenu');
+  const closeBtn=document.getElementById('fecharMenu');
+  function openMenu(){ drawer?.classList.add('aberto'); backdrop?.classList.add('aberto'); }
+  function closeMenu(){ drawer?.classList.remove('aberto'); backdrop?.classList.remove('aberto'); }
+  openBtn?.addEventListener('click', openMenu);
+  closeBtn?.addEventListener('click', closeMenu);
+  backdrop?.addEventListener('click', closeMenu);
+})();
+</script>
+<script>
+(function(){
+  const buttons=[...document.querySelectorAll('.tab-btn')];
+  const panes=[...document.querySelectorAll('.tab-pane-custom')];
+  const activeInput=document.getElementById('activeTabInput');
+  const params=new URLSearchParams(window.location.search);
+  const valid=['resumo','producoes','ajustes','escalas','trocas'];
+  let current=params.get('active_tab') || localStorage.getItem('coopex_active_tab') || (activeInput?.value || 'resumo');
+  if (!valid.includes(current)) current='resumo';
 
+  function showTab(name, updateHistory=true){
+    buttons.forEach(btn=>btn.classList.toggle('active', btn.dataset.tab===name));
+    panes.forEach(p=>p.classList.toggle('active', p.id===`tab-${name}`));
+    if (activeInput) activeInput.value=name;
+    localStorage.setItem('coopex_active_tab', name);
+    if (updateHistory){
+      const url=new URL(window.location.href);
+      url.searchParams.set('active_tab', name);
+      window.history.replaceState({}, '', url.toString());
+    }
+  }
+
+  buttons.forEach(btn=>btn.addEventListener('click', ()=>showTab(btn.dataset.tab)));
+  showTab(current, false);
+})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const toastEl = document.getElementById('toastAvisos');
+  const audio = document.getElementById('avisoSound');
+  const unreadCount = parseInt({{ unread|tojson }});
+  if (!toastEl || !audio) return;
+  const toast = new bootstrap.Toast(toastEl, { autohide:false });
+  function renderCount(c){ const el = document.getElementById('toastCount'); if (el) el.textContent = String(c); }
+  function ensureToast(c){ renderCount(c); if (c>0) toast.show(); else toast.hide(); }
+  ensureToast(unreadCount);
+  if (unreadCount>0){ audio.currentTime=0; audio.play().catch(()=>{}); }
+  const endpoint = toastEl.getAttribute('data-unread-endpoint') || '/avisos/unread_count';
+  let prev = unreadCount;
+  async function checkUnread(){
+    try{
+      const resp = await fetch(endpoint, { headers:{'Accept':'application/json'}, cache:'no-store', credentials:'same-origin' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const c = Number(data.unread ?? data.count ?? 0) || 0;
+      ensureToast(c);
+      if ((prev===0 && c>0) || c>prev){ try{ audio.currentTime=0; await audio.play(); }catch{} }
+      prev = c;
+    }catch{}
+  }
+  setInterval(checkUnread, 8000);
+});
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', () => {
   const coopListEl = document.getElementById('coopList');
   const coopSearchEl = document.getElementById('coopSearch');
@@ -1169,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const avatar=document.createElement('img'); avatar.src=c.foto_url || '{{ url_for("static", filename="img/default.png") }}';
       avatar.alt=''; Object.assign(avatar.style,{width:'28px',height:'28px',objectFit:'cover',borderRadius:'50%',border:'1px solid #0001',marginRight:'.5rem'});
       const name=document.createElement('div'); name.className='flex-fill'; name.innerHTML=`<div class="fw-semibold" style="word-break:break-word;overflow-wrap:anywhere">${c.nome||'—'}</div>`;
-      const choose=document.createElement('button'); choose.type='button'; choose.className='btn btn-sm btn-outline-primary'; choose.innerHTML='<i class="bi bi-person-arrows"></i> Selecionar';
+      const choose=document.createElement('button'); choose.type='button'; choose.className='btn btn-sm btn-outline-primary'; choose.textContent='Selecionar';
       choose.addEventListener('click', ()=>{
         const esc = fromEscalaDescEl.textContent||'';
         if (confirm(`Deseja solicitar a troca:\n\n${esc}\n\ncom "${c.nome}"?`)){
@@ -1182,29 +1156,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   coopSearchEl?.addEventListener('input', ()=> renderCoops(coopSearchEl.value));
-  trocaModalEl.addEventListener('show.bs.modal', (ev)=>{
+  trocaModalEl?.addEventListener('show.bs.modal', (ev)=>{
     const btn=ev.relatedTarget; const escalaId=btn?.getAttribute('data-escala-id')||''; const escalaDesc=btn?.getAttribute('data-escala-desc')||'';
     fromEscalaIdEl.value=escalaId; fromEscalaDescEl.textContent=escalaDesc; toCooperadoIdEl.value=''; btnEnviarTroca.disabled=true;
     coopSearchEl.value=''; renderCoops('');
   });
 
-  document.getElementById('trocaForm').addEventListener('submit', (e)=>{
+  document.getElementById('trocaForm')?.addEventListener('submit', (e)=>{
     if (!fromEscalaIdEl.value || !toCooperadoIdEl.value){ e.preventDefault(); alert('Selecione um cooperado.'); }
   });
 });
 </script>
-
-<!-- Helpers + Aceitar troca -->
 <script>
 function stripDiacritics(str){ let s=String(str||''); if (typeof s.normalize==='function') s=s.normalize('NFD'); return s.replace(/[\u0300-\u036f]/g,''); }
 function turnoBucket(turno,horario){
   const t=stripDiacritics(String(turno||"").toLowerCase());
-  if (t.includes("noite")||t.includes("noturn")) return "noite";
-  if (t.includes("dia")||t.includes("diurn")||t.includes("manha")||t.includes("tarde")) return "dia";
-  const m=String(horario||"").match(/(\d{1,2}):(\d{2})/); if (m){ const h=parseInt(m[1],10); if (h>=17||h<=6) return "noite"; return "dia"; }
-  return "dia";
+  if (t.includes('noite')||t.includes('noturn')) return 'noite';
+  if (t.includes('dia')||t.includes('diurn')||t.includes('manha')||t.includes('tarde')) return 'dia';
+  const m=String(horario||'').match(/(\d{1,2}):(\d{2})/); if (m){ const h=parseInt(m[1],10); return (h>=17||h<=6)?'noite':'dia'; }
+  return 'dia';
 }
-
 document.addEventListener('DOMContentLoaded', ()=>{
   const aceitarModalEl=document.getElementById('aceitarTrocaModal');
   const origemTrocaDescEl=document.getElementById('origemTrocaDesc');
@@ -1212,39 +1183,29 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const destinoEscalaIdEl=document.getElementById('destinoEscalaId');
   const btnConfirmarAceite=document.getElementById('btnConfirmarAceite');
   const aceitarForm=document.getElementById('aceitarTrocaForm');
-
-  aceitarModalEl.addEventListener('show.bs.modal', (ev)=>{
+  aceitarModalEl?.addEventListener('show.bs.modal', (ev)=>{
     const btn=ev.relatedTarget;
     const trocaId=btn?.getAttribute('data-troca-id');
     const origemDesc=btn?.getAttribute('data-origem-desc')||'—';
     const origemWeekday=parseInt(btn?.getAttribute('data-origem-weekday'));
     const origemBucket=btn?.getAttribute('data-origem-bucket');
-
     origemTrocaDescEl.textContent=origemDesc;
     aceitarForm.action=`/trocas/${trocaId}/aceitar`;
     destinoEscalaIdEl.value=''; btnConfirmarAceite.disabled=true;
-
     const base=Array.isArray(MY_ESCALA)?MY_ESCALA:[];
     const compativeis=base.filter(e=>{ const bucket=e.turno_bucket||turnoBucket(e.turno,e.horario); return e.weekday===origemWeekday && bucket===origemBucket; });
     minhaEscalaCompatListEl.innerHTML='';
     if (!compativeis.length){ minhaEscalaCompatListEl.innerHTML='<li class="list-group-item text-muted">Você não tem plantões compatíveis.</li>'; return; }
-
     compativeis.forEach(e=>{
       const li=document.createElement('li'); li.className='list-group-item d-flex align-items-center justify-content-between';
-      li.innerHTML=`<div class="me-2" style="word-break:break-word;overflow-wrap:anywhere"><div class="fw-semibold">${e.data} • ${e.turno||''} • ${e.horario||''} • ${e.contrato||''}</div></div>
-                    <button type="button" class="btn btn-sm btn-outline-primary">Trocar com este</button>`;
-      li.querySelector('button').addEventListener('click', ()=>{ destinoEscalaIdEl.value=e.id; btnConfirmarAceite.disabled=false;
-        [...minhaEscalaCompatListEl.querySelectorAll('.list-group-item')].forEach(x=>x.classList.remove('active')); li.classList.add('active');
-      });
+      li.innerHTML=`<div class="me-2" style="word-break:break-word;overflow-wrap:anywhere"><div class="fw-semibold">${e.data} • ${e.turno||''} • ${e.horario||''} • ${e.contrato||''}</div></div><button type="button" class="btn btn-sm btn-outline-primary">Selecionar</button>`;
+      li.querySelector('button').addEventListener('click', ()=>{ destinoEscalaIdEl.value=e.id; btnConfirmarAceite.disabled=false; [...minhaEscalaCompatListEl.querySelectorAll('.list-group-item')].forEach(x=>x.classList.remove('active')); li.classList.add('active'); });
       minhaEscalaCompatListEl.appendChild(li);
     });
   });
-
-  aceitarForm.addEventListener('submit', (e)=>{ if (!destinoEscalaIdEl.value){ e.preventDefault(); alert('Escolha um plantão compatível.'); } });
+  aceitarForm?.addEventListener('submit', (e)=>{ if (!destinoEscalaIdEl.value){ e.preventDefault(); alert('Escolha um plantão compatível.'); } });
 });
 </script>
-
-<!-- Avaliação (3 dimensões -> gera nota/geral) -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.avaliar-form').forEach(form => {
@@ -1260,38 +1221,31 @@ document.addEventListener('DOMContentLoaded', () => {
       pont_legacy: form.querySelector('input[name="av_pontualidade"]'),
     };
     const submitBtn = form.querySelector('button[type="submit"]');
-
     function renderGroup(group,value){ if (!group) return; group.querySelectorAll('.star-btn i').forEach((icon,idx)=>{ icon.className='bi '+(idx<value?'bi-star-fill text-warning':'bi-star text-secondary'); }); }
     function getVal(input){ const n=Number(input && input.value || 0); return Number.isFinite(n)? Math.max(0,Math.min(5,n)) : 0; }
     function mirrorLegacy(){ if (hidden.amb_legacy) hidden.amb_legacy.value=hidden.amb?.value||''; if (hidden.trat_legacy) hidden.trat_legacy.value=hidden.trat?.value||''; if (hidden.sup_legacy) hidden.sup_legacy.value=hidden.sup?.value||''; if (hidden.pont_legacy) hidden.pont_legacy.value=''; }
     function updateDerived(){
       const a=getVal(hidden.amb), t=getVal(hidden.trat), s=getVal(hidden.sup);
-      const ready=a>0 && t>0 && s>0;
-      const media= ready? (a+t+s)/3 : 0, mediaRounded10=Math.round(media*10)/10;
+      const ready=a>0 && t>0 && s>0; const media= ready? (a+t+s)/3 : 0, mediaRounded10=Math.round(media*10)/10;
       if (ready){ hidden.geral.value=String(mediaRounded10); hidden.nota.value=String(mediaRounded10); } else { hidden.geral.value=''; hidden.nota.value=''; }
       mirrorLegacy(); if (submitBtn) submitBtn.disabled=!ready;
     }
-
     form.querySelectorAll('.rating-stars.selectable.stars-group').forEach(group=>{
       group.querySelectorAll('.star-btn').forEach(btn=>{
         const val=Number(btn.dataset.value||0);
         const commit=()=>{ group.dataset.value=String(val); const field=group.dataset.field; const hiddenInput=form.querySelector(`input[name="${field}"]`); if (hiddenInput) hiddenInput.value=String(val); renderGroup(group,val); updateDerived(); };
-        btn.addEventListener('click',commit); btn.addEventListener('keydown',e=>{ if (e.key==='Enter'||e.key===' '){ e.preventDefault(); commit(); } });
-        btn.addEventListener('mouseenter',()=>renderGroup(group,val));
+        btn.addEventListener('click',commit); btn.addEventListener('mouseenter',()=>renderGroup(group,val));
       });
       group.addEventListener('mouseleave',()=>{ const cur=Number(group.dataset.value||0); renderGroup(group,cur); });
       const currentVal= Number(group.dataset.value||0) || Number((form.querySelector(`input[name="${group.dataset.field}"]`)||{}).value||0);
       if (currentVal>0) group.dataset.value=String(currentVal);
       renderGroup(group,currentVal);
     });
-
     updateDerived();
     form.addEventListener('submit', (e)=>{ const a=getVal(hidden.amb), t=getVal(hidden.trat), s=getVal(hidden.sup); if (!(a>0 && t>0 && s>0)){ e.preventDefault(); alert('Selecione notas para Ambiente, Tratamento e Suporte.'); } });
   });
 });
 </script>
-
-<!-- Finanças (pessoais) -->
 <script>
 (function(){
   const UID = Number('{{ cooperado.id if cooperado and cooperado.id else 0 }}') || 0;
@@ -1300,150 +1254,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const monthFmt = (d)=> d.toISOString().slice(0,7);
   const money = n => 'R$ ' + (Number(n)||0).toFixed(2).replace('.',',');
   const parseNum = v => { const n=parseFloat(String(v).replace(',', '.')); return Number.isFinite(n)?n:0; };
-
-  const mesEl = el('finMes');
-  const recSumEl = el('finRecSum'), despSumEl = el('finDespSum'), saldoEl = el('finSaldo');
+  const mesEl = el('finMes'), recSumEl = el('finRecSum'), despSumEl = el('finDespSum'), saldoEl = el('finSaldo');
   const metaValorEl = el('finMetaValor'), metaPctEl = el('finMetaPct'), metaAlvoEl = el('finMetaAlvo'), guardadoEl = el('finGuardado'), metaProgEl = el('finMetaProg');
   const tipoEl = el('finTipo'), dataEl = el('finData'), catEl = el('finCat'), valEl = el('finValor'), descEl = el('finDesc');
   const parcSw = el('finParcSw'), parcWrap = el('finParcWrap'), parcIniEl = el('finParcIni'), parcNEl = el('finParcN'), parcPrevEl = el('finParcPreview');
   const btnAdd = el('finAdd'), listaEl = el('finLista'), topCatsEl = el('finTopCats');
   const btnClearMes = el('finClearMes'), btnExport = el('finExport'), btnDicas = el('finDicasBtn');
-
-  let items = load();
-  let currentMonth = (()=>{ const today = new Date(); return monthFmt(today); })();
-
+  let items = load(); let currentMonth = monthFmt(new Date());
   function load(){ try{ const raw=localStorage.getItem(LS_KEY); const arr=raw?JSON.parse(raw):[]; return Array.isArray(arr)?arr:[]; }catch(_){ return []; } }
   function save(){ localStorage.setItem(LS_KEY, JSON.stringify(items)); }
-
   function nextMonth(ym, plus=1){ const [y,m]=ym.split('-').map(x=>parseInt(x,10)); const dt=new Date(y, m-1+plus, 1); return dt.toISOString().slice(0,7); }
   function endOfMonth(ym){ const [y,m]=ym.split('-').map(x=>parseInt(x,10)); return new Date(y, m, 0).getDate(); }
   function toDateStr(ym, day=1){ const [y,m]=ym.split('-').map(x=>parseInt(x,10)); const d=Math.min(day, endOfMonth(ym)); return new Date(y, m-1, d).toISOString().slice(0,10); }
   function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
-
   mesEl.value=currentMonth; dataEl.value=new Date().toISOString().slice(0,10); parcIniEl.value=currentMonth;
-
-  function renderParcPreview(){
-    const n=Math.max(2, parseInt(parcNEl.value||'10',10));
-    const modo=document.querySelector('input[name="finParcModo"]:checked')?.value || 'valor';
-    const baseVal=parseNum(valEl.value); const start=parcIniEl.value || currentMonth;
-    if (modo==='valor') parcPrevEl.textContent=`Serão ${n} parcelas de ${money(baseVal)} de ${start} até ${nextMonth(start, n-1)}.`;
-    else {
-      parcPrevEl.textContent=`Valor total ${money(baseVal)} dividido em ${n} parcelas iguais — primeira em ${start}, última em ${nextMonth(start, n-1)}.`;
-    }
-  }
-  parcSw.addEventListener('change', ()=>{ parcWrap.style.display=parcSw.checked? '' : 'none'; renderParcPreview(); });
-  ['input','change'].forEach(ev=>{
-    parcNEl.addEventListener(ev, renderParcPreview);
-    parcIniEl.addEventListener(ev, renderParcPreview);
-    valEl.addEventListener(ev, renderParcPreview);
-    document.querySelectorAll('input[name="finParcModo"]').forEach(r=> r.addEventListener(ev, renderParcPreview));
-  });
-
+  function renderParcPreview(){ const n=Math.max(2, parseInt(parcNEl.value||'10',10)); const modo=document.querySelector('input[name="finParcModo"]:checked')?.value || 'valor'; const baseVal=parseNum(valEl.value); const start=parcIniEl.value || currentMonth; if (modo==='valor') parcPrevEl.textContent=`Serão ${n} parcelas de ${money(baseVal)} de ${start} até ${nextMonth(start, n-1)}.`; else parcPrevEl.textContent=`Valor total ${money(baseVal)} dividido em ${n} parcelas iguais — primeira em ${start}, última em ${nextMonth(start, n-1)}.`; }
+  parcSw?.addEventListener('change', ()=>{ parcWrap.style.display=parcSw.checked? '' : 'none'; renderParcPreview(); });
+  ['input','change'].forEach(ev=>{ parcNEl?.addEventListener(ev, renderParcPreview); parcIniEl?.addEventListener(ev, renderParcPreview); valEl?.addEventListener(ev, renderParcPreview); document.querySelectorAll('input[name="finParcModo"]').forEach(r=> r.addEventListener(ev, renderParcPreview)); });
   function addItem(obj){ items.push(obj); save(); refresh(); }
   function removeItem(id){ items=items.filter(x=>x.id!==id); save(); refresh(); }
-
-  btnAdd.addEventListener('click', ()=>{
-    const tipo=String(tipoEl.value||'despesa');
-    const data=String(dataEl.value||new Date().toISOString().slice(0,10));
-    const cat=(catEl.value||'Geral').trim();
-    const val=parseNum(valEl.value);
-    const desc=(descEl.value||'').trim();
-    if (!val || val<=0){ alert('Informe um valor válido.'); return; }
-
-    if (!parcSw.checked){
-      addItem({id:uid(), tipo, data, cat, val, desc, origem:'manual'}); clearForm(); return;
-    }
-
-    const n=Math.max(2, parseInt(parcNEl.value||'10',10));
-    const modo=document.querySelector('input[name="finParcModo"]:checked')?.value || 'valor';
-    const startMonth=parcIniEl.value || currentMonth;
-    const day=parseInt(data.slice(-2),10) || 1;
-
-    if (modo==='valor'){
-      const parcela=val;
-      for (let i=0;i<n;i++){ const ym=nextMonth(startMonth,i);
-        addItem({id:uid(), tipo, data:toDateStr(ym,day), cat, val:parcela, desc:`${desc} (parc ${i+1}/${n})`, origem:'parc_valor'}); }
-    } else {
-      const total=val; const base=Math.floor((total/n)*100)/100; const resto=+(total - base*n).toFixed(2);
-      for (let i=0;i<n;i++){ const ym=nextMonth(startMonth,i); const parcVal=+(base + (i===n-1? resto:0)).toFixed(2);
-        addItem({id:uid(), tipo, data:toDateStr(ym,day), cat, val:parcVal, desc:`${desc} (parc ${i+1}/${n})`, origem:'parc_total'}); }
-    }
-    clearForm();
-  });
-
+  btnAdd?.addEventListener('click', ()=>{ const tipo=String(tipoEl.value||'despesa'); const data=String(dataEl.value||new Date().toISOString().slice(0,10)); const cat=(catEl.value||'Geral').trim(); const val=parseNum(valEl.value); const desc=(descEl.value||'').trim(); if (!val || val<=0){ alert('Informe um valor válido.'); return; } if (!parcSw.checked){ addItem({id:uid(), tipo, data, cat, val, desc, origem:'manual'}); clearForm(); return; } const n=Math.max(2, parseInt(parcNEl.value||'10',10)); const modo=document.querySelector('input[name="finParcModo"]:checked')?.value || 'valor'; const startMonth=parcIniEl.value || currentMonth; const day=parseInt(data.slice(-2),10) || 1; if (modo==='valor'){ const parcela=val; for (let i=0;i<n;i++){ const ym=nextMonth(startMonth,i); addItem({id:uid(), tipo, data:toDateStr(ym,day), cat, val:parcela, desc:`${desc} (parc ${i+1}/${n})`, origem:'parc_valor'}); } } else { const total=val; const base=Math.floor((total/n)*100)/100; const resto=+(total - base*n).toFixed(2); for (let i=0;i<n;i++){ const ym=nextMonth(startMonth,i); const parcVal=+(base + (i===n-1? resto:0)).toFixed(2); addItem({id:uid(), tipo, data:toDateStr(ym,day), cat, val:parcVal, desc:`${desc} (parc ${i+1}/${n})`, origem:'parc_total'}); } } clearForm(); });
   function clearForm(){ valEl.value=''; descEl.value=''; parcSw.checked=false; parcWrap.style.display='none'; renderParcPreview(); }
-  mesEl.addEventListener('change', ()=>{ currentMonth=mesEl.value || currentMonth; refresh(); });
-
-  btnClearMes.addEventListener('click', ()=>{
-    if (!confirm('Remover todos os lançamentos deste mês?')) return;
-    const prefix=currentMonth+'-'; items=items.filter(x=> !String(x.data||'').startsWith(prefix)); save(); refresh();
-  });
-
-  btnExport.addEventListener('click', ()=>{
-    const header=['id','tipo','data','categoria','valor','descricao','origem'];
-    const rows=items.map(x=>[x.id,x.tipo,x.data,(x.cat||''),(Number(x.val)||0).toFixed(2).replace('.',','),(x.desc||'').replace(/[\r\n]+/g,' '),x.origem||'']);
-    const csv=[header.join(';'),...rows.map(r=>r.join(';'))].join('\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download='financas_coopex.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  });
-
+  mesEl?.addEventListener('change', ()=>{ currentMonth=mesEl.value || currentMonth; refresh(); });
+  btnClearMes?.addEventListener('click', ()=>{ if (!confirm('Remover todos os lançamentos deste mês?')) return; const prefix=currentMonth+'-'; items=items.filter(x=> !String(x.data||'').startsWith(prefix)); save(); refresh(); });
+  btnExport?.addEventListener('click', ()=>{ const header=['id','tipo','data','categoria','valor','descricao','origem']; const rows=items.map(x=>[x.id,x.tipo,x.data,(x.cat||''),(Number(x.val)||0).toFixed(2).replace('.',','),(x.desc||'').replace(/[\r\n]+/g,' '),x.origem||'']); const csv=[header.join(';'),...rows.map(r=>r.join(';'))].join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='financas_coopex.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
   btnDicas?.addEventListener('click', ()=> new bootstrap.Modal(document.getElementById('finDicasModal')).show());
-
-  function refresh(){
-    const prefix=currentMonth+'-';
-    const mesItems=items.filter(x=> String(x.data||'').startsWith(prefix)).sort((a,b)=> a.data.localeCompare(b.data));
-    const sum=(arr,pred)=> arr.filter(pred).reduce((s,x)=> s + Number(x.val||0), 0);
-    const rec=sum(mesItems,x=>x.tipo==='receita'); const desp=sum(mesItems,x=>x.tipo==='despesa'); const guardado=sum(mesItems,x=>x.tipo==='poupanca'); const saldo=rec - desp - guardado;
-    recSumEl.textContent=money(rec); despSumEl.textContent=money(desp); saldoEl.textContent=money(saldo);
-
-    const alvoByValor=parseNum(metaValorEl.value); const pct=Math.max(0, parseNum(metaPctEl.value)); const alvoByPct=rec*(pct/100); const alvo=Math.max(alvoByValor, alvoByPct);
-    metaAlvoEl.textContent=money(alvo); guardadoEl.textContent=money(guardado);
-    const prog=alvo>0 ? Math.min(100, Math.round((guardado/alvo)*100)) : 0;
-    metaProgEl.style.width=prog+'%'; metaProgEl.className='progress-bar '+(prog>=100?'bg-success':''); metaProgEl.setAttribute('aria-valuenow', prog);
-
-    renderList(mesItems);
-
-    const byCat={}; mesItems.filter(x=>x.tipo==='despesa').forEach(x=>{ const c=(x.cat||'Geral').trim()||'Geral'; byCat[c]=(byCat[c]||0)+Number(x.val||0); });
-    const totalDesp=Object.values(byCat).reduce((a,b)=>a+b,0);
-    const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,6);
-    if (!top.length){ topCatsEl.innerHTML='<div class="text-muted">Sem despesas neste mês.</div>'; }
-    else {
-      topCatsEl.innerHTML=top.map(([c,v])=>{ const p=totalDesp>0? Math.round((v/totalDesp)*100):0;
-        return `<div class="mb-1"><div class="d-flex justify-content-between"><div>${c}</div><div class="mono">${money(v)} · ${p}%</div></div><div class="progress" style="height:8px"><div class="progress-bar" style="width:${p}%"></div></div></div>`;
-      }).join('');
-    }
-  }
-
-  function renderList(arr){
-    if (!arr.length){ listaEl.innerHTML='<div class="text-muted">Sem lançamentos neste mês.</div>'; return; }
-    const groups={}; arr.forEach(x=>{ const d=x.data; (groups[d] ||= []).push(x); });
-    const days=Object.keys(groups).sort(); listaEl.innerHTML='';
-    days.forEach(d=>{
-      const items=groups[d]; const sumDia=items.reduce((s,x)=> s + (x.tipo==='receita'? x.val : x.tipo==='despesa'? -x.val : -x.val), 0);
-      const dayCard=document.createElement('div'); dayCard.className='border rounded p-2 mb-2';
-      dayCard.innerHTML=`<div class="d-flex justify-content-between align-items-center mb-1">
-        <div class="fw-semibold">${d.split('-').reverse().join('/')}</div>
-        <div class="mono ${sumDia>=0?'text-success':'text-danger'}">${money(sumDia)}</div>
-      </div><div></div>`;
-      const body=dayCard.children[1];
-      items.forEach(it=>{
-        const cls= it.tipo==='receita' ? 'text-success' : (it.tipo==='despesa' ? 'text-danger' : 'text-primary');
-        const sinal=it.tipo==='receita'? '+' : '−'; const chip= it.tipo==='poupanca' ? '<span class="badge text-bg-primary ms-2">Poupança</span>' : '';
-        const row=document.createElement('div'); row.className='d-flex align-items-center justify-content-between py-1 border-bottom';
-        row.innerHTML=`<div class="me-2" style="min-width:0"><div class="fw-semibold" style="word-break:break-word;overflow-wrap:anywhere">${(it.cat||'Geral')} ${chip}</div><div class="small text-muted" style="word-break:break-word;overflow-wrap:anywhere">${(it.desc||'')}</div></div>
-        <div class="text-end"><div class="mono ${cls}">${sinal} ${money(it.val)}</div><button class="btn btn-sm btn-outline-danger mt-1"><i class="bi bi-trash"></i></button></div>`;
-        row.querySelector('button').addEventListener('click', ()=> removeItem(it.id));
-        body.appendChild(row);
-      });
-      listaEl.appendChild(dayCard);
-    });
-  }
-  [metaValorEl, metaPctEl].forEach(inp => inp.addEventListener('input', refresh));
-  refresh();
+  function refresh(){ const prefix=currentMonth+'-'; const mesItems=items.filter(x=> String(x.data||'').startsWith(prefix)).sort((a,b)=> a.data.localeCompare(b.data)); const sum=(arr,pred)=> arr.filter(pred).reduce((s,x)=> s + Number(x.val||0), 0); const rec=sum(mesItems,x=>x.tipo==='receita'); const desp=sum(mesItems,x=>x.tipo==='despesa'); const guardado=sum(mesItems,x=>x.tipo==='poupanca'); const saldo=rec - desp - guardado; recSumEl.textContent=money(rec); despSumEl.textContent=money(desp); saldoEl.textContent=money(saldo); const alvoByValor=parseNum(metaValorEl.value); const pct=Math.max(0, parseNum(metaPctEl.value)); const alvoByPct=rec*(pct/100); const alvo=Math.max(alvoByValor, alvoByPct); metaAlvoEl.textContent=money(alvo); guardadoEl.textContent=money(guardado); const prog=alvo>0 ? Math.min(100, Math.round((guardado/alvo)*100)) : 0; metaProgEl.style.width=prog+'%'; renderList(mesItems); const byCat={}; mesItems.filter(x=>x.tipo==='despesa').forEach(x=>{ const c=(x.cat||'Geral').trim()||'Geral'; byCat[c]=(byCat[c]||0)+Number(x.val||0); }); const totalDesp=Object.values(byCat).reduce((a,b)=>a+b,0); const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,6); if (!top.length){ topCatsEl.innerHTML='<div class="text-muted">Sem despesas neste mês.</div>'; } else { topCatsEl.innerHTML=top.map(([c,v])=>{ const p=totalDesp>0? Math.round((v/totalDesp)*100):0; return `<div class="mb-1"><div class="d-flex justify-content-between"><div>${c}</div><div class="mono">${money(v)} · ${p}%</div></div><div class="progress" style="height:8px"><div class="progress-bar" style="width:${p}%"></div></div></div>`; }).join(''); } }
+  function renderList(arr){ if (!arr.length){ listaEl.innerHTML='<div class="text-muted">Sem lançamentos neste mês.</div>'; return; } const groups={}; arr.forEach(x=>{ const d=x.data; (groups[d] ||= []).push(x); }); const days=Object.keys(groups).sort(); listaEl.innerHTML=''; days.forEach(d=>{ const items=groups[d]; const sumDia=items.reduce((s,x)=> s + (x.tipo==='receita'? x.val : -x.val), 0); const dayCard=document.createElement('div'); dayCard.className='border rounded p-2 mb-2'; dayCard.innerHTML=`<div class="d-flex justify-content-between align-items-center mb-1"><div class="fw-semibold">${d.split('-').reverse().join('/')}</div><div class="mono ${sumDia>=0?'text-success':'text-danger'}">${money(sumDia)}</div></div><div></div>`; const body=dayCard.children[1]; items.forEach(it=>{ const cls= it.tipo==='receita' ? 'text-success' : (it.tipo==='despesa' ? 'text-danger' : 'text-primary'); const sinal=it.tipo==='receita'? '+' : '−'; const row=document.createElement('div'); row.className='d-flex align-items-center justify-content-between py-1 border-bottom'; row.innerHTML=`<div class="me-2" style="min-width:0"><div class="fw-semibold" style="word-break:break-word;overflow-wrap:anywhere">${(it.cat||'Geral')}</div><div class="small text-muted">${(it.desc||'')}</div></div><div class="text-end"><div class="mono ${cls}">${sinal} ${money(it.val)}</div><button class="btn btn-sm btn-outline-danger mt-1"><i class="bi bi-trash"></i></button></div>`; row.querySelector('button').addEventListener('click', ()=> removeItem(it.id)); body.appendChild(row); }); listaEl.appendChild(dayCard); }); }
+  [metaValorEl, metaPctEl].forEach(inp => inp?.addEventListener('input', refresh)); refresh();
 })();
 </script>
-
-<!-- CxB -->
 <script>
 (function(){
   const UID = Number('{{ cooperado.id if cooperado and cooperado.id else 0 }}') || 0;
@@ -1454,120 +1294,38 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSalvar = el('cxSalvar'), btnLimpar = el('cxLimpar'), divHist = el('cxHistorico');
   const totKm = el('cxTotKm'), totGanho = el('cxTotGanho'), totCusto = el('cxTotCusto'), totLucro = el('cxTotLucro');
   const btnCSV = el('cxExportCSV'), btnShare = el('cxShareSum');
-
   function parseNum(v){ const n=parseFloat(String(v).replace(',','.')); return Number.isFinite(n) ? n : 0; }
   function fmtMoney(n){ return 'R$ ' + (Number(n)||0).toFixed(2).replace('.',','); }
   function fmtKm(n){ return String(Number(n)||0); }
-
-  function calc(){
-    const p=parseNum(preco.value), c=parseNum(kpl.value), k=parseNum(km.value), g=parseNum(ganho.value);
-    const litros = c>0 ? (k / c) : 0, custo = p * litros, custoKm = k>0 ? (custo / k) : 0;
-    const lucro = g - custo, lucroKm = k>0 ? (lucro / k) : 0, margem = g>0 ? (lucro / g) * 100 : 0;
-    outCusto.textContent=fmtMoney(custo); outCustoKm.textContent=fmtMoney(custoKm)+'/km';
-    outLucro.textContent=fmtMoney(lucro); outLucroKm.textContent=fmtMoney(lucroKm)+'/km';
-    outMargem.textContent=`${margem.toFixed(1).replace('.',',')}%`;
-    return {p,c,k,g,litros,custo,custoKm,lucro,lucroKm,margem};
-  }
+  function calc(){ const p=parseNum(preco.value), c=parseNum(kpl.value), k=parseNum(km.value), g=parseNum(ganho.value); const litros = c>0 ? (k / c) : 0, custo = p * litros, custoKm = k>0 ? (custo / k) : 0; const lucro = g - custo, lucroKm = k>0 ? (lucro / k) : 0, margem = g>0 ? (lucro / g) * 100 : 0; outCusto.textContent=fmtMoney(custo); outCustoKm.textContent=fmtMoney(custoKm)+'/km'; outLucro.textContent=fmtMoney(lucro); outLucroKm.textContent=fmtMoney(lucroKm)+'/km'; outMargem.textContent=`${margem.toFixed(1).replace('.',',')}%`; return {p,c,k,g,litros,custo,custoKm,lucro,lucroKm,margem}; }
   [preco,kpl,km,ganho].forEach(i=> i?.addEventListener('input', calc));
-
   function loadHist(){ try{ const raw=localStorage.getItem(LS_KEY); const arr=raw ? JSON.parse(raw) : []; return Array.isArray(arr)?arr:[]; }catch(_){ return []; } }
   function saveHist(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
-
   function setTotals(arr){ const sum=(a,f)=>a.reduce((s,x)=>s+Number(x[f]||0),0); totKm.textContent=fmtKm(sum(arr,'k')); totGanho.textContent=fmtMoney(sum(arr,'g')); totCusto.textContent=fmtMoney(sum(arr,'custo')); totLucro.textContent=fmtMoney(sum(arr,'lucro')); }
-
-  function renderHist(){
-    const arr=loadHist(); if (!arr.length){ divHist.innerHTML='<div class="text-muted">Sem registros salvos.</div>'; setTotals(arr); return; }
-    divHist.innerHTML='';
-    arr.slice().reverse().forEach((it,idxRev)=>{
-      const idx=arr.length-1-idxRev;
-      const card=document.createElement('div'); card.className='border rounded p-2 mb-2 cx-history-item'; card.setAttribute('data-idx',idx);
-      card.innerHTML=`<div class="d-flex justify-content-between align-items-center">
-        <div><div class="fw-semibold">${new Date(it.ts).toLocaleString()}</div>
-        <div class="small text-muted">Gas: ${fmtMoney(it.p)} · Consumo: ${it.c} km/L · Km: ${it.k} · Ganhou: ${fmtMoney(it.g)}</div></div>
-        <div class="text-end">
-          <div><span class="badge text-bg-light">Lucro</span> <b class="mono">${fmtMoney(it.lucro)}</b></div>
-          <div class="small text-muted">Custo: ${fmtMoney(it.custo)} · Margem: ${it.margem.toFixed(1).replace('.',',')}%</div>
-          <div class="mt-1">
-            <button class="btn btn-sm btn-outline-secondary me-1" data-act="fill"><i class="bi bi-box-arrow-in-down-left"></i></button>
-            <button class="btn btn-sm btn-outline-danger" data-act="del"><i class="bi bi-trash"></i></button>
-          </div>
-        </div></div>`;
-      card.addEventListener('click',(e)=>{
-        const act=e.target.closest('button')?.getAttribute('data-act');
-        if (act==='fill'){ preco.value=it.p;kpl.value=it.c;km.value=it.k;ganho.value=it.g; calc(); }
-        else if (act==='del'){ const arr2=loadHist(); arr2.splice(idx,1); saveHist(arr2); renderHist(); }
-      });
-      divHist.appendChild(card);
-    });
-    setTotals(arr);
-  }
-
+  function renderHist(){ const arr=loadHist(); if (!arr.length){ divHist.innerHTML='<div class="text-muted">Sem registros salvos.</div>'; setTotals(arr); return; } divHist.innerHTML=''; arr.slice().reverse().forEach((it,idxRev)=>{ const idx=arr.length-1-idxRev; const card=document.createElement('div'); card.className='border rounded p-2 mb-2'; card.innerHTML=`<div class="d-flex justify-content-between align-items-center"><div><div class="fw-semibold">${new Date(it.ts).toLocaleString()}</div><div class="small text-muted">Gas: ${fmtMoney(it.p)} · Consumo: ${it.c} km/L · Km: ${it.k} · Ganhou: ${fmtMoney(it.g)}</div></div><div class="text-end"><div><span class="badge text-bg-light">Lucro</span> <b class="mono">${fmtMoney(it.lucro)}</b></div><div class="small text-muted">Custo: ${fmtMoney(it.custo)} · Margem: ${it.margem.toFixed(1).replace('.',',')}%</div><div class="mt-1"><button class="btn btn-sm btn-outline-secondary me-1" data-act="fill"><i class="bi bi-box-arrow-in-down-left"></i></button><button class="btn btn-sm btn-outline-danger" data-act="del"><i class="bi bi-trash"></i></button></div></div></div>`; card.addEventListener('click',(e)=>{ const act=e.target.closest('button')?.getAttribute('data-act'); if (act==='fill'){ preco.value=it.p;kpl.value=it.c;km.value=it.k;ganho.value=it.g; calc(); } else if (act==='del'){ const arr2=loadHist(); arr2.splice(idx,1); saveHist(arr2); renderHist(); } }); divHist.appendChild(card); }); setTotals(arr); }
   btnSalvar?.addEventListener('click', ()=>{ const r=calc(); const item={ ts:Date.now(), p:r.p, c:r.c, k:r.k, g:r.g, litros:r.litros, custo:r.custo, custoKm:r.custoKm, lucro:r.lucro, lucroKm:r.lucroKm, margem:r.margem }; const arr=loadHist(); arr.push(item); saveHist(arr); renderHist(); });
   btnLimpar?.addEventListener('click', ()=>{ if (confirm('Limpar todo o histórico?')){ saveHist([]); renderHist(); } });
-  btnCSV?.addEventListener('click', ()=>{
-    const arr=loadHist(); const header=['data','preco','consumo_km_l','km','ganho','litros','custo','custo_km','lucro','lucro_km','margem_%'];
-    const rows=arr.map(x=>[new Date(x.ts).toISOString(), x.p, x.c, x.k, x.g, x.litros, x.custo, x.custoKm, x.lucro, x.lucroKm, x.margem]);
-    const csv=[header.join(','), ...rows.map(r=>r.join(','))].join('\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a');
-    a.href=url; a.download='custo_beneficio.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  });
-  btnShare?.addEventListener('click', ()=>{
-    const arr=loadHist(); if (!navigator.share){ alert('Compartilhamento nativo não suportado.'); return; }
-    const total=arr.reduce((acc,x)=>({km:acc.km+(x.k||0), ganho:acc.ganho+(x.g||0), lucro:acc.lucro+(x.lucro||0)}), {km:0,ganho:0,lucro:0});
-    navigator.share({ title:'Resumo CxB', text:`Km: ${total.km} | Ganhou: R$ ${total.ganho.toFixed(2)} | Lucro: R$ ${total.lucro.toFixed(2)}` }).catch(()=>{});
-  });
-
+  btnCSV?.addEventListener('click', ()=>{ const arr=loadHist(); const header=['data','preco','consumo_km_l','km','ganho','litros','custo','custo_km','lucro','lucro_km','margem_%']; const rows=arr.map(x=>[new Date(x.ts).toISOString(), x.p, x.c, x.k, x.g, x.litros, x.custo, x.custoKm, x.lucro, x.lucroKm, x.margem]); const csv=[header.join(','), ...rows.map(r=>r.join(','))].join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='custo_beneficio.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+  btnShare?.addEventListener('click', ()=>{ const arr=loadHist(); if (!navigator.share){ alert('Compartilhamento nativo não suportado.'); return; } const total=arr.reduce((acc,x)=>({km:acc.km+(x.k||0), ganho:acc.ganho+(x.g||0), lucro:acc.lucro+(x.lucro||0)}), {km:0,ganho:0,lucro:0}); navigator.share({ title:'Resumo CxB', text:`Km: ${total.km} | Ganhou: R$ ${total.ganho.toFixed(2)} | Lucro: R$ ${total.lucro.toFixed(2)}` }).catch(()=>{}); });
   calc(); renderHist();
 })();
 </script>
-
-<!-- Calculadora -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const disp=document.getElementById('calcDisplay');
-  const statusEl=document.getElementById('calcStatus');
-  const tapeEl=document.getElementById('calcTape');
-  const tapeClear=document.getElementById('calcTapeClear');
-  const keys=document.querySelectorAll('#calcModal .calc-btn');
+  const disp=document.getElementById('calcDisplay'); const statusEl=document.getElementById('calcStatus'); const tapeEl=document.getElementById('calcTape'); const tapeClear=document.getElementById('calcTapeClear'); const keys=document.querySelectorAll('#calcModal .calc-btn');
   let a=null,b=null,op=null,entering='a',justEvaluated=false;
   const sym=o=>o==='divide'?'÷':o==='multiply'?'×':o==='minus'?'−':'+';
   const setDisplay=t=> disp.textContent=(t ?? '0');
-  function appendDigit(d){ const target=entering==='a'?'a':'b'; let cur=((target==='a'?a:b) ?? '').toString(); if (d==='.' && cur.includes('.')) return;
-    if (justEvaluated && entering==='a'){ a=null; cur=''; justEvaluated=false; } cur=(cur==='0' && d!=='.')? d : cur+d; if (target==='a') a=cur; else b=cur; setDisplay(cur); }
+  function appendDigit(d){ const target=entering==='a'?'a':'b'; let cur=((target==='a'?a:b) ?? '').toString(); if (d==='.' && cur.includes('.')) return; if (justEvaluated && entering==='a'){ a=null; cur=''; justEvaluated=false; } cur=(cur==='0' && d!=='.')? d : cur+d; if (target==='a') a=cur; else b=cur; setDisplay(cur); }
   function setOp(next){ if (a==null) a='0'; if (op && b!=null) evalNow(false); op=next; entering='b'; justEvaluated=false; statusEl.textContent=`${a} ${sym(op)}`; }
   function percent(){ if (entering==='b' && b!=null){ b=String(parseFloat(b)/100); setDisplay(b); } else if (a!=null){ a=String(parseFloat(a)/100); setDisplay(a); } }
-  function backspace(){ const target=entering==='b'?'b':'a'; if (justEvaluated && entering==='a'){ a=null; setDisplay('0'); justEvaluated=false; return; }
-    let cur=(target==='b'?b:a); if (cur==null) return; cur=cur.toString().slice(0,-1); if (!cur || cur==='-') cur='0'; if (target==='b') b=cur; else a=cur; setDisplay(cur); }
+  function backspace(){ const target=entering==='b'?'b':'a'; if (justEvaluated && entering==='a'){ a=null; setDisplay('0'); justEvaluated=false; return; } let cur=(target==='b'?b:a); if (cur==null) return; cur=cur.toString().slice(0,-1); if (!cur || cur==='-') cur='0'; if (target==='b') b=cur; else a=cur; setDisplay(cur); }
   function clearAll(){ a=b=op=null; entering='a'; justEvaluated=false; setDisplay('0'); statusEl.textContent='\u00A0'; }
-  function addTape(text){ const row=document.createElement('div'); row.className='item d-flex justify-content-between align-items-center border-bottom py-1';
-    row.innerHTML=`<span class="expr">${text}</span><button class="btn btn-sm btn-link text-danger" title="Remover">&times;</button>`; row.querySelector('button').addEventListener('click', ()=> row.remove()); tapeEl.prepend(row); }
-  function evalNow(addToTape=true){ if (a==null) return; const ax=parseFloat(a); const bx=parseFloat(b ?? a); if (!op){ setDisplay(String(ax)); return; }
-    let res=0; if (op==='plus') res=ax+bx; else if (op==='minus') res=ax-bx; else if (op==='multiply') res=ax*bx; else if (op==='divide') res = bx===0 ? NaN : ax/bx;
-    const expr=`${ax} ${sym(op)} ${bx} = ${res}`; setDisplay(isNaN(res)?'Erro':String(res)); statusEl.textContent=expr; if (addToTape) addTape(expr);
-    a=String(res); b=null; entering='a'; op=null; justEvaluated=true; }
-  keys.forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      btn.classList.add('k-active'); setTimeout(()=>btn.classList.remove('k-active'), 90);
-      const num=btn.getAttribute('data-num'), dot=btn.getAttribute('data-dot'), act=btn.getAttribute('data-act'), opBtn=btn.getAttribute('data-op');
-      if (num) return appendDigit(num); if (dot) return appendDigit('.'); if (opBtn) return setOp(opBtn);
-      if (act==='ac') return clearAll(); if (act==='percent') return percent(); if (act==='back') return backspace(); if (act==='equal') return evalNow(true);
-    });
-  });
+  function addTape(text){ const row=document.createElement('div'); row.className='item d-flex justify-content-between align-items-center border-bottom py-1'; row.innerHTML=`<span class="expr">${text}</span><button class="btn btn-sm btn-link text-danger" title="Remover">&times;</button>`; row.querySelector('button').addEventListener('click', ()=> row.remove()); tapeEl.prepend(row); }
+  function evalNow(addToTape=true){ if (a==null) return; const ax=parseFloat(a); const bx=parseFloat(b ?? a); if (!op){ setDisplay(String(ax)); return; } let res=0; if (op==='plus') res=ax+bx; else if (op==='minus') res=ax-bx; else if (op==='multiply') res=ax*bx; else if (op==='divide') res = bx===0 ? NaN : ax/bx; const expr=`${ax} ${sym(op)} ${bx} = ${res}`; setDisplay(isNaN(res)?'Erro':String(res)); statusEl.textContent=expr; if (addToTape) addTape(expr); a=String(res); b=null; entering='a'; op=null; justEvaluated=true; }
+  keys.forEach(btn=>{ btn.addEventListener('click', ()=>{ const num=btn.getAttribute('data-num'), dot=btn.getAttribute('data-dot'), act=btn.getAttribute('data-act'), opBtn=btn.getAttribute('data-op'); if (num) return appendDigit(num); if (dot) return appendDigit('.'); if (opBtn) return setOp(opBtn); if (act==='ac') return clearAll(); if (act==='percent') return percent(); if (act==='back') return backspace(); if (act==='equal') return evalNow(true); }); });
   tapeClear?.addEventListener('click', ()=> tapeEl.innerHTML='');
-  document.addEventListener('keydown', (e)=>{
-    const modal=document.getElementById('calcModal'); if (!modal.classList.contains('show')) return;
-    if (e.key>='0' && e.key<='9') appendDigit(e.key);
-    else if (e.key==='.' || e.key===',') appendDigit('.');
-    else if (['+','-','*','x','X','/'].includes(e.key)){ if (e.key==='+') setOp('plus'); else if (e.key==='-') setOp('minus'); else if (e.key==='*'||e.key==='x'||e.key==='X') setOp('multiply'); else setOp('divide'); }
-    else if (e.key==='Enter' || e.key==='=') evalNow(true); else if (e.key==='Backspace') backspace(); else if (e.key==='%') percent();
-  });
 });
-</script>
-
-<!-- Print effect limiter -->
-<script>
-window.addEventListener('beforeprint', () => { document.documentElement.classList.add('printing'); });
-window.addEventListener('afterprint',  () => { document.documentElement.classList.remove('printing'); });
 </script>
 </body>
 </html>
