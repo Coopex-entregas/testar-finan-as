@@ -443,6 +443,10 @@ class EntregaFarmacia(db.Model):
     valor_entrega = db.Column(db.Float, default=0.0)
     pagamento_status = db.Column(db.String(20), default="nao_pago")
     parcelas = db.Column(db.Integer, default=1)
+    forma_pagamento = db.Column(db.String(20), default='nao_informado')
+    cartao_tipo = db.Column(db.String(20), default='')
+    foto_pedido_url = db.Column(db.String(255))
+    foto_pedido_nome = db.Column(db.String(255))
     refrigerado = db.Column(db.Boolean, default=False)
     observacao = db.Column(db.Text)
     lote_codigo = db.Column(db.String(40), index=True)
@@ -544,6 +548,10 @@ def _serializar_entrega_farmacia(e: EntregaFarmacia) -> dict:
         "valor_pedido": float(e.valor_pedido or 0.0),
         "valor_entrega": float(e.valor_entrega or 0.0),
         "pagamento_status": e.pagamento_status or "nao_pago",
+        "forma_pagamento": (getattr(e, 'forma_pagamento', '') or 'nao_informado'),
+        "cartao_tipo": getattr(e, 'cartao_tipo', '') or '',
+        "foto_pedido_url": getattr(e, 'foto_pedido_url', '') or '',
+        "foto_pedido_nome": getattr(e, 'foto_pedido_nome', '') or '',
         "parcelas": int(e.parcelas or 1),
         "refrigerado": bool(e.refrigerado),
         "lote_codigo": e.lote_codigo or "",
@@ -1464,20 +1472,14 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-    # 4.5.x) campos de farmácia em restaurantes
+    # 4.5.x) tipo_acesso em restaurantes
     try:
         if _is_sqlite():
             cols = db.session.execute(sa_text("PRAGMA table_info(restaurantes);")).fetchall()
             colnames = {row[1] for row in cols}
             if "tipo_acesso" not in colnames:
                 db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN tipo_acesso VARCHAR(30) DEFAULT 'restaurante'"))
-            if "farmacia_salario_mensal" not in colnames:
-                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN farmacia_salario_mensal FLOAT DEFAULT 0"))
-            if "farmacia_taxa_coop" not in colnames:
-                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN farmacia_taxa_coop FLOAT DEFAULT 0"))
-            db.session.execute(sa_text("UPDATE restaurantes SET tipo_acesso = 'restaurante' WHERE tipo_acesso IS NULL OR TRIM(tipo_acesso) = ''"))
-            db.session.execute(sa_text("UPDATE restaurantes SET farmacia_salario_mensal = 0 WHERE farmacia_salario_mensal IS NULL"))
-            db.session.execute(sa_text("UPDATE restaurantes SET farmacia_taxa_coop = 0 WHERE farmacia_taxa_coop IS NULL"))
+                db.session.execute(sa_text("UPDATE restaurantes SET tipo_acesso = 'restaurante' WHERE tipo_acesso IS NULL OR TRIM(tipo_acesso) = ''"))
             db.session.commit()
         else:
             db.session.execute(sa_text("""
@@ -1485,27 +1487,9 @@ def init_db():
                 ADD COLUMN IF NOT EXISTS tipo_acesso VARCHAR(30) DEFAULT 'restaurante'
             """))
             db.session.execute(sa_text("""
-                ALTER TABLE IF EXISTS public.restaurantes
-                ADD COLUMN IF NOT EXISTS farmacia_salario_mensal DOUBLE PRECISION DEFAULT 0
-            """))
-            db.session.execute(sa_text("""
-                ALTER TABLE IF EXISTS public.restaurantes
-                ADD COLUMN IF NOT EXISTS farmacia_taxa_coop DOUBLE PRECISION DEFAULT 0
-            """))
-            db.session.execute(sa_text("""
                 UPDATE public.restaurantes
                    SET tipo_acesso = 'restaurante'
                  WHERE tipo_acesso IS NULL OR BTRIM(tipo_acesso) = ''
-            """))
-            db.session.execute(sa_text("""
-                UPDATE public.restaurantes
-                   SET farmacia_salario_mensal = 0
-                 WHERE farmacia_salario_mensal IS NULL
-            """))
-            db.session.execute(sa_text("""
-                UPDATE public.restaurantes
-                   SET farmacia_taxa_coop = 0
-                 WHERE farmacia_taxa_coop IS NULL
             """))
             db.session.commit()
     except Exception:
@@ -9193,6 +9177,18 @@ def portal_farmacia():
     funcionarios = FuncionarioFarmacia.query.filter_by(restaurante_id=rest.id).order_by(FuncionarioFarmacia.nome.asc()).all()
     lotes = LoteEntregaFarmacia.query.filter_by(restaurante_id=rest.id).order_by(LoteEntregaFarmacia.criado_em.desc()).limit(20).all()
 
+    now = datetime.utcnow()
+    avisos = (Aviso.query
+              .filter(Aviso.ativo.is_(True))
+              .filter(or_(Aviso.tipo == 'global', Aviso.tipo == 'restaurante'))
+              .filter(or_(Aviso.inicio_em.is_(None), Aviso.inicio_em <= now))
+              .filter(or_(Aviso.fim_em.is_(None), Aviso.fim_em >= now))
+              .filter(or_(~Aviso.restaurantes.any(), Aviso.restaurantes.any(Restaurante.id == rest.id)))
+              .order_by(Aviso.fixado.desc(), Aviso.criado_em.desc())
+              .all())
+    avisos_lidos = {a_id for (a_id,) in db.session.query(AvisoLeitura.aviso_id).filter(AvisoLeitura.restaurante_id == rest.id).all()}
+    tabelas = Tabela.query.order_by(Tabela.enviado_em.desc()).all()
+
     busca = (request.args.get("q") or "").strip()
     view = (request.args.get("view") or "resumo").strip().lower()
     q = EntregaFarmacia.query.filter_by(restaurante_id=rest.id)
@@ -9202,7 +9198,8 @@ def portal_farmacia():
                          EntregaFarmacia.pedido_numero.ilike(termo),
                          EntregaFarmacia.medicamento_codigo.ilike(termo),
                          EntregaFarmacia.descricao.ilike(termo),
-                         EntregaFarmacia.contato_cliente.ilike(termo)))
+                         EntregaFarmacia.contato_cliente.ilike(termo),
+                         EntregaFarmacia.endereco_entrega.ilike(termo)))
     entregas = (q.order_by(
                     case((EntregaFarmacia.status == "proximo", 0),
                          (EntregaFarmacia.status == "em_rota", 1),
@@ -9236,6 +9233,9 @@ def portal_farmacia():
         cargos=cargos,
         funcionarios=funcionarios,
         lotes=lotes,
+        avisos=avisos,
+        avisos_lidos=avisos_lidos,
+        tabelas=tabelas,
         entregas=entregas,
         top_clientes=top_clientes,
         top_cooperados=top_cooperados,
@@ -9289,62 +9289,80 @@ def criar_cliente_farmacia():
 
 @app.post("/portal/farmacia/entregas/criar")
 @role_required("restaurante")
-
 def criar_entrega_farmacia():
     rest = _farmacia_required_rest()
     f = request.form
 
-    medicamento = (f.get("medicamento_nome") or f.get("descricao") or "").strip()
-    descricao = (f.get("descricao") or medicamento or "").strip()
-    endereco = (f.get("endereco_entrega") or "").strip()
-    if not descricao or not endereco:
-        flash("Informe a descrição/medicamento e o endereço da entrega.", "warning")
+    cliente_id = f.get("cliente_id", type=int)
+    cliente = ClienteFarmacia.query.filter_by(id=cliente_id, restaurante_id=rest.id).first() if cliente_id else None
+
+    contato_cliente = (f.get("contato_cliente") or (cliente.nome if cliente else "")).strip()
+    endereco_entrega = (f.get("endereco_entrega") or (cliente.endereco if cliente else "")).strip()
+    telefone_contato = (f.get("telefone_contato") or (cliente.telefone if cliente else "")).strip()
+    medicamento_nome = (f.get("medicamento_nome") or "").strip()
+    descricao = (f.get("descricao") or medicamento_nome or "Pedido farmácia").strip()
+
+    if not endereco_entrega or not descricao:
+        flash("Informe pelo menos descrição e endereço da entrega.", "warning")
         return redirect(url_for("portal_farmacia", view="pedidos"))
 
-    cliente_id = f.get("cliente_id", type=int)
-    cliente = None
-    if cliente_id:
-        cliente = ClienteFarmacia.query.filter_by(id=cliente_id, restaurante_id=rest.id).first()
-
-    cooperado_id = f.get("cooperado_id", type=int)
-    cooperado = Cooperado.query.get(cooperado_id) if cooperado_id else None
-    ultima_ordem = db.session.query(func.max(EntregaFarmacia.ordem_rota)).filter(EntregaFarmacia.restaurante_id == rest.id).scalar() or 0
-
-    valor_entrega = f.get("valor_entrega", type=float)
-    valor_legacy = f.get("valor", type=float)
-    if valor_entrega is None:
-        valor_entrega = valor_legacy or 0.0
-    valor_pedido = f.get("valor_pedido", type=float) or 0.0
     pagamento_status = (f.get("pagamento_status") or "nao_pago").strip().lower()
-    if pagamento_status not in {"pago", "nao_pago", "parcial"}:
+    if pagamento_status not in {"nao_pago", "pago", "parcial"}:
         pagamento_status = "nao_pago"
+    forma_pagamento = (f.get("forma_pagamento") or "nao_informado").strip().lower()
+    if forma_pagamento not in {"nao_informado", "pix", "especie", "cartao"}:
+        forma_pagamento = "nao_informado"
+    cartao_tipo = (f.get("cartao_tipo") or "").strip().lower()
+    if forma_pagamento != 'cartao':
+        cartao_tipo = ''
+    parcelas = max(1, f.get("parcelas", type=int) or 1)
+    if cartao_tipo != 'parcelado':
+        parcelas = 1
 
-    entrega = EntregaFarmacia(
+    foto_url = ''
+    foto_nome = ''
+    arquivo = request.files.get('foto_pedido')
+    if arquivo and getattr(arquivo, 'filename', ''):
+        try:
+            os.makedirs(os.path.join(app.root_path, 'static', 'uploads', 'farmacia_pedidos'), exist_ok=True)
+            base = secure_filename(arquivo.filename) or 'pedido.jpg'
+            fname = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}_{base}"
+            dest = os.path.join(app.root_path, 'static', 'uploads', 'farmacia_pedidos', fname)
+            arquivo.save(dest)
+            foto_url = url_for('static', filename=f'uploads/farmacia_pedidos/{fname}')
+            foto_nome = base
+        except Exception:
+            foto_url = ''
+            foto_nome = ''
+
+    e = EntregaFarmacia(
         restaurante_id=rest.id,
         cliente_id=cliente.id if cliente else None,
-        cooperado_id=cooperado.id if cooperado else None,
+        cooperado_id=f.get("cooperado_id", type=int),
         codigo=_gerar_codigo_entrega_farmacia(),
-        pedido_numero=(f.get("pedido_numero") or "").strip() or None,
+        pedido_numero=(f.get("pedido_numero") or "").strip(),
         descricao=descricao,
-        medicamento_nome=medicamento or descricao,
-        medicamento_codigo=(f.get("medicamento_codigo") or f.get("codigo") or "").strip() or None,
-        endereco_entrega=endereco,
-        contato_cliente=(f.get("contato_cliente") or (cliente.nome if cliente else "")).strip(),
-        telefone_contato=(f.get("telefone_contato") or (cliente.telefone if cliente else "")).strip(),
-        valor=valor_entrega,
-        valor_pedido=valor_pedido,
-        valor_entrega=valor_entrega,
+        medicamento_nome=medicamento_nome,
+        medicamento_codigo=(f.get("medicamento_codigo") or "").strip(),
+        endereco_entrega=endereco_entrega,
+        contato_cliente=contato_cliente,
+        telefone_contato=telefone_contato,
+        valor_pedido=f.get("valor_pedido", type=float) or 0.0,
+        valor=f.get("valor_entrega", type=float) or 0.0,
+        valor_entrega=f.get("valor_entrega", type=float) or 0.0,
         pagamento_status=pagamento_status,
-        parcelas=f.get("parcelas", type=int) or 1,
+        forma_pagamento=forma_pagamento,
+        cartao_tipo=cartao_tipo,
+        parcelas=parcelas,
         refrigerado=(f.get("refrigerado") or "") in {"1", "true", "on", "sim"},
         observacao=(f.get("observacao") or "").strip(),
-        ordem_rota=ultima_ordem + 1,
-        status="atribuida" if cooperado else "fabricando",
-        lote_codigo=(f.get("lote_codigo") or "").strip() or None,
+        foto_pedido_url=foto_url,
+        foto_pedido_nome=foto_nome,
+        status="atribuida" if f.get("cooperado_id", type=int) else "fabricando",
     )
-    db.session.add(entrega)
+    db.session.add(e)
     db.session.commit()
-    flash("Pedido/entrega da farmácia criado com sucesso.", "success")
+    flash("Pedido da farmácia criado com sucesso.", "success")
     return redirect(url_for("portal_farmacia", view="pedidos"))
 
 @app.post("/portal/farmacia/entregas/<int:entrega_id>/atribuir")
@@ -11186,6 +11204,262 @@ def cooperado_reordenar_entregas_farmacia():
                 entregas[int(eid)].status = "proximo"
     db.session.commit()
     return jsonify({"ok": True})
+
+
+@app.post("/portal/farmacia/clientes/<int:cliente_id>/editar")
+@role_required("restaurante")
+def editar_cliente_farmacia(cliente_id:int):
+    rest = _farmacia_required_rest()
+    c = ClienteFarmacia.query.filter_by(id=cliente_id, restaurante_id=rest.id).first_or_404()
+    f = request.form
+    nome=(f.get('nome') or '').strip()
+    usuario_login=(f.get('usuario') or '').strip()
+    if not nome or not usuario_login:
+        flash('Preencha nome e usuário do cliente.', 'warning')
+        return redirect(url_for('portal_farmacia', view='clientes'))
+    existe = Usuario.query.filter(Usuario.usuario == usuario_login, Usuario.id != c.usuario_id).first()
+    if existe:
+        flash('Já existe outro usuário com esse login.', 'warning')
+        return redirect(url_for('portal_farmacia', view='clientes'))
+    c.nome=nome
+    c.cpf=(f.get('cpf') or '').strip()
+    c.telefone=(f.get('telefone') or '').strip()
+    c.endereco=(f.get('endereco') or '').strip()
+    c.observacao=(f.get('observacao') or '').strip()
+    c.ativo=(f.get('ativo') or '1') in {'1','true','on','sim'}
+    if c.usuario:
+        c.usuario.usuario=usuario_login
+        c.usuario.nome=nome
+        c.usuario.ativo=c.ativo
+    db.session.commit()
+    flash('Cliente atualizado.', 'success')
+    return redirect(url_for('portal_farmacia', view='clientes'))
+
+@app.post("/portal/farmacia/clientes/<int:cliente_id>/senha")
+@role_required("restaurante")
+def redefinir_senha_cliente_farmacia(cliente_id:int):
+    rest=_farmacia_required_rest()
+    c=ClienteFarmacia.query.filter_by(id=cliente_id, restaurante_id=rest.id).first_or_404()
+    nova=(request.form.get('nova_senha') or '').strip()
+    conf=(request.form.get('confirmar_senha') or '').strip()
+    if not nova or nova!=conf:
+        flash('Confirmação de senha inválida.', 'warning')
+        return redirect(url_for('portal_farmacia', view='clientes'))
+    c.usuario.set_password(nova)
+    db.session.commit()
+    flash('Senha do cliente redefinida.', 'success')
+    return redirect(url_for('portal_farmacia', view='clientes'))
+
+@app.post("/portal/farmacia/clientes/<int:cliente_id>/excluir")
+@role_required("restaurante")
+def excluir_cliente_farmacia(cliente_id:int):
+    rest=_farmacia_required_rest()
+    c=ClienteFarmacia.query.filter_by(id=cliente_id, restaurante_id=rest.id).first_or_404()
+    usuario=c.usuario
+    db.session.delete(c)
+    if usuario:
+        db.session.delete(usuario)
+    db.session.commit()
+    flash('Cliente excluído.', 'success')
+    return redirect(url_for('portal_farmacia', view='clientes'))
+
+@app.post("/portal/farmacia/funcionarios/<int:funcionario_id>/editar")
+@role_required("restaurante")
+def editar_funcionario_farmacia(funcionario_id:int):
+    rest=_farmacia_required_rest()
+    fobj=FuncionarioFarmacia.query.filter_by(id=funcionario_id, restaurante_id=rest.id).first_or_404()
+    f=request.form
+    nome=(f.get('nome') or '').strip()
+    usuario_login=(f.get('usuario') or '').strip()
+    if not nome or not usuario_login:
+        flash('Preencha nome e usuário do funcionário.', 'warning')
+        return redirect(url_for('portal_farmacia', view='funcionarios'))
+    existe=Usuario.query.filter(Usuario.usuario==usuario_login, Usuario.id != fobj.usuario_id).first()
+    if existe:
+        flash('Já existe outro usuário com esse login.', 'warning')
+        return redirect(url_for('portal_farmacia', view='funcionarios'))
+    fobj.nome=nome
+    fobj.telefone=(f.get('telefone') or '').strip()
+    fobj.cargo_id=f.get('cargo_id', type=int)
+    fobj.ativo=(f.get('ativo') or '1') in {'1','true','on','sim'}
+    if fobj.usuario:
+        fobj.usuario.usuario=usuario_login
+        fobj.usuario.nome=nome
+        fobj.usuario.ativo=fobj.ativo
+    db.session.commit()
+    flash('Funcionário atualizado.', 'success')
+    return redirect(url_for('portal_farmacia', view='funcionarios'))
+
+@app.post("/portal/farmacia/funcionarios/<int:funcionario_id>/senha")
+@role_required("restaurante")
+def redefinir_senha_funcionario_farmacia(funcionario_id:int):
+    rest=_farmacia_required_rest()
+    fobj=FuncionarioFarmacia.query.filter_by(id=funcionario_id, restaurante_id=rest.id).first_or_404()
+    nova=(request.form.get('nova_senha') or '').strip()
+    conf=(request.form.get('confirmar_senha') or '').strip()
+    if not nova or nova!=conf:
+        flash('Confirmação de senha inválida.', 'warning')
+        return redirect(url_for('portal_farmacia', view='funcionarios'))
+    fobj.usuario.set_password(nova)
+    db.session.commit()
+    flash('Senha do funcionário redefinida.', 'success')
+    return redirect(url_for('portal_farmacia', view='funcionarios'))
+
+@app.post("/portal/farmacia/funcionarios/<int:funcionario_id>/excluir")
+@role_required("restaurante")
+def excluir_funcionario_farmacia(funcionario_id:int):
+    rest=_farmacia_required_rest()
+    fobj=FuncionarioFarmacia.query.filter_by(id=funcionario_id, restaurante_id=rest.id).first_or_404()
+    usuario=fobj.usuario
+    db.session.delete(fobj)
+    if usuario:
+        db.session.delete(usuario)
+    db.session.commit()
+    flash('Funcionário excluído.', 'success')
+    return redirect(url_for('portal_farmacia', view='funcionarios'))
+
+@app.post("/portal/farmacia/entregas/<int:entrega_id>/editar")
+@role_required("restaurante")
+def editar_entrega_farmacia(entrega_id:int):
+    rest=_farmacia_required_rest()
+    e=EntregaFarmacia.query.filter_by(id=entrega_id, restaurante_id=rest.id).first_or_404()
+    f=request.form
+    cliente_id=f.get('cliente_id', type=int)
+    cliente=ClienteFarmacia.query.filter_by(id=cliente_id, restaurante_id=rest.id).first() if cliente_id else None
+    e.cliente_id=cliente.id if cliente else None
+    e.cooperado_id=f.get('cooperado_id', type=int)
+    e.pedido_numero=(f.get('pedido_numero') or '').strip()
+    e.medicamento_codigo=(f.get('medicamento_codigo') or '').strip()
+    e.medicamento_nome=(f.get('medicamento_nome') or '').strip()
+    e.descricao=(f.get('descricao') or e.medicamento_nome or 'Pedido farmácia').strip()
+    e.contato_cliente=(f.get('contato_cliente') or (cliente.nome if cliente else e.contato_cliente or '')).strip()
+    e.endereco_entrega=(f.get('endereco_entrega') or (cliente.endereco if cliente else e.endereco_entrega or '')).strip()
+    e.telefone_contato=(f.get('telefone_contato') or (cliente.telefone if cliente else e.telefone_contato or '')).strip()
+    e.valor_pedido=f.get('valor_pedido', type=float) or 0.0
+    e.valor_entrega=f.get('valor_entrega', type=float) or 0.0
+    e.valor=e.valor_entrega
+    e.pagamento_status=(f.get('pagamento_status') or 'nao_pago').strip().lower()
+    e.forma_pagamento=(f.get('forma_pagamento') or 'nao_informado').strip().lower()
+    e.cartao_tipo=(f.get('cartao_tipo') or '').strip().lower() if e.forma_pagamento=='cartao' else ''
+    e.parcelas=max(1, f.get('parcelas', type=int) or 1) if e.cartao_tipo=='parcelado' else 1
+    e.refrigerado=(f.get('refrigerado') or '') in {'1','true','on','sim'}
+    e.observacao=(f.get('observacao') or '').strip()
+    db.session.commit()
+    flash('Pedido atualizado.', 'success')
+    return redirect(url_for('portal_farmacia', view='pedidos'))
+
+@app.post("/portal/farmacia/entregas/<int:entrega_id>/excluir")
+@role_required("restaurante")
+def excluir_entrega_farmacia(entrega_id:int):
+    rest=_farmacia_required_rest()
+    e=EntregaFarmacia.query.filter_by(id=entrega_id, restaurante_id=rest.id).first_or_404()
+    db.session.delete(e)
+    db.session.commit()
+    flash('Pedido excluído.', 'success')
+    return redirect(url_for('portal_farmacia', view='pedidos'))
+
+@app.post("/portal/farmacia/config/salvar")
+@role_required("restaurante")
+def salvar_config_farmacia():
+    rest=_farmacia_required_rest()
+    rest.farmacia_salario_mensal=request.form.get('farmacia_salario_mensal', type=float) or 0.0
+    rest.farmacia_taxa_coop=request.form.get('farmacia_taxa_coop', type=float) or 0.0
+    db.session.commit()
+    flash('Configurações da farmácia salvas.', 'success')
+    return redirect(url_for('portal_farmacia', view='config'))
+
+@app.post("/portal/farmacia/senha")
+@role_required("restaurante")
+def farmacia_alterar_senha_propria():
+    rest, func = _restaurante_ou_funcionario_logado()
+    if not rest or not _is_farmacia(rest):
+        abort(403)
+    usuario = func.usuario if func else Usuario.query.get(session.get('user_id'))
+    senha_atual=(request.form.get('senha_atual') or '').strip()
+    senha_nova=(request.form.get('senha_nova') or '').strip()
+    senha_conf=(request.form.get('senha_conf') or '').strip()
+    if not usuario or not usuario.check_password(senha_atual):
+        flash('Senha atual inválida.', 'warning')
+        return redirect(url_for('portal_farmacia', view='config'))
+    if not senha_nova or senha_nova != senha_conf:
+        flash('Confirmação da nova senha inválida.', 'warning')
+        return redirect(url_for('portal_farmacia', view='config'))
+    usuario.set_password(senha_nova)
+    db.session.commit()
+    flash('Senha atualizada com sucesso.', 'success')
+    return redirect(url_for('portal_farmacia', view='config'))
+
+# Compatibilidade para o template da farmácia
+
+@app.post("/portal/cliente-farmacia/senha")
+@role_required("cliente")
+def cliente_farmacia_alterar_senha():
+    cliente = _cliente_farmacia_logado()
+    if not cliente or not cliente.usuario:
+        abort(404)
+    senha_atual=(request.form.get('senha_atual') or '').strip()
+    senha_nova=(request.form.get('senha_nova') or '').strip()
+    senha_conf=(request.form.get('senha_conf') or '').strip()
+    if not cliente.usuario.check_password(senha_atual):
+        flash('Senha atual inválida.', 'warning')
+        return redirect(url_for('portal_cliente_farmacia'))
+    if not senha_nova or senha_nova != senha_conf:
+        flash('Confirmação da nova senha inválida.', 'warning')
+        return redirect(url_for('portal_cliente_farmacia'))
+    cliente.usuario.set_password(senha_nova)
+    db.session.commit()
+    flash('Senha alterada com sucesso.', 'success')
+    return redirect(url_for('portal_cliente_farmacia'))
+
+@app.post("/cooperado/entregas-farmacia/senha")
+@role_required("cooperado")
+def cooperado_farmacia_alterar_senha():
+    usuario = Usuario.query.get(session.get('user_id'))
+    if not usuario:
+        abort(404)
+    senha_atual=(request.form.get('senha_atual') or '').strip()
+    senha_nova=(request.form.get('senha_nova') or '').strip()
+    senha_conf=(request.form.get('senha_conf') or '').strip()
+    if not usuario.check_password(senha_atual):
+        flash('Senha atual inválida.', 'warning')
+        return redirect(url_for('cooperado_entregas_farmacia'))
+    if not senha_nova or senha_nova != senha_conf:
+        flash('Confirmação da nova senha inválida.', 'warning')
+        return redirect(url_for('cooperado_entregas_farmacia'))
+    usuario.set_password(senha_nova)
+    db.session.commit()
+    flash('Senha alterada com sucesso.', 'success')
+    return redirect(url_for('cooperado_entregas_farmacia'))
+
+try:
+    _orig_init_db_farmacia = init_db
+    def init_db():
+        _orig_init_db_farmacia()
+        try:
+            if _is_sqlite():
+                cols = db.session.execute(sa_text("PRAGMA table_info(entregas_farmacia);")).fetchall()
+                colnames = {row[1] for row in cols}
+                extras = {
+                    'forma_pagamento': "ALTER TABLE entregas_farmacia ADD COLUMN forma_pagamento VARCHAR(20) DEFAULT 'nao_informado'",
+                    'cartao_tipo': "ALTER TABLE entregas_farmacia ADD COLUMN cartao_tipo VARCHAR(20) DEFAULT ''",
+                    'foto_pedido_url': "ALTER TABLE entregas_farmacia ADD COLUMN foto_pedido_url VARCHAR(255)",
+                    'foto_pedido_nome': "ALTER TABLE entregas_farmacia ADD COLUMN foto_pedido_nome VARCHAR(255)",
+                }
+                for c,sql in extras.items():
+                    if c not in colnames:
+                        db.session.execute(sa_text(sql))
+                db.session.commit()
+            else:
+                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(20) DEFAULT 'nao_informado'"))
+                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS cartao_tipo VARCHAR(20) DEFAULT ''"))
+                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS foto_pedido_url VARCHAR(255)"))
+                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS foto_pedido_nome VARCHAR(255)"))
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
+except Exception:
+    pass
+
 if __name__ == "__main__":
     with app.app_context():
         init_db()
