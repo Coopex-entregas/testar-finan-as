@@ -4063,6 +4063,13 @@
           </select>
           <small class="text-muted">Usado na competência de lançamentos.</small>
         </div>
+        <div class="col-md-2">
+          <label class="form-label">Tipo de acesso</label>
+          <select class="form-select form-select-sm" name="tipo_acesso">
+            <option value="restaurante">Restaurante</option>
+            <option value="farmacia">Farmácia</option>
+          </select>
+        </div>
 
         <div class="col-md-2">
           <label class="form-label">Usuário</label>
@@ -4103,6 +4110,16 @@
             <span class="input-group-text">% +</span>
             <input type="number" step="0.01" class="form-control" name="taxa_admin_juros_dia_percentual" value="0.03">
           </div>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Salário mensal (farmácia)</label>
+          <input type="number" step="0.01" class="form-control form-control-sm" name="farmacia_salario_mensal" placeholder="0,00">
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Taxa coop. (farmácia)</label>
+          <input type="number" step="0.01" class="form-control form-control-sm" name="farmacia_taxa_coop" placeholder="0,00">
         </div>
 
         <div class="col-md-2">
@@ -5984,7 +6001,10 @@
           <div class="col-md-6"><label class="form-label">Data base da taxa</label><input type="date" class="form-control" name="taxa_admin_data_base"></div>
           <div class="col-md-6"><label class="form-label">Multa (%)</label><input type="number" step="0.01" class="form-control" name="taxa_admin_multa_percentual"></div>
           <div class="col-md-6"><label class="form-label">Juros ao dia (%)</label><input type="number" step="0.01" class="form-control" name="taxa_admin_juros_dia_percentual"></div>
+          <div class="col-md-6"><label class="form-label">Tipo de acesso</label><select class="form-select" name="tipo_acesso" id="editRestTipoAcesso"><option value="restaurante">Restaurante</option><option value="farmacia">Farmácia</option></select></div>
           <div class="col-md-6"><label class="form-label">Status</label><select class="form-select" name="ativo" id="editRestAtivo"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+          <div class="col-md-6"><label class="form-label">Salário mensal (farmácia)</label><input type="number" step="0.01" class="form-control" name="farmacia_salario_mensal"></div>
+          <div class="col-md-6"><label class="form-label">Taxa coop. (farmácia)</label><input type="number" step="0.01" class="form-control" name="farmacia_taxa_coop"></div>
           <div class="col-md-6"><label class="form-label">Logo</label><input type="file" class="form-control" name="foto"></div>
         </div>
         <div class="modal-footer"><button class="btn btn-royal"><i class="bi bi-save"></i> Salvar</button></div>
