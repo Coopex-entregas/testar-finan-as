@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal Farmácia - Coopex</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    :root{
+      --royal:#2141d9;--royal-2:#3654e6;--royal-3:#17309f;--bg:#f4f7ff;--bg-soft:#eef3ff;--card:#ffffff;--text:#13203a;--muted:#6b7280;--line:#dbe4ff;--ok:#16a34a;--warn:#d97706;--danger:#dc2626;--shadow:0 18px 45px rgba(33,65,217,.10)
+    }
+    :root[data-theme="dark"]{
+      --royal:#4c6cff;--royal-2:#6984ff;--royal-3:#223ee7;--bg:#07101f;--bg-soft:#0d1830;--card:#0e1728;--text:#e9eefc;--muted:#9aacd2;--line:#22304d;--shadow:0 18px 45px rgba(0,0,0,.35)
+    }
+    *{box-sizing:border-box} html,body{margin:0;padding:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    a{text-decoration:none;color:inherit} button,input,select,textarea{font:inherit}
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    .sidebar{background:linear-gradient(180deg,var(--royal-3),var(--royal));color:#fff;padding:20px 16px;position:sticky;top:0;height:100vh;overflow:auto}
+    .brand{display:flex;gap:12px;align-items:center;margin-bottom:20px}.brand-logo{width:48px;height:48px;border-radius:16px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:22px}.brand h1{font-size:20px;margin:0}.brand p{margin:2px 0 0;color:#dbe5ff;font-size:12px}
+    .nav{display:grid;gap:8px;margin-top:18px}.nav a{padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;font-weight:700}.nav a.active,.nav a:hover{background:rgba(255,255,255,.18)}
+    .side-card{margin-top:18px;padding:14px;border-radius:18px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.15)}
+    .main{padding:20px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+    .title h2{margin:0;font-size:30px}.title p{margin:6px 0 0;color:var(--muted)}
+    .tools{display:flex;gap:10px;flex-wrap:wrap}.btn{border:none;border-radius:14px;padding:11px 14px;font-weight:800;cursor:pointer}.btn-primary{background:var(--royal);color:#fff}.btn-light{background:var(--bg-soft);color:var(--royal-3)}.btn-danger{background:#fee2e2;color:#991b1b}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.kpi{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow)}.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;font-weight:800}.kpi .v{font-size:28px;font-weight:900;margin-top:6px}
+    .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow)}
+    .card h3{margin:0 0 6px;font-size:20px}.sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+    .form{display:grid;gap:10px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    input,select,textarea{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:transparent;color:var(--text)} textarea{min-height:90px;resize:vertical}
+    .check{display:flex;align-items:center;gap:8px}.check input{width:auto}
+    .section{margin-top:18px}.hidden{display:none}
+    .table{display:grid;gap:10px}.row{display:grid;grid-template-columns:1.2fr 1.2fr 1fr .9fr .8fr 1fr;gap:10px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb, var(--card) 85%, var(--bg-soft));}
+    .row.head{background:none;border:none;padding:0 8px;color:var(--muted);font-size:12px;text-transform:uppercase;font-weight:800}
+    .badge{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900}
+    .st-fabricando,.st-pendente{background:#e9efff;color:#2440af}.st-atribuida{background:#e0edff;color:#1d4ed8}.st-em_rota,.st-proximo{background:#fff7d8;color:#a16207}.st-entregue{background:#e6fff0;color:#166534}.st-nao_entregue,.st-reagendado{background:#ffe4e6;color:#be123c}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:6px 10px;border-radius:999px;background:var(--bg-soft);color:var(--royal-3);font-size:12px;font-weight:800}
+    .mini{font-size:12px;color:var(--muted)}
+    .list{display:grid;gap:10px}.item{padding:12px;border:1px solid var(--line);border-radius:16px}
+    .lote-box{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+    .drag-handle{cursor:grab;font-size:18px;color:var(--muted)}
+    .footer-note{margin-top:18px;color:var(--muted);font-size:12px}
+    @media (max-width:1200px){.kpis{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
+    @media (max-width:900px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.row,.row.head{grid-template-columns:1fr}.two,.three{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo"><i class="bi bi-capsule-pill"></i></div>
+      <div><h1>{{ rest.nome }}</h1><p>Portal Farmácia • Coopex</p></div>
+    </div>
+    <div class="chips"><span class="chip" style="background:rgba(255,255,255,.16);color:#fff">Azul royal</span><span class="chip" style="background:rgba(255,255,255,.16);color:#fff">Dark mode</span></div>
+    <nav class="nav">
+      <a href="#" class="nav-link active" data-tab="resumo"><i class="bi bi-grid"></i> Resumo</a>
+      <a href="#" class="nav-link" data-tab="pedidos"><i class="bi bi-bag-check"></i> Pedidos</a>
+      <a href="#" class="nav-link" data-tab="clientes"><i class="bi bi-people"></i> Clientes</a>
+      <a href="#" class="nav-link" data-tab="funcionarios"><i class="bi bi-person-badge"></i> Funcionários</a>
+      <a href="#" class="nav-link" data-tab="lotes"><i class="bi bi-box-seam"></i> Lotes</a>
+      <a href="{{ url_for('rest_tabelas') if 'rest_tabelas' in current_app.view_functions else '#' }}"><i class="bi bi-table"></i> Tabelas</a>
+      <a href="{{ url_for('portal_restaurante', view='escalas') if 'portal_restaurante' in current_app.view_functions else '#' }}"><i class="bi bi-calendar3"></i> Escalas</a>
+      <a href="{{ url_for('portal_restaurante', view='avisos') if 'portal_restaurante' in current_app.view_functions else '#' }}"><i class="bi bi-megaphone"></i> Avisos</a>
+      <a href="{{ url_for('portal_restaurante', view='config') if 'portal_restaurante' in current_app.view_functions else '#' }}"><i class="bi bi-gear"></i> Configurações</a>
+      <a href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Sair</a>
+    </nav>
+    <div class="side-card">
+      <div style="font-weight:900">Motoboys do sistema</div>
+      <div class="mini" style="color:#e5ecff;margin-top:6px">A lista puxada aqui é a mesma dos cooperados já cadastrados no sistema.</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title">
+        <h2>Dashboard da Farmácia</h2>
+        <p>Clientes da farmácia ficam visíveis só para a própria farmácia. O admin apenas marca o estabelecimento como farmácia.</p>
+      </div>
+      <div class="tools">
+        <form method="get"><input type="hidden" name="view" value="pedidos"><input name="q" value="{{ q or '' }}" placeholder="Buscar por cpf, nome, pedido ou código"></form>
+        <button class="btn btn-light" id="toggleTheme"><i class="bi bi-moon-stars"></i> Modo noturno</button>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="l">Clientes</div><div class="v">{{ clientes|length }}</div></div>
+      <div class="kpi"><div class="l">Pedidos / entregas</div><div class="v">{{ entregas|length }}</div></div>
+      <div class="kpi"><div class="l">Total em pedidos</div><div class="v">R$ {{ '%.2f'|format(total_pedidos|default(0)) }}</div></div>
+      <div class="kpi"><div class="l">Produção cooperados</div><div class="v">R$ {{ '%.2f'|format(total_producao|default(0)) }}</div></div>
+    </div>
+
+    <section class="tab-panel" data-panel="resumo">
+      <div class="grid">
+        <div class="card">
+          <h3>Novo pedido da farmácia</h3>
+          <div class="sub">Quando o valor da entrega for maior que zero, ao marcar como entregue o sistema lança produção para o cooperado.</div>
+          <form class="form" method="post" action="{{ url_for('criar_entrega_farmacia') }}">
+            <div class="three">
+              <select name="cliente_id"><option value="">Cliente</option>{% for c in clientes %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}</select>
+              <input name="pedido_numero" placeholder="Nº do pedido">
+              <input name="medicamento_codigo" placeholder="Código medicamento">
+            </div>
+            <div class="three">
+              <input name="medicamento_nome" placeholder="Nome do medicamento" required>
+              <input name="descricao" placeholder="Descrição adicional">
+              <input name="endereco_entrega" placeholder="Endereço de entrega" required>
+            </div>
+            <div class="three">
+              <input name="contato_cliente" placeholder="Contato do cliente">
+              <input name="telefone_contato" placeholder="Telefone contato">
+              <select name="cooperado_id"><option value="">Motoboy do sistema</option>{% for m in cooperados %}<option value="{{ m.id }}">{{ m.nome }}</option>{% endfor %}</select>
+            </div>
+            <div class="three">
+              <input type="number" step="0.01" name="valor_pedido" placeholder="Valor do pedido">
+              <input type="number" step="0.01" name="valor_entrega" placeholder="Valor da entrega (0,00 se mensalista)">
+              <input type="number" step="1" min="1" name="parcelas" value="1" placeholder="Parcelas">
+            </div>
+            <div class="three">
+              <select name="pagamento_status"><option value="nao_pago">Não pago</option><option value="pago">Pago</option><option value="parcial">Parcial</option></select>
+              <input name="lote_codigo" placeholder="Código lote (opcional)">
+              <label class="check"><input type="checkbox" name="refrigerado" value="1"> Medicamento resfriado</label>
+            </div>
+            <textarea name="observacao" placeholder="Observações do pedido para o motoboy"></textarea>
+            <button class="btn btn-primary" type="submit">Salvar pedido</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Financeiro rápido</h3>
+          <div class="sub">Use os campos abaixo para deixar salvo o salário fechado mensal e a taxa da cooperativa desta farmácia.</div>
+          <form class="form" method="post" action="{{ url_for('edit_restaurante', id=rest.id) if 'edit_restaurante' in current_app.view_functions else '#' }}" enctype="multipart/form-data">
+            <input type="hidden" name="nome" value="{{ rest.nome }}">
+            <input type="hidden" name="periodo" value="{{ rest.periodo }}">
+            <input type="hidden" name="usuario" value="{{ rest.usuario_ref.usuario if rest.usuario_ref else '' }}">
+            <input type="hidden" name="ativo" value="1">
+            <input type="hidden" name="tipo_acesso" value="farmacia">
+            <div class="two">
+              <input type="number" step="0.01" name="farmacia_salario_mensal" value="{{ rest.farmacia_salario_mensal or 0 }}" placeholder="Salário fechado mensal do motoboy">
+              <input type="number" step="0.01" name="farmacia_taxa_coop" value="{{ rest.farmacia_taxa_coop or 0 }}" placeholder="Taxa da cooperativa">
+            </div>
+            <button class="btn btn-light" type="submit">Salvar dados da farmácia</button>
+          </form>
+          <div class="lote-box">
+            <div class="mini">Top clientes por retorno</div>
+            <div class="list">{% for t in top_clientes[:5] %}<div class="item"><strong>{{ t.nome }}</strong><div class="mini">R$ {{ '%.2f'|format(t.valor) }} • {{ t.qtd }} pedido(s)</div></div>{% else %}<div class="mini">Sem dados.</div>{% endfor %}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card section">
+        <h3>Acompanhamento em tempo real</h3>
+        <div class="sub">O estabelecimento acompanha a rota; o cliente vê quando está em rota e quando já é o próximo.</div>
+        <div class="table" id="entregasTabela">
+          <div class="row head"><div>Pedido</div><div>Cliente</div><div>Motoboy</div><div>Status</div><div>Valor</div><div>Ações</div></div>
+          {% for e in entregas %}{% set s = serializar_entrega(e) %}
+          <div class="row entrega-row" data-id="{{ e.id }}">
+            <div>
+              <div style="display:flex;gap:8px;align-items:center"><span class="drag-handle"><i class="bi bi-grip-vertical"></i></span><strong>{{ s.pedido_numero or s.codigo }}</strong></div>
+              <div>{{ s.medicamento_nome }}</div>
+              <div class="mini">Cod. {{ s.medicamento_codigo or '-' }} • {% if s.lote_codigo %}Lote {{ s.lote_codigo }} • {% endif %}{{ s.endereco }}</div>
+            </div>
+            <div><strong>{{ s.cliente_nome }}</strong><div class="mini">{{ s.telefone or '-' }} {% if s.cliente_cpf %}• CPF {{ s.cliente_cpf }}{% endif %}</div></div>
+            <div><strong>{{ s.motoboy }}</strong><div class="mini">{% if s.refrigerado %}Resfriado • {% endif %}{{ 'Pago' if s.pagamento_status=='pago' else 'Cobrar' if s.valor_pedido>0 and s.pagamento_status!='pago' else '—' }}</div></div>
+            <div>
+              <span class="badge st-{{ e.status }}">{{ s.status_label }}</span>
+              {% if s.proximo %}<div class="mini">Cliente é o próximo.</div>{% endif %}
+              {% if s.entregue_para %}<div class="mini">Recebido por {{ s.entregue_para }}</div>{% endif %}
+              {% if s.motivo_nao_entrega %}<div class="mini">{{ s.motivo_nao_entrega }}</div>{% endif %}
+            </div>
+            <div><strong>Pedido:</strong> R$ {{ '%.2f'|format(s.valor_pedido) }}<br><strong>Entrega:</strong> R$ {{ '%.2f'|format(s.valor_entrega) }}</div>
+            <div>
+              <form class="form" method="post" action="{{ url_for('atualizar_status_entrega_farmacia_admin', entrega_id=e.id) }}">
+                <select name="status">
+                  <option value="fabricando" {% if e.status=='fabricando' %}selected{% endif %}>Fabricando</option>
+                  <option value="atribuida" {% if e.status=='atribuida' %}selected{% endif %}>Atribuída</option>
+                  <option value="em_rota" {% if e.status=='em_rota' %}selected{% endif %}>Em rota</option>
+                  <option value="proximo" {% if e.status=='proximo' %}selected{% endif %}>Próximo</option>
+                  <option value="entregue" {% if e.status=='entregue' %}selected{% endif %}>Entregue</option>
+                  <option value="nao_entregue" {% if e.status=='nao_entregue' %}selected{% endif %}>Não entregue</option>
+                  <option value="reagendado" {% if e.status=='reagendado' %}selected{% endif %}>Reagendado</option>
+                </select>
+                <input name="entregue_para" placeholder="Quem recebeu?">
+                <input name="motivo_nao_entrega" placeholder="Motivo da não entrega">
+                <div class="two"><input type="date" name="reagendar_data"><input type="time" name="reagendar_hora"></div>
+                <button class="btn btn-light" type="submit">Atualizar</button>
+              </form>
+            </div>
+          </div>
+          {% else %}<div class="item">Nenhum pedido lançado ainda.</div>{% endfor %}
+        </div>
+        <div class="footer-note">A ordem acima pode ser arrastada e salva. O cliente da primeira entrega marcada como “próximo” verá que é a próxima da rota.</div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" data-panel="pedidos">
+      <div class="card">
+        <h3>Pedidos e lotes</h3>
+        <div class="sub">Selecione vários pedidos para montar um lote e atribuir ao motoboy.</div>
+        <form class="form" method="post" action="{{ url_for('criar_lote_farmacia') }}">
+          <div class="three"><input name="codigo" placeholder="Código do lote"><select name="cooperado_id"><option value="">Motoboy do lote</option>{% for m in cooperados %}<option value="{{ m.id }}">{{ m.nome }}</option>{% endfor %}</select><button class="btn btn-primary" type="submit">Criar lote selecionado</button></div>
+          <div class="list">{% for e in entregas %}{% set s = serializar_entrega(e) %}<label class="item"><div class="check"><input type="checkbox" name="entrega_ids" value="{{ e.id }}"><strong>{{ s.pedido_numero or s.codigo }}</strong> • {{ s.cliente_nome }}</div><div class="mini">{{ s.medicamento_nome }} • {{ s.lote_codigo or 'sem lote' }}</div></label>{% endfor %}</div>
+        </form>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" data-panel="clientes">
+      <div class="grid">
+        <div class="card">
+          <h3>Cadastrar cliente</h3>
+          <form class="form" method="post" action="{{ url_for('criar_cliente_farmacia') }}">
+            <input name="nome" placeholder="Nome completo" required>
+            <div class="two"><input name="cpf" placeholder="CPF"><input name="telefone" placeholder="Telefone"></div>
+            <input name="endereco" placeholder="Endereço principal">
+            <div class="two"><input name="usuario" placeholder="Usuário login" required><input type="password" name="senha" placeholder="Senha" required></div>
+            <textarea name="observacao" placeholder="Observações"></textarea>
+            <button class="btn btn-primary" type="submit">Salvar cliente</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Clientes da farmácia</h3>
+          <div class="list">{% for c in clientes %}<div class="item"><strong>{{ c.nome }}</strong><div class="mini">{{ c.cpf or '-' }} • {{ c.telefone or '-' }}</div><div class="mini">{{ c.endereco or '-' }}</div></div>{% else %}<div class="item">Sem clientes.</div>{% endfor %}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" data-panel="funcionarios">
+      <div class="grid">
+        <div class="card">
+          <h3>Criar cargo</h3>
+          <form class="form" method="post" action="{{ url_for('criar_cargo_farmacia') }}">
+            <input name="nome" placeholder="Nome do cargo" required>
+            <label class="check"><input type="checkbox" name="pode_clientes" checked> Pode acessar clientes</label>
+            <label class="check"><input type="checkbox" name="pode_pedidos" checked> Pode lançar pedidos</label>
+            <label class="check"><input type="checkbox" name="pode_motoboy" checked> Pode atribuir motoboy</label>
+            <label class="check"><input type="checkbox" name="pode_financeiro"> Pode ver financeiro</label>
+            <button class="btn btn-light" type="submit">Salvar cargo</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Criar funcionário</h3>
+          <form class="form" method="post" action="{{ url_for('criar_funcionario_farmacia') }}">
+            <input name="nome" placeholder="Nome do funcionário" required>
+            <div class="two"><input name="telefone" placeholder="Telefone"><select name="cargo_id"><option value="">Cargo</option>{% for c in cargos %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}</select></div>
+            <div class="two"><input name="usuario" placeholder="Usuário login" required><input type="password" name="senha" placeholder="Senha" required></div>
+            <button class="btn btn-primary" type="submit">Salvar funcionário</button>
+          </form>
+          <div class="lote-box"><div class="mini">Funcionários existentes</div><div class="list">{% for f in funcionarios %}<div class="item"><strong>{{ f.nome }}</strong><div class="mini">{{ f.usuario.usuario if f.usuario else '-' }} • {{ f.cargo.nome if f.cargo else 'Sem cargo' }}</div></div>{% else %}<div class="item">Sem funcionários.</div>{% endfor %}</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" data-panel="lotes">
+      <div class="card">
+        <h3>Lotes recentes</h3>
+        <div class="list">{% for l in lotes %}<div class="item"><strong>{{ l.codigo }}</strong><div class="mini">Motoboy: {{ l.cooperado.nome if l.cooperado else 'não definido' }} • {{ l.criado_em.strftime('%d/%m/%Y %H:%M') if l.criado_em else '' }}</div></div>{% else %}<div class="item">Nenhum lote criado.</div>{% endfor %}</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const themeKey='coopex_farmacia_theme';
+  const root=document.documentElement;
+  root.dataset.theme=localStorage.getItem(themeKey)||'light';
+  document.getElementById('toggleTheme').onclick=()=>{root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';localStorage.setItem(themeKey,root.dataset.theme)};
+
+  const tabs=document.querySelectorAll('.nav-link[data-tab]');
+  const panels=document.querySelectorAll('.tab-panel');
+  tabs.forEach(a=>a.onclick=(e)=>{e.preventDefault();tabs.forEach(x=>x.classList.remove('active'));a.classList.add('active');panels.forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==a.dataset.tab));});
+
+  const list=document.getElementById('entregasTabela');
+  let dragged=null;
+  list?.querySelectorAll('.entrega-row').forEach(row=>{
+    row.draggable=true;
+    row.addEventListener('dragstart',()=>dragged=row);
+    row.addEventListener('dragover',e=>e.preventDefault());
+    row.addEventListener('drop',e=>{e.preventDefault();if(dragged&&dragged!==row){row.parentNode.insertBefore(dragged,row);saveOrder();}});
+  });
+  function saveOrder(){
+    const ids=[...document.querySelectorAll('.entrega-row')].map(r=>Number(r.dataset.id));
+    fetch('{{ url_for("reordenar_entregas_farmacia") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});
+  }
+
+  async function refreshBoard(){
+    try{
+      const res=await fetch('{{ url_for("api_farmacia_entregas") }}',{cache:'no-store'});
+      if(!res.ok) return;
+      const data=await res.json();
+      const rows=[...document.querySelectorAll('.entrega-row')];
+      data.items.forEach(item=>{
+        const row=rows.find(r=>Number(r.dataset.id)===item.id);
+        if(!row) return;
+        const badge=row.querySelector('.badge');
+        if(badge){badge.textContent=item.status_label;badge.className='badge st-'+item.status;}
+      });
+    }catch(e){}
+  }
+  setInterval(refreshBoard,15000);
+</script>
+</body>
+</html>
