@@ -4051,10 +4051,18 @@
       <form method="POST" action="{{ url_for('add_restaurante') }}" enctype="multipart/form-data" class="row g-3 align-items-end" data-perm-form="can_restaurantes_criar">
         <div class="col-md-3">
           <label class="form-label">Nome</label>
-          <input type="text" class="form-control form-control-sm" name="nome" placeholder="Ex.: Restaurante Centro" required>
+          <input type="text" class="form-control form-control-sm" name="nome" placeholder="Ex.: Farmácia Centro" required>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
+          <label class="form-label">Tipo de acesso</label>
+          <select class="form-select form-select-sm" name="tipo_acesso" id="novoRestTipoAcesso">
+            <option value="restaurante">Restaurante</option>
+            <option value="farmacia">Farmácia</option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
           <label class="form-label">Período</label>
           <select class="form-select form-select-sm" name="periodo" required>
             <option value="seg-dom">Seg a Dom</option>
@@ -4072,7 +4080,7 @@
           </div>
         </div>
 
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label class="form-label">Senha</label>
           <div class="input-group input-group-sm">
             <input type="password" class="form-control" name="senha" id="restSenha" placeholder="********" required>
@@ -4097,47 +4105,22 @@
         </div>
 
         <div class="col-md-2">
-          <label class="form-label">Multa / Juros</label>
-          <div class="input-group input-group-sm">
-            <input type="number" step="0.01" class="form-control" name="taxa_admin_multa_percentual" value="2">
-            <span class="input-group-text">% +</span>
-            <input type="number" step="0.01" class="form-control" name="taxa_admin_juros_dia_percentual" value="0.03">
-          </div>
+          <label class="form-label">Multa (%)</label>
+          <input type="number" step="0.01" class="form-control form-control-sm" name="taxa_admin_multa_percentual" value="2">
         </div>
 
         <div class="col-md-2">
-          <label class="form-label">Taxa adm. (R$)</label>
-          <input type="number" step="0.01" class="form-control form-control-sm" name="taxa_admin_valor" placeholder="0,00">
+          <label class="form-label">Juros ao dia (%)</label>
+          <input type="number" step="0.01" class="form-control form-control-sm" name="taxa_admin_juros_dia_percentual" value="0.03">
         </div>
 
-        <div class="col-md-2">
-          <label class="form-label">Data base taxa</label>
-          <input type="date" class="form-control form-control-sm" name="taxa_admin_data_base">
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Multa / Juros dia</label>
-          <div class="input-group input-group-sm">
-            <input type="number" step="0.01" class="form-control" name="taxa_admin_multa_percentual" value="2" title="Multa %">
-            <input type="number" step="0.01" class="form-control" name="taxa_admin_juros_dia_percentual" value="0.03" title="Juros % ao dia">
-          </div>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Tipo de acesso</label>
-          <select class="form-select form-select-sm" name="tipo_acesso">
-            <option value="restaurante" selected>Restaurante</option>
-            <option value="farmacia">Farmácia</option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Salário motoboy (R$)</label>
+        <div class="col-md-2 farmacia-only-create" style="display:none;">
+          <label class="form-label">Salário mensal motoboy (R$)</label>
           <input type="number" step="0.01" class="form-control form-control-sm" name="farmacia_salario_mensal" placeholder="0,00">
         </div>
 
-        <div class="col-md-2">
-          <label class="form-label">Taxa coop. farmácia (R$)</label>
+        <div class="col-md-2 farmacia-only-create" style="display:none;">
+          <label class="form-label">Taxa da cooperativa (R$)</label>
           <input type="number" step="0.01" class="form-control form-control-sm" name="farmacia_taxa_coop" placeholder="0,00">
         </div>
 
@@ -4149,7 +4132,7 @@
           </select>
         </div>
 
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label class="form-label">Logo (opcional)</label>
           <input type="file" class="form-control form-control-sm" name="foto" id="restFoto" accept="image/*">
           <div class="d-flex align-items-center gap-2 mt-2">
@@ -4189,10 +4172,11 @@
               <th style="width:60px;">Logo</th>
               <th>Nome</th>
               <th>Usuário</th>
+              <th style="width:130px;">Tipo</th>
               <th style="width:140px;">Período</th>
-              <th style="width:120px;">Tipo</th>
               <th style="width:140px;">Taxa adm.</th>
               <th style="width:130px;">Data base</th>
+              <th style="width:140px;">Financeiro farmácia</th>
               <th style="width:120px;">Status</th>
               <th class="text-center" style="width:200px;">Ações</th>
             </tr>
@@ -4208,6 +4192,9 @@
                 <td class="fw-medium">{{ r.nome }}</td>
                 <td class="text-muted">{{ r.usuario_ref.usuario }}</td>
                 <td class="text-nowrap">
+                  <span class="badge {{ 'bg-primary' if (r.tipo_acesso|default('restaurante')) == 'farmacia' else 'bg-secondary' }}">{{ 'Farmácia' if (r.tipo_acesso|default('restaurante')) == 'farmacia' else 'Restaurante' }}</span>
+                </td>
+                <td class="text-nowrap">
                   <span class="badge bg-light text-dark">
                     {% if r.periodo == 'seg-dom' %}Seg–Dom
                     {% elif r.periodo == 'sab-sex' %}Sáb–Sex
@@ -4215,9 +4202,16 @@
                     {% else %}{{ r.periodo }}{% endif %}
                   </span>
                 </td>
-                <td class="text-nowrap"><span class="badge {{ 'bg-primary' if (r.tipo_acesso|default('restaurante'))=='farmacia' else 'bg-secondary' }}">{{ 'Farmácia' if (r.tipo_acesso|default('restaurante'))=='farmacia' else 'Restaurante' }}</span></td>
                 <td class="text-nowrap">R$ {{ "%.2f"|format(r.taxa_admin_valor|default(0)) }}</td>
                 <td class="text-nowrap">{{ r.taxa_admin_data_base.strftime('%d/%m/%Y') if r.taxa_admin_data_base else '-' }}</td>
+                <td class="small">
+                  {% if (r.tipo_acesso|default('restaurante')) == 'farmacia' %}
+                    <div>Salário: <b>R$ {{ '%.2f'|format(r.farmacia_salario_mensal|default(0)) }}</b></div>
+                    <div>Taxa coop: <b>R$ {{ '%.2f'|format(r.farmacia_taxa_coop|default(0)) }}</b></div>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
                 <td class="text-nowrap">
                   {% set rest_ativo = (r.usuario_ref.ativo if (r.usuario_ref is defined and r.usuario_ref and r.usuario_ref.ativo is not none) else r.ativo) %}
                   <span class="badge {{ 'bg-success' if rest_ativo else 'bg-secondary' }}">{{ 'Ativo' if rest_ativo else 'Inativo' }}</span>
@@ -4225,7 +4219,7 @@
                 <td class="text-center">
                   <div class="btn-group btn-group-sm" role="group">
                     {% if can_restaurantes_editar %}<button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditRestaurante"
-                            data-id="{{ r.id }}" data-nome="{{ r.nome }}" data-usuario="{{ r.usuario_ref.usuario }}" data-periodo="{{ r.periodo }}" data-taxa-admin-valor="{{ '%.2f'|format(r.taxa_admin_valor|default(0)) }}" data-taxa-admin-data-base="{{ r.taxa_admin_data_base.strftime('%Y-%m-%d') if r.taxa_admin_data_base else '' }}" data-taxa-admin-multa="{{ '%.2f'|format(r.taxa_admin_multa_percentual|default(2)) }}" data-taxa-admin-juros-dia="{{ '%.2f'|format(r.taxa_admin_juros_dia_percentual|default(0.03)) }}" data-tipo-acesso="{{ r.tipo_acesso|default('restaurante') }}" data-farmacia-salario="{{ '%.2f'|format(r.farmacia_salario_mensal|default(0)) }}" data-farmacia-taxa-coop="{{ '%.2f'|format(r.farmacia_taxa_coop|default(0)) }}"
+                            data-id="{{ r.id }}" data-nome="{{ r.nome }}" data-usuario="{{ r.usuario_ref.usuario }}" data-periodo="{{ r.periodo }}" data-tipo-acesso="{{ r.tipo_acesso|default('restaurante') }}" data-farmacia-salario-mensal="{{ '%.2f'|format(r.farmacia_salario_mensal|default(0)) }}" data-farmacia-taxa-coop="{{ '%.2f'|format(r.farmacia_taxa_coop|default(0)) }}" data-taxa-admin-valor="{{ '%.2f'|format(r.taxa_admin_valor|default(0)) }}" data-taxa-admin-data-base="{{ r.taxa_admin_data_base.strftime('%Y-%m-%d') if r.taxa_admin_data_base else '' }}" data-taxa-admin-multa="{{ '%.2f'|format(r.taxa_admin_multa_percentual|default(2)) }}" data-taxa-admin-juros-dia="{{ '%.2f'|format(r.taxa_admin_juros_dia_percentual|default(0.03)) }}"
                             data-ativo="{{ '1' if ((r.usuario_ref.ativo if (r.usuario_ref is defined and r.usuario_ref and r.usuario_ref.ativo is not none) else r.ativo)|default(true)) else '0' }}"
                             data-url="{{ url_for('edit_restaurante', id=r.id) }}" title="Editar">
                       <i class="bi bi-pencil"></i>
@@ -4251,7 +4245,7 @@
                 </td>
               </tr>
             {% else %}
-              <tr><td colspan="9" class="text-center text-muted">Nenhum estabelecimento</td></tr>
+              <tr><td colspan="10" class="text-center text-muted">Nenhum estabelecimento</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -4312,13 +4306,41 @@
         const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v || ''; };
         set('editRestNome', btn.dataset.nome);
         set('editRestUsuario', btn.dataset.usuario);
+        set('editRestTipoAcesso', btn.dataset.tipoAcesso || 'restaurante');
         set('editRestPeriodo', btn.dataset.periodo);
         set('editRestTaxaAdminValor', btn.dataset.taxaAdminValor);
         set('editRestTaxaAdminDataBase', btn.dataset.taxaAdminDataBase);
         set('editRestTaxaAdminMulta', btn.dataset.taxaAdminMulta);
         set('editRestTaxaAdminJurosDia', btn.dataset.taxaAdminJurosDia);
+        set('editRestFarmaciaSalarioMensal', btn.dataset.farmaciaSalarioMensal || '0');
+        set('editRestFarmaciaTaxaCoop', btn.dataset.farmaciaTaxaCoop || '0');
         set('editRestAtivo', btn.dataset.ativo || '1');
+        const toggleFarmacia = (tipo, selector) => {
+          document.querySelectorAll(selector).forEach(el => {
+            el.style.display = (tipo === 'farmacia') ? '' : 'none';
+          });
+        };
+        toggleFarmacia(btn.dataset.tipoAcesso || 'restaurante', '.farmacia-only-edit');
       });
+    })();
+
+    // mostra/oculta campos específicos de farmácia no cadastro
+    (function(){
+      const tipo = document.getElementById('novoRestTipoAcesso');
+      const refresh = () => {
+        const isFarm = (tipo?.value || 'restaurante') === 'farmacia';
+        document.querySelectorAll('.farmacia-only-create').forEach(el => el.style.display = isFarm ? '' : 'none');
+      };
+      tipo?.addEventListener('change', refresh);
+      refresh();
+
+      const editTipo = document.getElementById('editRestTipoAcesso');
+      const refreshEdit = () => {
+        const isFarm = (editTipo?.value || 'restaurante') === 'farmacia';
+        document.querySelectorAll('.farmacia-only-edit').forEach(el => el.style.display = isFarm ? '' : 'none');
+      };
+      editTipo?.addEventListener('change', refreshEdit);
+      refreshEdit();
     })();
 
     // confirmação de exclusão (somente dentro desta aba)
@@ -5992,6 +6014,13 @@
           <input type="hidden" name="id">
           <div class="col-12"><label class="form-label">Nome</label><input type="text" class="form-control" name="nome" required></div>
           <div class="col-md-6">
+            <label class="form-label">Tipo de acesso</label>
+            <select class="form-select" name="tipo_acesso" id="editRestTipoAcesso">
+              <option value="restaurante">Restaurante</option>
+              <option value="farmacia">Farmácia</option>
+            </select>
+          </div>
+          <div class="col-md-6">
             <label class="form-label">Período</label>
             <select class="form-select" name="periodo" required>
               <option value="seg-dom">Seg a Dom</option>
@@ -6004,10 +6033,9 @@
           <div class="col-md-6"><label class="form-label">Data base da taxa</label><input type="date" class="form-control" name="taxa_admin_data_base"></div>
           <div class="col-md-6"><label class="form-label">Multa (%)</label><input type="number" step="0.01" class="form-control" name="taxa_admin_multa_percentual"></div>
           <div class="col-md-6"><label class="form-label">Juros ao dia (%)</label><input type="number" step="0.01" class="form-control" name="taxa_admin_juros_dia_percentual"></div>
-          <div class="col-md-6"><label class="form-label">Tipo de acesso</label><select class="form-select" name="tipo_acesso" id="editRestTipoAcesso"><option value="restaurante">Restaurante</option><option value="farmacia">Farmácia</option></select></div>
+          <div class="col-md-6 farmacia-only-edit" style="display:none;"><label class="form-label">Salário mensal motoboy (R$)</label><input type="number" step="0.01" class="form-control" name="farmacia_salario_mensal" id="editRestFarmaciaSalarioMensal"></div>
+          <div class="col-md-6 farmacia-only-edit" style="display:none;"><label class="form-label">Taxa da cooperativa (R$)</label><input type="number" step="0.01" class="form-control" name="farmacia_taxa_coop" id="editRestFarmaciaTaxaCoop"></div>
           <div class="col-md-6"><label class="form-label">Status</label><select class="form-select" name="ativo" id="editRestAtivo"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
-          <div class="col-md-6"><label class="form-label">Salário motoboy (R$)</label><input type="number" step="0.01" class="form-control" name="farmacia_salario_mensal" id="editRestFarmaciaSalario"></div>
-          <div class="col-md-6"><label class="form-label">Taxa coop. farmácia (R$)</label><input type="number" step="0.01" class="form-control" name="farmacia_taxa_coop" id="editRestFarmaciaTaxa"></div>
           <div class="col-md-6"><label class="form-label">Logo</label><input type="file" class="form-control" name="foto"></div>
         </div>
         <div class="modal-footer"><button class="btn btn-royal"><i class="bi bi-save"></i> Salvar</button></div>
@@ -6075,7 +6103,7 @@
   bindModal('modalEditDespesaCoop',  { id:'id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data', competencia:'competencia_desconto' });
   bindModal('modalEditCooperado',    { id:'id', nome:'nome', usuario:'usuario' });
   bindModal('modalResetSenhaCooperado', { id:'id' });
-  bindModal('modalEditRestaurante',  { id:'id', nome:'nome', periodo:'periodo', usuario:'usuario' });
+  bindModal('modalEditRestaurante',  { id:'id', nome:'nome', periodo:'periodo', usuario:'usuario', tipoAcesso:'tipo_acesso', farmaciaSalarioMensal:'farmacia_salario_mensal', farmaciaTaxaCoop:'farmacia_taxa_coop', taxaAdminValor:'taxa_admin_valor', taxaAdminDataBase:'taxa_admin_data_base', taxaAdminMulta:'taxa_admin_multa_percentual', taxaAdminJurosDia:'taxa_admin_juros_dia_percentual', ativo:'ativo' });
   bindModal('modalResetSenhaRestaurante', { id:'id' });
 
   (function(){
