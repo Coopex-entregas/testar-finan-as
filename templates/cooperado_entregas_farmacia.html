@@ -1,37 +1,74 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="light">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Rota Farmácia</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Rota Farmácia • COOPEX</title>
 <style>
-:root{--royal:#2141d9;--royal-3:#17309f;--bg:#f4f7ff;--card:#fff;--text:#13203a;--muted:#6b7280;--line:#dbe4ff;--shadow:0 18px 45px rgba(33,65,217,.10)}
-:root[data-theme="dark"]{--royal:#4c6cff;--royal-3:#223ee7;--bg:#07101f;--card:#0e1728;--text:#e9eefc;--muted:#9aacd2;--line:#22304d;--shadow:0 18px 45px rgba(0,0,0,.35)}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}.wrap{max-width:1200px;margin:0 auto;padding:20px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow)}.item{padding:14px;border:1px solid var(--line);border-radius:18px;margin-bottom:12px;background:color-mix(in srgb,var(--card) 85%, #edf2ff)}.btn{border:none;border-radius:14px;padding:10px 12px;font-weight:800;cursor:pointer}.btn-primary{background:var(--royal);color:#fff}.btn-light{background:#edf2ff;color:#17309f}.btn-danger{background:#fee2e2;color:#991b1b}.form{display:grid;gap:10px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.drag{cursor:grab;color:var(--muted);font-size:18px}.muted{color:var(--muted)}@media(max-width:900px){.two{grid-template-columns:1fr}}
+:root{--royal:#2141d9;--royal-2:#17309f;--bg:#f5f7ff;--card:#fff;--line:#dbe4ff;--text:#14213f;--muted:#64748b;--ok:#16a34a;--danger:#dc2626}
+body.dark{--bg:#081224;--card:#0f1b34;--line:#22355e;--text:#eef4ff;--muted:#a7b4d5}
+*{box-sizing:border-box}html,body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.header{background:linear-gradient(135deg,var(--royal-2),var(--royal));color:#fff;padding:18px 16px 88px}.wrap{padding:0 14px 90px;max-width:760px;margin:0 auto}.hero-card{margin-top:-62px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 16px 32px rgba(33,65,217,.10);margin-bottom:14px}.mini{font-size:13px;color:var(--muted)}
+.item{border:1px solid var(--line);border-radius:18px;padding:12px;background:rgba(255,255,255,.35);margin-top:10px} body.dark .item{background:rgba(255,255,255,.02)}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--text)} textarea{min-height:72px}
+.btn{border:none;border-radius:14px;padding:11px 14px;font-weight:800;cursor:pointer}.primary{background:var(--royal);color:#fff}.light{background:#edf2ff;color:#17309f}.danger{background:#fee2e2;color:#b91c1c}.ok{background:#dcfce7;color:#166534}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding:8px 6px;gap:6px}.nav button{border:none;background:transparent;padding:10px 6px;border-radius:12px;font-weight:800;color:var(--muted)}.nav button.active{background:#edf2ff;color:#17309f}.hidden{display:none}.drag{cursor:grab}
+@media(max-width:560px){.row2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+<div class="header"><div class="wrap" style="padding:0"><h1 style="margin:0">Rota da farmácia</h1><div>Olá, {{ coop.nome }}. Arraste a sequência e atualize a rota.</div></div></div>
 <div class="wrap">
-  <div class="top"><div><h1 style="margin:0">Minha rota da farmácia</h1><div class="muted">Arraste para cima e para baixo para montar sua rota. A primeira pode virar o próximo cliente.</div></div><button class="btn btn-light" id="toggleTheme"><i class="bi bi-moon-stars"></i> Modo noturno</button></div>
-  <div class="card" id="routeList">
-    {% for e in entregas %}{% set s=serializar_entrega(e) %}
-    <div class="item route-item" data-id="{{ e.id }}" draggable="true">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap"><div><div style="display:flex;gap:8px;align-items:center"><span class="drag"><i class="bi bi-grip-vertical"></i></span><strong>{{ s.pedido_numero or s.codigo }}</strong> • {{ s.medicamento_nome }}</div><div class="muted">{{ s.cliente_nome }} • {{ s.endereco }}</div><div class="muted">{% if s.refrigerado %}Resfriado • {% endif %}{% if s.pagamento_status!='pago' and s.valor_pedido>0 %}Cobrar R$ {{ '%.2f'|format(s.valor_pedido) }} • {% endif %}Entrega R$ {{ '%.2f'|format(s.valor_entrega) }}</div></div><div class="muted">{{ s.status_label }}</div></div>
-      <div class="two" style="margin-top:10px">
-        <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" class="form"><input type="hidden" name="acao" value="proximo"><button class="btn btn-light" type="submit">Marcar como próximo</button></form>
-        <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" class="form"><input type="hidden" name="acao" value="em_rota"><button class="btn btn-light" type="submit">Marcar em rota</button></form>
+  {% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="hero-card">{% for cat,msg in msgs %}<div class="card">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+  <section id="tab-rota" class="hero-card">
+    <div class="card">
+      <strong>Minha sequência</strong>
+      <div class="mini">O primeiro item pode ser marcado como próximo da vez. Você pode arrastar para cima e para baixo.</div>
+      <div id="rotaList">
+        {% for e in entregas %}{% set s = serializar_entrega(e) %}
+        <div class="item drag" draggable="true" data-id="{{ e.id }}">
+          <div style="display:flex;justify-content:space-between;gap:10px"><div><strong>{{ s.pedido_numero or s.codigo }}</strong><div class="mini">{{ s.cliente_nome }} • {{ s.endereco }}</div><div class="mini">Cobrança: {% if s.valor_entrega > 0 %}R$ {{ '%.2f'|format(s.valor_entrega) }}{% else %}Valor fechado / sem cobrança{% endif %}{% if s.pagamento_status!='pago' and s.valor_pedido>0 %} • Pedido a cobrar: R$ {{ '%.2f'|format(s.valor_pedido) }}{% endif %}</div>{% if s.refrigerado %}<div class="mini">Pedido resfriado</div>{% endif %}</div><div class="mini">{{ loop.index }}</div></div>
+          <div class="row2" style="margin-top:10px">
+            <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}"><input type="hidden" name="acao" value="em_rota"><button class="btn light" type="submit">Em rota</button></form>
+            <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}"><input type="hidden" name="acao" value="proximo"><button class="btn ok" type="submit">Próximo da vez</button></form>
+          </div>
+          <details style="margin-top:10px"><summary class="mini" style="cursor:pointer;font-weight:800">Entregue / não entregue</summary>
+            <div style="margin-top:10px">
+              <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" style="display:grid;gap:8px">
+                <input type="hidden" name="acao" value="entregue"><input name="entregue_para" placeholder="Quem recebeu?" required><button class="btn primary" type="submit">Confirmar entrega</button>
+              </form>
+              <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" style="display:grid;gap:8px;margin-top:8px">
+                <input type="hidden" name="acao" value="nao_entregue"><input name="motivo_nao_entrega" placeholder="Motivo da não entrega" required><textarea name="detalhe_nao_entrega" placeholder="Detalhe / observação"></textarea><button class="btn danger" type="submit">Registrar não entrega</button>
+              </form>
+            </div>
+          </details>
+        </div>
+        {% else %}<div class="card">Nenhuma entrega atribuída.</div>{% endfor %}
       </div>
-      <div class="two" style="margin-top:10px">
-        <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" class="form"><input type="hidden" name="acao" value="entregue"><input name="entregue_para" placeholder="Nome de quem recebeu" required><button class="btn btn-primary" type="submit">Confirmar entrega</button></form>
-        <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" class="form"><input type="hidden" name="acao" value="nao_entregue"><input name="motivo_nao_entrega" placeholder="Motivo da não entrega" required><input name="detalhe_nao_entrega" placeholder="Observação"><button class="btn btn-danger" type="submit">Registrar não entregue</button></form>
-      </div>
+      <button class="btn primary" type="button" onclick="salvarOrdem()" style="margin-top:10px">Salvar sequência</button>
     </div>
-    {% else %}<div class="item">Nenhuma entrega atribuída.</div>{% endfor %}
-  </div>
+  </section>
+  <section id="tab-config" class="hidden hero-card">
+    <div class="card">
+      <strong>Alterar senha</strong>
+      <form method="post" action="{{ url_for('cooperado_farmacia_alterar_senha') }}" style="display:grid;gap:10px;margin-top:12px">
+        <input type="password" name="senha_atual" placeholder="Senha atual" required>
+        <input type="password" name="senha_nova" placeholder="Nova senha" required>
+        <input type="password" name="senha_conf" placeholder="Confirmar nova senha" required>
+        <button class="btn primary" type="submit">Salvar nova senha</button>
+      </form>
+      <button class="btn light" style="margin-top:12px" type="button" onclick="toggleTheme()">Modo noturno</button>
+    </div>
+  </section>
+  <section id="tab-info" class="hidden hero-card">
+    <div class="card"><strong>Informações</strong><div class="mini" style="margin-top:8px">Quando você marcar um pedido como <b>Próximo da vez</b>, o cliente vê essa informação e fica atento para receber.</div></div>
+  </section>
 </div>
+<nav class="nav"><button class="active" onclick="showTab('rota', this)">Rota</button><button onclick="showTab('info', this)">Info</button><button onclick="showTab('config', this)">Config</button></nav>
 <script>
-const themeKey='coopex_coop_farm_theme';document.documentElement.dataset.theme=localStorage.getItem(themeKey)||'light';document.getElementById('toggleTheme').onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(themeKey,document.documentElement.dataset.theme)};
-const container=document.getElementById('routeList');let dragged=null;container.querySelectorAll('.route-item').forEach(it=>{it.addEventListener('dragstart',()=>dragged=it);it.addEventListener('dragover',e=>e.preventDefault());it.addEventListener('drop',e=>{e.preventDefault();if(dragged&&dragged!==it){it.parentNode.insertBefore(dragged,it);saveOrder();}})});
-function saveOrder(){const ids=[...document.querySelectorAll('.route-item')].map(x=>Number(x.dataset.id));fetch('{{ url_for("cooperado_reordenar_entregas_farmacia") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});}
+function showTab(tab, el){document.querySelectorAll('section[id^="tab-"]').forEach(s=>s.classList.add('hidden'));document.getElementById('tab-'+tab).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function toggleTheme(){ document.body.classList.toggle('dark'); localStorage.setItem('coop-farm-dark', document.body.classList.contains('dark') ? '1' : '0'); }
+if(localStorage.getItem('coop-farm-dark')==='1'){ document.body.classList.add('dark'); }
+let dragEl=null; document.querySelectorAll('.drag').forEach(el=>{ el.addEventListener('dragstart',()=>dragEl=el); el.addEventListener('dragover',e=>e.preventDefault()); el.addEventListener('drop',e=>{e.preventDefault(); if(dragEl && dragEl!==el){ const parent=el.parentNode; const kids=[...parent.querySelectorAll('.drag')]; const a=kids.indexOf(dragEl), b=kids.indexOf(el); if(a<b){ parent.insertBefore(dragEl, el.nextSibling);} else { parent.insertBefore(dragEl, el);} } }); });
+function salvarOrdem(){ const ids=[...document.querySelectorAll('#rotaList .drag')].map(el=>Number(el.dataset.id)); fetch('{{ url_for('cooperado_reordenar_entregas_farmacia') }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})}).then(()=>location.reload()).catch(()=>alert('Não foi possível salvar a sequência.')); }
 </script>
 </body>
 </html>
