@@ -1495,9 +1495,70 @@ def init_db():
     except Exception:
         db.session.rollback()
 
-    # 4.5.xb) clientes e entregas de farmácia
+    # 4.5.xb) clientes, funcionários e entregas de farmácia + colunas novas
     try:
         db.create_all()
+    except Exception:
+        db.session.rollback()
+
+    try:
+        if _is_sqlite():
+            cols = db.session.execute(sa_text("PRAGMA table_info(restaurantes);")).fetchall()
+            colnames = {row[1] for row in cols}
+            if "farmacia_salario_mensal" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN farmacia_salario_mensal FLOAT DEFAULT 0"))
+            if "farmacia_taxa_coop" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN farmacia_taxa_coop FLOAT DEFAULT 0"))
+
+            cols = db.session.execute(sa_text("PRAGMA table_info(entregas_farmacia);")).fetchall()
+            colnames = {row[1] for row in cols}
+            extras_entrega = {
+                "forma_pagamento": "ALTER TABLE entregas_farmacia ADD COLUMN forma_pagamento VARCHAR(20) DEFAULT 'nao_informado'",
+                "cartao_tipo": "ALTER TABLE entregas_farmacia ADD COLUMN cartao_tipo VARCHAR(20) DEFAULT ''",
+                "foto_pedido_url": "ALTER TABLE entregas_farmacia ADD COLUMN foto_pedido_url VARCHAR(255)",
+                "foto_pedido_nome": "ALTER TABLE entregas_farmacia ADD COLUMN foto_pedido_nome VARCHAR(255)",
+            }
+            for col, sql in extras_entrega.items():
+                if col not in colnames:
+                    db.session.execute(sa_text(sql))
+
+            cols = db.session.execute(sa_text("PRAGMA table_info(clientes_farmacia);")).fetchall()
+            colnames = {row[1] for row in cols}
+            extras_cliente = {
+                "telefone": "ALTER TABLE clientes_farmacia ADD COLUMN telefone VARCHAR(30)",
+                "endereco": "ALTER TABLE clientes_farmacia ADD COLUMN endereco VARCHAR(255)",
+                "observacao": "ALTER TABLE clientes_farmacia ADD COLUMN observacao TEXT",
+            }
+            for col, sql in extras_cliente.items():
+                if col not in colnames:
+                    db.session.execute(sa_text(sql))
+
+            cols = db.session.execute(sa_text("PRAGMA table_info(funcionarios_farmacia);")).fetchall()
+            colnames = {row[1] for row in cols}
+            extras_func = {
+                "cargo": "ALTER TABLE funcionarios_farmacia ADD COLUMN cargo VARCHAR(80)",
+                "ativo": "ALTER TABLE funcionarios_farmacia ADD COLUMN ativo BOOLEAN DEFAULT 1",
+            }
+            for col, sql in extras_func.items():
+                if col not in colnames:
+                    db.session.execute(sa_text(sql))
+            db.session.commit()
+        else:
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.restaurantes ADD COLUMN IF NOT EXISTS farmacia_salario_mensal DOUBLE PRECISION DEFAULT 0"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.restaurantes ADD COLUMN IF NOT EXISTS farmacia_taxa_coop DOUBLE PRECISION DEFAULT 0"))
+
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(20) DEFAULT 'nao_informado'"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS cartao_tipo VARCHAR(20) DEFAULT ''"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS foto_pedido_url VARCHAR(255)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS foto_pedido_nome VARCHAR(255)"))
+
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.clientes_farmacia ADD COLUMN IF NOT EXISTS telefone VARCHAR(30)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.clientes_farmacia ADD COLUMN IF NOT EXISTS endereco VARCHAR(255)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.clientes_farmacia ADD COLUMN IF NOT EXISTS observacao TEXT"))
+
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.funcionarios_farmacia ADD COLUMN IF NOT EXISTS cargo VARCHAR(80)"))
+            db.session.execute(sa_text("ALTER TABLE IF EXISTS public.funcionarios_farmacia ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT TRUE"))
+            db.session.commit()
     except Exception:
         db.session.rollback()
 
@@ -11454,35 +11515,6 @@ def cooperado_farmacia_alterar_senha():
     db.session.commit()
     flash('Senha alterada com sucesso.', 'success')
     return redirect(url_for('cooperado_entregas_farmacia'))
-
-try:
-    _orig_init_db_farmacia = init_db
-    def init_db():
-        _orig_init_db_farmacia()
-        try:
-            if _is_sqlite():
-                cols = db.session.execute(sa_text("PRAGMA table_info(entregas_farmacia);")).fetchall()
-                colnames = {row[1] for row in cols}
-                extras = {
-                    'forma_pagamento': "ALTER TABLE entregas_farmacia ADD COLUMN forma_pagamento VARCHAR(20) DEFAULT 'nao_informado'",
-                    'cartao_tipo': "ALTER TABLE entregas_farmacia ADD COLUMN cartao_tipo VARCHAR(20) DEFAULT ''",
-                    'foto_pedido_url': "ALTER TABLE entregas_farmacia ADD COLUMN foto_pedido_url VARCHAR(255)",
-                    'foto_pedido_nome': "ALTER TABLE entregas_farmacia ADD COLUMN foto_pedido_nome VARCHAR(255)",
-                }
-                for c,sql in extras.items():
-                    if c not in colnames:
-                        db.session.execute(sa_text(sql))
-                db.session.commit()
-            else:
-                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(20) DEFAULT 'nao_informado'"))
-                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS cartao_tipo VARCHAR(20) DEFAULT ''"))
-                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS foto_pedido_url VARCHAR(255)"))
-                db.session.execute(sa_text("ALTER TABLE IF EXISTS public.entregas_farmacia ADD COLUMN IF NOT EXISTS foto_pedido_nome VARCHAR(255)"))
-                db.session.commit()
-        except Exception:
-            db.session.rollback()
-except Exception:
-    pass
 
 if __name__ == "__main__":
     with app.app_context():
