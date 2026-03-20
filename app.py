@@ -49,7 +49,7 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError, IntegrityError, Di
 from sqlalchemy import delete as sa_delete
 
 # 👉 Novo: para gerar XLSX em memória
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
@@ -287,6 +287,7 @@ class Usuario(db.Model, UserMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     usuario = db.Column(db.String(80), unique=True, nullable=False)
+    nome = db.Column(db.String(120))
     senha_hash = db.Column(db.String(200), nullable=False)
     tipo = db.Column(db.String(20), nullable=False)  # admin | cooperado | restaurante
 
@@ -383,6 +384,13 @@ class Restaurante(db.Model):
     # 1 usuário -> 1 restaurante
     usuario_ref = db.relationship("Usuario", backref=db.backref("rest_account", uselist=False))
 
+    # Taxa administrativa
+    taxa_admin_valor = db.Column(db.Float, default=0.0)
+    taxa_admin_data_base = db.Column(db.Date)
+    taxa_admin_multa_percentual = db.Column(db.Float, default=2.0)
+    taxa_admin_juros_dia_percentual = db.Column(db.Float, default=0.03)
+    ativo = db.Column(db.Boolean, default=True)
+
     # Foto no banco (bytea)
     foto_bytes = db.Column(db.LargeBinary)
     foto_mime = db.Column(db.String(100))
@@ -457,6 +465,22 @@ class ReceitaCooperativa(db.Model):
     valor_total = db.Column(db.Float, default=0.0)
     data = db.Column(db.Date, nullable=True)
 
+    restaurante_id = db.Column(db.Integer, db.ForeignKey("restaurantes.id"), nullable=True, index=True)
+    restaurante = db.relationship("Restaurante")
+
+    auto_taxa_adm = db.Column(db.Boolean, default=False)
+    competencia = db.Column(db.String(7))
+    valor_previsto = db.Column(db.Float, default=0.0)
+    valor_principal = db.Column(db.Float, default=0.0)
+    valor_pago = db.Column(db.Float, default=0.0)
+    valor_multa = db.Column(db.Float, default=0.0)
+    valor_juros = db.Column(db.Float, default=0.0)
+    data_vencimento = db.Column(db.Date)
+    data_pagamento = db.Column(db.Date)
+    status_pagamento = db.Column(db.String(20), default="nao_pago")
+    multa_percentual = db.Column(db.Float, default=2.0)
+    juros_dia_percentual = db.Column(db.Float, default=0.03)
+
 
 class DespesaCooperativa(db.Model):
     __tablename__ = "despesas_coop"
@@ -503,7 +527,25 @@ class DespesaCooperado(db.Model):
 
     # 🔴 NOVO: marca se é adiantamento
     eh_adiantamento = db.Column(db.Boolean, default=False)
+    competencia_desconto = db.Column(db.String(20), default='atual')
     
+
+
+class DespesaCooperadoAbatimento(db.Model):
+    __tablename__ = "despesas_cooperado_abatimentos"
+    id = db.Column(db.Integer, primary_key=True)
+    despesa_id = db.Column(db.Integer, db.ForeignKey("despesas_cooperado.id", ondelete="CASCADE"), nullable=False, index=True)
+    data = db.Column(db.Date, nullable=False, default=date.today)
+    valor = db.Column(db.Float, default=0.0)
+    origem = db.Column(db.String(30), default="manual")
+    observacao = db.Column(db.String(255))
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    despesa = db.relationship(
+        "DespesaCooperado",
+        backref=db.backref("abatimentos", cascade="all, delete-orphan", order_by="DespesaCooperadoAbatimento.data.desc(), DespesaCooperadoAbatimento.id.desc()")
+    )
+
 
 class BeneficioRegistro(db.Model):
     __tablename__ = "beneficios_registro"
@@ -862,6 +904,23 @@ def init_db():
     except Exception:
         db.session.rollback()
 
+    # 3.95) nome em usuarios
+    try:
+        if _is_sqlite():
+            cols = db.session.execute(sa_text("PRAGMA table_info(usuarios);")).fetchall()
+            colnames = {row[1] for row in cols}
+            if "nome" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE usuarios ADD COLUMN nome VARCHAR(120)"))
+            db.session.commit()
+        else:
+            db.session.execute(sa_text("""
+                ALTER TABLE IF EXISTS public.usuarios
+                ADD COLUMN IF NOT EXISTS nome VARCHAR(120)
+            """))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     # 4) Migração leve: garantir coluna qtd_entregas em lancamentos
     try:
         if _is_sqlite():
@@ -988,6 +1047,61 @@ def init_db():
     except Exception:
         db.session.rollback()
 
+
+
+    # 4.za) competencia_desconto em despesas_cooperado
+    try:
+        if _is_sqlite():
+            cols = db.session.execute(sa_text("PRAGMA table_info(despesas_cooperado);")).fetchall()
+            colnames = {row[1] for row in cols}
+            if "competencia_desconto" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE despesas_cooperado ADD COLUMN competencia_desconto VARCHAR(20) DEFAULT 'atual'"))
+            db.session.commit()
+        else:
+            db.session.execute(sa_text("""
+                ALTER TABLE IF EXISTS public.despesas_cooperado
+                ADD COLUMN IF NOT EXISTS competencia_desconto VARCHAR(20) DEFAULT 'atual'
+            """))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    # 4.zb) tabela de abatimentos de despesas do cooperado
+    try:
+        if _is_sqlite():
+            db.session.execute(sa_text("""
+                CREATE TABLE IF NOT EXISTS despesas_cooperado_abatimentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    despesa_id INTEGER NOT NULL,
+                    data DATE NOT NULL,
+                    valor FLOAT DEFAULT 0.0,
+                    origem VARCHAR(30) DEFAULT 'manual',
+                    observacao VARCHAR(255),
+                    criado_em DATETIME,
+                    FOREIGN KEY(despesa_id) REFERENCES despesas_cooperado(id) ON DELETE CASCADE
+                )
+            """))
+            db.session.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_despesas_cooperado_abatimentos_despesa_id ON despesas_cooperado_abatimentos (despesa_id)"))
+            db.session.commit()
+        else:
+            db.session.execute(sa_text("""
+                CREATE TABLE IF NOT EXISTS public.despesas_cooperado_abatimentos (
+                    id SERIAL PRIMARY KEY,
+                    despesa_id INTEGER NOT NULL REFERENCES public.despesas_cooperado(id) ON DELETE CASCADE,
+                    data DATE NOT NULL,
+                    valor DOUBLE PRECISION DEFAULT 0.0,
+                    origem VARCHAR(30) DEFAULT 'manual',
+                    observacao VARCHAR(255),
+                    criado_em TIMESTAMP
+                )
+            """))
+            db.session.execute(sa_text("""
+                CREATE INDEX IF NOT EXISTS ix_despesas_cooperado_abatimentos_despesa_id
+                ON public.despesas_cooperado_abatimentos (despesa_id)
+            """))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     # 4.1) cooperado_nome em escalas
     try:
@@ -1147,37 +1261,94 @@ def init_db():
     except Exception:
         db.session.rollback()
 
+    # 4.5.x) taxa administrativa em restaurantes + receitas_coop
+    try:
+        if _is_sqlite():
+            cols = db.session.execute(sa_text("PRAGMA table_info(restaurantes);")).fetchall()
+            colnames = {row[1] for row in cols}
+            if "taxa_admin_valor" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN taxa_admin_valor FLOAT DEFAULT 0"))
+            if "taxa_admin_data_base" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN taxa_admin_data_base DATE"))
+            if "taxa_admin_multa_percentual" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN taxa_admin_multa_percentual FLOAT DEFAULT 2.0"))
+            if "taxa_admin_juros_dia_percentual" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN taxa_admin_juros_dia_percentual FLOAT DEFAULT 0.03"))
+            if "ativo" not in colnames:
+                db.session.execute(sa_text("ALTER TABLE restaurantes ADD COLUMN ativo BOOLEAN DEFAULT 1"))
+            db.session.commit()
+
+            cols = db.session.execute(sa_text("PRAGMA table_info(receitas_coop);")).fetchall()
+            colnames = {row[1] for row in cols}
+            adds = {
+                "restaurante_id": "INTEGER",
+                "auto_taxa_adm": "BOOLEAN DEFAULT 0",
+                "competencia": "VARCHAR(7)",
+                "valor_previsto": "FLOAT DEFAULT 0",
+                "valor_principal": "FLOAT DEFAULT 0",
+                "valor_pago": "FLOAT DEFAULT 0",
+                "valor_multa": "FLOAT DEFAULT 0",
+                "valor_juros": "FLOAT DEFAULT 0",
+                "data_vencimento": "DATE",
+                "data_pagamento": "DATE",
+                "status_pagamento": "VARCHAR(20) DEFAULT 'nao_pago'",
+                "multa_percentual": "FLOAT DEFAULT 2.0",
+                "juros_dia_percentual": "FLOAT DEFAULT 0.03",
+            }
+            for col, ddl in adds.items():
+                if col not in colnames:
+                    db.session.execute(sa_text(f"ALTER TABLE receitas_coop ADD COLUMN {col} {ddl}"))
+            db.session.commit()
+        else:
+            db.session.execute(sa_text("""
+                ALTER TABLE IF EXISTS public.restaurantes ADD COLUMN IF NOT EXISTS taxa_admin_valor DOUBLE PRECISION DEFAULT 0;
+                ALTER TABLE IF EXISTS public.restaurantes ADD COLUMN IF NOT EXISTS taxa_admin_data_base DATE;
+                ALTER TABLE IF EXISTS public.restaurantes ADD COLUMN IF NOT EXISTS taxa_admin_multa_percentual DOUBLE PRECISION DEFAULT 2.0;
+                ALTER TABLE IF EXISTS public.restaurantes ADD COLUMN IF NOT EXISTS taxa_admin_juros_dia_percentual DOUBLE PRECISION DEFAULT 0.03;
+                ALTER TABLE IF EXISTS public.restaurantes ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT TRUE;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS restaurante_id INTEGER;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS auto_taxa_adm BOOLEAN DEFAULT FALSE;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS competencia VARCHAR(7);
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS valor_previsto DOUBLE PRECISION DEFAULT 0;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS valor_principal DOUBLE PRECISION DEFAULT 0;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS valor_pago DOUBLE PRECISION DEFAULT 0;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS valor_multa DOUBLE PRECISION DEFAULT 0;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS valor_juros DOUBLE PRECISION DEFAULT 0;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS data_vencimento DATE;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS data_pagamento DATE;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS status_pagamento VARCHAR(20) DEFAULT 'nao_pago';
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS multa_percentual DOUBLE PRECISION DEFAULT 2.0;
+                ALTER TABLE IF EXISTS public.receitas_coop ADD COLUMN IF NOT EXISTS juros_dia_percentual DOUBLE PRECISION DEFAULT 0.03;
+            """))
+            db.session.commit()
+        try:
+            db.session.execute(sa_text("UPDATE receitas_coop SET status_pagamento = 'nao_pago' WHERE status_pagamento IS NULL"))
+            db.session.execute(sa_text("UPDATE receitas_coop SET auto_taxa_adm = FALSE WHERE auto_taxa_adm IS NULL"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    except Exception:
+        db.session.rollback()
+
     # 5) Bootstrap mínimo (admin e config) — só se os modelos existirem
     try:
+        # Garante que o model Usuario está acessível
         _ = Usuario  # type: ignore[name-defined]
 
-        admin_user = (os.environ.get("ADMIN_USER", "COOPEX") or "COOPEX").strip()
-        admin_pass = (os.environ.get("ADMIN_PASS", "COOPEX05289") or "COOPEX05289").strip()
+        # Admin
+        try:
+            tem_admin = Usuario.query.filter_by(tipo="admin").first()  # type: ignore[name-defined]
+        except Exception:
+            tem_admin = None
 
-        admin = None
-        if admin_user:
-            admin = Usuario.query.filter(func.lower(Usuario.usuario) == admin_user.lower()).first()  # type: ignore[name-defined]
-
-        if admin:
-            admin.usuario = admin_user
-            admin.tipo = "admin"
-            admin.is_master = True
-            admin.ativo = True
-            try:
-                admin.set_password(admin_pass)  # type: ignore[attr-defined]
-            except Exception:
-                try:
-                    from werkzeug.security import generate_password_hash
-                    admin.senha_hash = generate_password_hash(admin_pass)  # type: ignore[attr-defined]
-                except Exception:
-                    pass
-        else:
+        if not tem_admin:
+            admin_user = os.environ.get("ADMIN_USER", "admin")
+            admin_pass = os.environ.get("ADMIN_PASS", os.urandom(8).hex())
             admin = Usuario(
                 usuario=admin_user,
                 tipo="admin",
                 senha_hash="",
-                is_master=True,
-                ativo=True,
+                is_master=True
             )  # type: ignore[name-defined]
             try:
                 admin.set_password(admin_pass)  # type: ignore[attr-defined]
@@ -1188,28 +1359,7 @@ def init_db():
                 except Exception:
                     pass
             db.session.add(admin)
-
-        db.session.flush()
-
-        for aba in ADMIN_ABAS.keys():
-            p = AdminPermissao.query.filter_by(usuario_id=admin.id, aba=aba).first()
-            if not p:
-                p = AdminPermissao(
-                    usuario_id=admin.id,
-                    aba=aba,
-                    pode_ver=True,
-                    pode_criar=True,
-                    pode_editar=True,
-                    pode_excluir=True,
-                )
-                db.session.add(p)
-            else:
-                p.pode_ver = True
-                p.pode_criar = True
-                p.pode_editar = True
-                p.pode_excluir = True
-
-        db.session.commit()
+            db.session.commit()
     except Exception:
         db.session.rollback()
 
@@ -1219,7 +1369,6 @@ def init_db():
             primeiro_admin = Usuario.query.filter_by(tipo="admin").order_by(Usuario.id.asc()).first()
             if primeiro_admin:
                 primeiro_admin.is_master = True
-                primeiro_admin.ativo = True
                 db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1366,7 +1515,6 @@ ADMIN_ABAS = {
     "documentos": "Documentos",
     "tabelas": "Tabelas",
     "avaliacoes": "Avaliações",
-    "rh": "RH",
     "config": "Configurações",
     "folha": "Folha",
 }
@@ -2926,10 +3074,7 @@ def login():
         usuario = (request.form.get("usuario") or "").strip()
         senha = request.form.get("senha") or ""
 
-        u = Usuario.query.filter(func.lower(Usuario.usuario) == usuario.lower()).first()
-
-        master_user_env = (os.environ.get("ADMIN_USER", "COOPEX") or "COOPEX").strip()
-        master_pass_env = (os.environ.get("ADMIN_PASS", "COOPEX05289") or "COOPEX05289").strip()
+        u = Usuario.query.filter_by(usuario=usuario).first()
 
         # fallback: login pelo nome do restaurante
         if not u:
@@ -2940,43 +3085,7 @@ def login():
             if r and r.usuario_ref:
                 u = r.usuario_ref
 
-        login_master = bool(u and usuario.strip().lower() == master_user_env.lower())
-        senha_ok = bool(u and (u.check_password(senha) or (login_master and senha == master_pass_env)))
-
-        if u and senha_ok:
-            if login_master:
-                u.usuario = master_user_env
-                u.tipo = "admin"
-                u.is_master = True
-                u.ativo = True
-                try:
-                    u.set_password(master_pass_env)
-                except Exception:
-                    try:
-                        u.senha_hash = generate_password_hash(master_pass_env)
-                    except Exception:
-                        pass
-                db.session.flush()
-
-                for aba in ADMIN_ABAS.keys():
-                    p = AdminPermissao.query.filter_by(usuario_id=u.id, aba=aba).first()
-                    if not p:
-                        p = AdminPermissao(
-                            usuario_id=u.id,
-                            aba=aba,
-                            pode_ver=True,
-                            pode_criar=True,
-                            pode_editar=True,
-                            pode_excluir=True,
-                        )
-                        db.session.add(p)
-                    else:
-                        p.pode_ver = True
-                        p.pode_criar = True
-                        p.pode_editar = True
-                        p.pode_excluir = True
-                db.session.commit()
-
+        if u and u.check_password(senha):
             # corrige registros antigos com ativo nulo
             if getattr(u, "ativo", None) is None:
                 u.ativo = True
@@ -3059,6 +3168,187 @@ def sso_entrar():
     next_url = data.get("next") or url_for("admin_dashboard")
     return redirect(next_url)
     
+def _safe_float(v, default=0.0):
+    try:
+        if v in (None, ''):
+            return float(default)
+        return float(v)
+    except Exception:
+        return float(default)
+
+
+def _receita_total_real(r: ReceitaCooperativa) -> float:
+    if getattr(r, 'auto_taxa_adm', False):
+        return round(_safe_float(getattr(r, 'valor_pago', 0.0)) + _safe_float(getattr(r, 'valor_multa', 0.0)) + _safe_float(getattr(r, 'valor_juros', 0.0)), 2)
+    return round(_safe_float(getattr(r, 'valor_total', 0.0)), 2)
+
+
+def _calc_taxa_admin_encargos(valor_principal: float, data_vencimento: date | None, data_pagamento: date | None = None, multa_percentual: float = 2.0, juros_dia_percentual: float = 0.03):
+    valor_principal = round(_safe_float(valor_principal), 2)
+    multa_percentual = _safe_float(multa_percentual, 2.0)
+    juros_dia_percentual = _safe_float(juros_dia_percentual, 0.03)
+    ref = data_pagamento or date.today()
+    if not data_vencimento:
+        return {
+            'dias_atraso': 0,
+            'valor_multa': 0.0,
+            'valor_juros': 0.0,
+            'valor_total': valor_principal,
+        }
+    dias = (ref - data_vencimento).days
+    dias = dias if dias > 0 else 0
+    multa = round(valor_principal * (multa_percentual / 100.0), 2) if dias > 0 else 0.0
+    juros = round(valor_principal * (juros_dia_percentual / 100.0) * dias, 2) if dias > 0 else 0.0
+    return {
+        'dias_atraso': dias,
+        'valor_multa': multa,
+        'valor_juros': juros,
+        'valor_total': round(valor_principal + multa + juros, 2),
+    }
+
+
+def _taxa_competencia_iter(data_base: date | None, months_back: int = 0):
+    if not data_base:
+        return []
+    hoje = date.today()
+    start = date(hoje.year, hoje.month, 1)
+    end = date(hoje.year, 12, 1)
+    cur = start
+    items = []
+    while cur <= end:
+        last_day = (cur + relativedelta(months=1) - timedelta(days=1)).day
+        day = min(data_base.day, last_day)
+        venc = date(cur.year, cur.month, day)
+        items.append((cur.strftime('%Y-%m'), venc))
+        cur = cur + relativedelta(months=1)
+    return items
+
+
+def _ensure_taxas_admin_receitas(restaurantes: list[Restaurante], months_back: int = 0):
+    restaurantes_validos = []
+    wanted = set()
+    for rest in restaurantes:
+        valor = _safe_float(getattr(rest, 'taxa_admin_valor', 0.0))
+        data_base = getattr(rest, 'taxa_admin_data_base', None)
+        ativo_rest = bool(getattr(rest, 'ativo', True)) if hasattr(rest, 'ativo') else True
+        if (not ativo_rest) or valor <= 0 or not data_base:
+            continue
+        comps = _taxa_competencia_iter(data_base, months_back=months_back)
+        if not comps:
+            continue
+        restaurantes_validos.append((rest, valor, data_base, comps))
+        for competencia, _ in comps:
+            wanted.add((rest.id, competencia))
+
+    if not restaurantes_validos:
+        return
+
+    rest_ids = [rest.id for rest, _, _, _ in restaurantes_validos]
+    existing_rows = ReceitaCooperativa.query.filter(
+        ReceitaCooperativa.auto_taxa_adm.is_(True),
+        ReceitaCooperativa.restaurante_id.in_(rest_ids),
+    ).all()
+    existing = {(r.restaurante_id, (r.competencia or '')): r for r in existing_rows}
+
+    changed = False
+    for rest, valor, data_base, comps in restaurantes_validos:
+        multa_p = _safe_float(getattr(rest, 'taxa_admin_multa_percentual', 2.0), 2.0)
+        juros_p = _safe_float(getattr(rest, 'taxa_admin_juros_dia_percentual', 0.03), 0.03)
+        for competencia, venc in comps:
+            existente = existing.get((rest.id, competencia))
+            if existente:
+                if getattr(existente, 'data_vencimento', None) != venc:
+                    existente.data_vencimento = venc
+                    existente.data = venc
+                    changed = True
+                if (getattr(existente, 'descricao', None) or '') != f'Taxa administrativa - {rest.nome} - {competencia}':
+                    existente.descricao = f'Taxa administrativa - {rest.nome} - {competencia}'
+                    changed = True
+                if abs(_safe_float(getattr(existente, 'valor_previsto', 0.0)) - valor) > 0.009:
+                    existente.valor_previsto = valor
+                    existente.valor_principal = valor
+                    changed = True
+                existente.multa_percentual = multa_p
+                existente.juros_dia_percentual = juros_p
+                continue
+
+            novo = ReceitaCooperativa(
+                descricao=f'Taxa administrativa - {rest.nome} - {competencia}',
+                valor_total=0.0,
+                data=venc,
+                restaurante_id=rest.id,
+                auto_taxa_adm=True,
+                competencia=competencia,
+                valor_previsto=valor,
+                valor_principal=valor,
+                valor_pago=0.0,
+                valor_multa=0.0,
+                valor_juros=0.0,
+                data_vencimento=venc,
+                status_pagamento='nao_pago',
+                multa_percentual=multa_p,
+                juros_dia_percentual=juros_p,
+            )
+            db.session.add(novo)
+            changed = True
+
+    if changed:
+        db.session.commit()
+
+
+def _build_taxa_admin_rows(receitas: list[ReceitaCooperativa]):
+    rows = []
+    total_previsto = total_recebido = total_multa = total_juros = total_em_aberto = 0.0
+    for r in receitas:
+        if not getattr(r, 'auto_taxa_adm', False):
+            continue
+        previsto = _safe_float(getattr(r, 'valor_previsto', None) or getattr(r, 'valor_principal', None) or getattr(r, 'valor_total', 0.0))
+        pago = _safe_float(getattr(r, 'valor_pago', 0.0))
+        status = (getattr(r, 'status_pagamento', None) or 'nao_pago').strip().lower()
+        data_pag = getattr(r, 'data_pagamento', None)
+        venc = getattr(r, 'data_vencimento', None) or getattr(r, 'data', None)
+        calc = _calc_taxa_admin_encargos(previsto, venc, data_pag if status == 'pago' else None, _safe_float(getattr(r, 'multa_percentual', 2.0), 2.0), _safe_float(getattr(r, 'juros_dia_percentual', 0.03), 0.03))
+        if status == 'pago':
+            multa = _safe_float(getattr(r, 'valor_multa', 0.0))
+            juros = _safe_float(getattr(r, 'valor_juros', 0.0))
+        else:
+            multa = calc['valor_multa']
+            juros = calc['valor_juros']
+        total = round(pago + ( _safe_float(getattr(r, 'valor_multa', 0.0)) if status == 'pago' else 0.0) + (_safe_float(getattr(r, 'valor_juros', 0.0)) if status == 'pago' else 0.0), 2)
+        aberto = max(0.0, round(calc['valor_total'] - total, 2)) if status != 'pago' else 0.0
+        rows.append({
+            'obj': r,
+            'id': r.id,
+            'descricao': r.descricao,
+            'restaurante_nome': (r.restaurante.nome if getattr(r, 'restaurante', None) else ''),
+            'competencia': getattr(r, 'competencia', '') or '',
+            'data_vencimento': venc,
+            'data_pagamento': data_pag,
+            'status': status,
+            'valor_previsto': round(previsto, 2),
+            'valor_pago': round(pago, 2),
+            'valor_multa': round(multa, 2),
+            'valor_juros': round(juros, 2),
+            'valor_recebido': round(total, 2),
+            'valor_em_aberto': round(aberto, 2),
+            'dias_atraso': calc['dias_atraso'],
+            'multa_percentual': _safe_float(getattr(r, 'multa_percentual', 2.0), 2.0),
+            'juros_dia_percentual': _safe_float(getattr(r, 'juros_dia_percentual', 0.03), 0.03),
+        })
+        total_previsto += previsto
+        total_recebido += total
+        total_multa += round(multa, 2) if status == 'pago' else 0.0
+        total_juros += round(juros, 2) if status == 'pago' else 0.0
+        total_em_aberto += round(aberto, 2)
+    rows.sort(key=lambda x: ((x['data_vencimento'] or date.min), x['restaurante_nome'].lower(), x['competencia']), reverse=True)
+    return rows, {
+        'previsto': round(total_previsto, 2),
+        'recebido': round(total_recebido, 2),
+        'multa': round(total_multa, 2),
+        'juros': round(total_juros, 2),
+        'em_aberto': round(total_em_aberto, 2),
+    }
+
 # =========================
 # Admin Dashboard
 # =========================
@@ -3251,8 +3541,12 @@ def admin_dashboard():
         data_inicio = data_fim
     elif not data_inicio and not data_fim:
         hoje_ref = date.today()
-        data_inicio = hoje_ref - timedelta(days=hoje_ref.weekday())
-        data_fim = data_inicio + timedelta(days=6)
+        if active_tab == 'receitas':
+            data_inicio = date(hoje_ref.year, hoje_ref.month, 1)
+            data_fim = (data_inicio + relativedelta(months=1)) - timedelta(days=1)
+        else:
+            data_inicio = hoje_ref - timedelta(days=hoje_ref.weekday())
+            data_fim = data_inicio + timedelta(days=6)
 
     restaurante_id = args.get("restaurante_id", type=int)
     cooperado_id = args.get("cooperado_id", type=int)
@@ -3331,10 +3625,7 @@ def admin_dashboard():
             DespesaCooperativa.id.desc()
         ).all()
 
-        total_receitas = sum(
-            (getattr(r, "valor", None) or getattr(r, "valor_total", 0.0) or 0.0)
-            for r in receitas
-        )
+        total_receitas = sum(_receita_total_real(r) for r in receitas)
         total_despesas = sum((d.valor or 0.0) for d in despesas)
 
     # =========================
@@ -3365,6 +3656,12 @@ def admin_dashboard():
         elif data_fim:
             dq2 = dq2.filter(DespesaCooperado.data_inicio <= data_fim)
 
+        if cooperado_id:
+            rq2 = rq2.filter(ReceitaCooperado.cooperado_id == cooperado_id)
+            dq2 = dq2.filter(DespesaCooperado.cooperado_id == cooperado_id)
+
+        somente_pendentes = bool((request.args.get('somente_pendentes') or '').strip())
+
         receitas_coop = rq2.order_by(
             ReceitaCooperado.data.desc(),
             ReceitaCooperado.id.desc()
@@ -3375,6 +3672,11 @@ def admin_dashboard():
             DespesaCooperado.id.desc()
         ).all()
 
+        if somente_pendentes and cooperado_id:
+            snap_pend = _compute_coop_debt_snapshot(cooperado_id, data_inicio, data_fim)
+            pend_ids = {item['id'] for item in snap_pend['itens'] if item['status'] in ('pendente', 'parcial', 'a_descontar') and item['restante'] > 0}
+            despesas_coop = [d for d in despesas_coop if d.id in pend_ids]
+
         total_receitas_coop = sum((r.valor or 0.0) for r in receitas_coop)
         total_despesas_coop = sum(
             (d.valor or 0.0) for d in despesas_coop
@@ -3384,6 +3686,12 @@ def admin_dashboard():
             (d.valor or 0.0) for d in despesas_coop
             if getattr(d, "eh_adiantamento", False)
         )
+
+        despesa_snapshot_map = {}
+        for _cid in {getattr(d, "cooperado_id", None) for d in despesas_coop if getattr(d, "cooperado_id", None)}:
+            _snap = _compute_coop_debt_snapshot(_cid, data_inicio, data_fim)
+            for _it in _snap["itens"]:
+                despesa_snapshot_map[_it["id"]] = _it
 
     cfg = get_config()
 
@@ -3396,6 +3704,32 @@ def admin_dashboard():
     )
 
     restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
+    _ensure_taxas_admin_receitas(restaurantes, months_back=0)
+
+    # Recarrega SEMPRE as receitas/despesas após gerar taxas automáticas.
+    # Assim, sem filtro manual, a aba de receitas já abre mostrando o mês atual,
+    # e com filtro continua respeitando o período informado.
+    rq = ReceitaCooperativa.query
+    dq = DespesaCooperativa.query
+    if data_inicio:
+        rq = rq.filter(ReceitaCooperativa.data >= data_inicio)
+        dq = dq.filter(DespesaCooperativa.data >= data_inicio)
+    if data_fim:
+        rq = rq.filter(ReceitaCooperativa.data <= data_fim)
+        dq = dq.filter(DespesaCooperativa.data <= data_fim)
+
+    receitas = rq.order_by(
+        ReceitaCooperativa.data.desc().nullslast(),
+        ReceitaCooperativa.id.desc(),
+    ).all()
+    despesas = dq.order_by(
+        DespesaCooperativa.data.desc(),
+        DespesaCooperativa.id.desc(),
+    ).all()
+    total_receitas = sum(_receita_total_real(r) for r in receitas)
+    total_despesas = sum((d.valor or 0.0) for d in despesas)
+    taxa_admin_rows, taxa_admin_totais = _build_taxa_admin_rows(receitas)
+    juros_arrecadados_total = round(sum((r['valor_multa'] + r['valor_juros']) for r in taxa_admin_rows if r['status'] == 'pago'), 2)
     cooperados_map = {c.id: c for c in cooperados}
 
     # =========================
@@ -3919,6 +4253,52 @@ def admin_dashboard():
         trocas_hist_fim = trocas_hist_fim or current_date
         trocas_hist_inicio = trocas_hist_inicio or (current_date - timedelta(days=30))
 
+
+    # resumo por cooperado calculado no backend para evitar travar no JS
+    resumo_coop_rows = []
+    resumo_totais = {
+        "prod": 0.0, "inss4": 0.0, "sest05": 0.0, "rec": 0.0,
+        "des": 0.0, "adiant": 0.0, "a_receber": 0.0, "saldo_pendente": 0.0,
+        "pend_programado": 0.0
+    }
+    for coop in cooperados:
+        snap = _compute_coop_debt_snapshot(coop.id, data_inicio, data_fim)
+        prod = sum((l.valor or 0.0) for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+        rec = sum((r.valor or 0.0) for r in receitas_coop if getattr(r, "cooperado_id", None) == coop.id)
+        inss4 = sum((l.valor or 0.0) * INSS_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+        sest05 = sum((l.valor or 0.0) * SEST_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+        des = round(snap.get("descontado_despesa", 0.0), 2)
+        adiant = round(sum((d.valor or 0.0) for d in despesas_coop if getattr(d, "cooperado_id", None) == coop.id and bool(getattr(d, "eh_adiantamento", False))), 2)
+        if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"]:
+            _a_receber = round(max(0.0, snap["disponivel_auto_restante"]), 2)
+            _saldo_pendente = round(snap["saldo_devedor"], 2)
+            _pend_programado = round(snap["a_descontar"], 2)
+            resumo_coop_rows.append({
+                "id": coop.id,
+                "nome": coop.nome,
+                "prod": round(prod,2),
+                "inss4": round(inss4,2),
+                "sest05": round(sest05,2),
+                "rec": round(rec,2),
+                "des": round(des,2),
+                "adiant": round(adiant,2),
+                "a_receber": _a_receber,
+                "aReceber": _a_receber,
+                "saldo_pendente": _saldo_pendente,
+                "saldoPendente": _saldo_pendente,
+                "pend_programado": _pend_programado,
+                "pendProgramado": _pend_programado,
+            })
+            resumo_totais["prod"] += prod
+            resumo_totais["inss4"] += inss4
+            resumo_totais["sest05"] += sest05
+            resumo_totais["rec"] += rec
+            resumo_totais["des"] += des
+            resumo_totais["adiant"] += adiant
+            resumo_totais["a_receber"] += max(0.0, snap["disponivel_auto_restante"])
+            resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
+            resumo_totais["pend_programado"] += snap["a_descontar"]
+
     return render_template(
         "admin_dashboard.html",
         tab=active_tab,
@@ -3977,6 +4357,12 @@ def admin_dashboard():
         escala_historico_rows=escala_historico_rows,
         trocas_historico_export=trocas_historico_export,
         contagem_contrato_turno=contagem_contrato_turno,
+        resumo_coop_rows=resumo_coop_rows,
+        resumo_totais=resumo_totais,
+        despesa_snapshot_map=despesa_snapshot_map,
+        taxa_admin_rows=taxa_admin_rows,
+        taxa_admin_totais=taxa_admin_totais,
+        juros_arrecadados_total=juros_arrecadados_total,
     )
     
 # =========================
@@ -4933,6 +5319,98 @@ def delete_receita(id):
     return redirect(url_for("admin_dashboard", tab="receitas"))
 
 
+@app.route("/receitas/taxas-admin/<int:id>/status", methods=["POST"])
+@admin_perm_required("receitas", "editar")
+def atualizar_taxa_admin_status(id):
+    r = ReceitaCooperativa.query.get_or_404(id)
+    if not getattr(r, 'auto_taxa_adm', False):
+        flash("Registro não é taxa administrativa automática.", "warning")
+        return redirect(url_for("admin_dashboard", tab="receitas"))
+
+    f = request.form
+    status = (f.get("status_pagamento") or "nao_pago").strip().lower()
+    if status not in ("nao_pago", "parcial", "pago"):
+        status = "nao_pago"
+
+    data_pagamento = _parse_date(f.get("data_pagamento"))
+    if status == 'pago' and not data_pagamento:
+        data_pagamento = date.today()
+
+    valor_previsto = _safe_float(getattr(r, 'valor_previsto', None) or getattr(r, 'valor_principal', None) or 0.0)
+    valor_pago = f.get("valor_pago", type=float)
+    if valor_pago is None:
+        valor_pago = valor_previsto if status == 'pago' else 0.0
+    valor_pago = max(0.0, _safe_float(valor_pago))
+    if status == 'nao_pago':
+        valor_pago = 0.0
+        data_pagamento = None
+
+    calc = _calc_taxa_admin_encargos(valor_previsto, getattr(r, 'data_vencimento', None) or getattr(r, 'data', None), data_pagamento if status == 'pago' else None, _safe_float(getattr(r, 'multa_percentual', 2.0), 2.0), _safe_float(getattr(r, 'juros_dia_percentual', 0.03), 0.03))
+    r.status_pagamento = status
+    r.valor_previsto = valor_previsto
+    r.valor_principal = valor_previsto
+    r.valor_pago = round(valor_pago, 2)
+    r.data_pagamento = data_pagamento
+    if status == 'pago':
+        r.valor_multa = calc['valor_multa']
+        r.valor_juros = calc['valor_juros']
+        r.valor_total = round(r.valor_pago + r.valor_multa + r.valor_juros, 2)
+        r.data = data_pagamento or r.data_vencimento or r.data
+    else:
+        r.valor_multa = 0.0
+        r.valor_juros = 0.0
+        r.valor_total = 0.0
+        r.data = getattr(r, 'data_vencimento', None) or r.data
+
+    db.session.commit()
+    flash("Taxa administrativa atualizada.", "success")
+    return redirect(url_for("admin_dashboard", tab="receitas"))
+
+
+@app.route("/receitas/taxas-admin/lote", methods=["POST"])
+@admin_perm_required("receitas", "editar")
+def atualizar_taxa_admin_lote():
+    ids = request.form.getlist("ids[]") or request.form.getlist("ids")
+    acao = (request.form.get("acao") or '').strip().lower()
+    ids_int = []
+    for v in ids:
+        try:
+            ids_int.append(int(v))
+        except Exception:
+            pass
+    if not ids_int:
+        flash("Selecione pelo menos uma taxa administrativa.", "warning")
+        return redirect(url_for("admin_dashboard", tab="receitas"))
+    regs = ReceitaCooperativa.query.filter(ReceitaCooperativa.id.in_(ids_int), ReceitaCooperativa.auto_taxa_adm.is_(True)).all()
+    hoje = date.today()
+    for r in regs:
+        valor_previsto = _safe_float(getattr(r, 'valor_previsto', None) or getattr(r, 'valor_principal', None) or 0.0)
+        if acao == 'pago':
+            calc = _calc_taxa_admin_encargos(valor_previsto, getattr(r, 'data_vencimento', None) or getattr(r, 'data', None), hoje, _safe_float(getattr(r, 'multa_percentual', 2.0), 2.0), _safe_float(getattr(r, 'juros_dia_percentual', 0.03), 0.03))
+            r.status_pagamento = 'pago'
+            r.data_pagamento = hoje
+            r.valor_previsto = valor_previsto
+            r.valor_principal = valor_previsto
+            r.valor_pago = valor_previsto
+            r.valor_multa = calc['valor_multa']
+            r.valor_juros = calc['valor_juros']
+            r.valor_total = round(valor_previsto + r.valor_multa + r.valor_juros, 2)
+            r.data = hoje
+        elif acao == 'nao_pago':
+            r.status_pagamento = 'nao_pago'
+            r.data_pagamento = None
+            r.valor_previsto = valor_previsto
+            r.valor_principal = valor_previsto
+            r.valor_pago = 0.0
+            r.valor_multa = 0.0
+            r.valor_juros = 0.0
+            r.valor_total = 0.0
+            r.data = getattr(r, 'data_vencimento', None) or r.data
+    db.session.commit()
+    flash("Taxas administrativas atualizadas em lote.", "success")
+    return redirect(url_for("admin_dashboard", tab="receitas"))
+
+
 @app.route("/despesas/add", methods=["POST"])
 @admin_perm_required("despesas", "criar")
 def add_despesa():
@@ -5309,6 +5787,10 @@ def add_cooperado():
     senha = f.get("senha") or ""
     telefone = (f.get("telefone") or "").strip()
     foto = request.files.get("foto")
+    taxa_admin_valor = f.get("taxa_admin_valor", type=float) or 0.0
+    taxa_admin_data_base = _parse_date(f.get("taxa_admin_data_base"))
+    taxa_admin_multa_percentual = f.get("taxa_admin_multa_percentual", type=float) or 2.0
+    taxa_admin_juros_dia_percentual = f.get("taxa_admin_juros_dia_percentual", type=float) or 0.03
 
     if Usuario.query.filter_by(usuario=usuario_login).first():
         flash("Usuário já existente.", "warning")
@@ -5448,6 +5930,13 @@ def add_restaurante():
     senha = f.get("senha", "")
     foto = request.files.get("foto")
 
+    taxa_admin_valor = f.get("taxa_admin_valor", type=float) or 0.0
+    taxa_admin_data_base = _parse_date(f.get("taxa_admin_data_base"))
+    taxa_admin_multa_percentual = f.get("taxa_admin_multa_percentual", type=float) or 2.0
+    taxa_admin_juros_dia_percentual = f.get("taxa_admin_juros_dia_percentual", type=float) or 0.03
+    status_raw = (f.get("ativo") or "1").strip().lower()
+    ativo_rest = status_raw in ("1", "true", "ativo", "on", "sim")
+
     if Usuario.query.filter_by(usuario=usuario_login).first():
         flash("Usuário já existente.", "warning")
         return redirect(url_for("admin_dashboard", tab="restaurantes"))
@@ -5457,7 +5946,16 @@ def add_restaurante():
     db.session.add(u)
     db.session.flush()
 
-    r = Restaurante(nome=nome, periodo=periodo, usuario_id=u.id)
+    r = Restaurante(
+        nome=nome,
+        periodo=periodo,
+        usuario_id=u.id,
+        taxa_admin_valor=taxa_admin_valor,
+        taxa_admin_data_base=taxa_admin_data_base,
+        taxa_admin_multa_percentual=taxa_admin_multa_percentual,
+        taxa_admin_juros_dia_percentual=taxa_admin_juros_dia_percentual,
+        ativo=ativo_rest,
+    )
     db.session.add(r)
     db.session.flush()
 
@@ -5465,6 +5963,7 @@ def add_restaurante():
         _save_foto_to_db(r, foto, is_cooperado=False)
 
     db.session.commit()
+    _ensure_taxas_admin_receitas([r], months_back=0)
     flash("Estabelecimento cadastrado.", "success")
     return redirect(url_for("admin_dashboard", tab="restaurantes"))
 
@@ -5478,12 +5977,23 @@ def edit_restaurante(id):
     r.nome = (f.get("nome") or "").strip()
     r.periodo = f.get("periodo", "seg-dom")
     r.usuario_ref.usuario = (f.get("usuario") or "").strip()
+    r.taxa_admin_valor = f.get("taxa_admin_valor", type=float) or 0.0
+    r.taxa_admin_data_base = _parse_date(f.get("taxa_admin_data_base"))
+    r.taxa_admin_multa_percentual = f.get("taxa_admin_multa_percentual", type=float) or 2.0
+    r.taxa_admin_juros_dia_percentual = f.get("taxa_admin_juros_dia_percentual", type=float) or 0.03
+    status_raw = (f.get('ativo') or '1').strip().lower()
+    ativo_rest = status_raw in ('1','true','ativo','on','sim')
+    if hasattr(r, 'ativo'):
+        r.ativo = ativo_rest
+    if getattr(r, 'usuario_ref', None) is not None and hasattr(r.usuario_ref, 'ativo'):
+        r.usuario_ref.ativo = ativo_rest
 
     foto = request.files.get("foto")
     if foto and foto.filename:
         _save_foto_to_db(r, foto, is_cooperado=False)
 
     db.session.commit()
+    _ensure_taxas_admin_receitas([r], months_back=0)
     flash("Estabelecimento atualizado.", "success")
     return redirect(url_for("admin_dashboard", tab="restaurantes"))
 
@@ -5584,6 +6094,325 @@ def alterar_senha_rest():
     return redirect(url_for("portal_restaurante", view="config"))
 
 
+
+# =========================
+# Backup / Restauração XLSX
+# =========================
+def _xlsx_cell(v):
+    if isinstance(v, (datetime, date)):
+        try:
+            return v.isoformat()
+        except Exception:
+            return str(v)
+    if isinstance(v, bool):
+        return 1 if v else 0
+    return "" if v is None else v
+
+
+def _sheet_from_rows(wb: Workbook, title: str, headers: list[str], rows: list[list]):
+    ws = wb.create_sheet(title=title)
+    ws.append(headers)
+    for row in rows:
+        ws.append([_xlsx_cell(v) for v in row])
+    for idx, col in enumerate(ws.columns, start=1):
+        max_len = 0
+        for cell in col:
+            val = "" if cell.value is None else str(cell.value)
+            if len(val) > max_len:
+                max_len = len(val)
+        ws.column_dimensions[get_column_letter(idx)].width = min(max(max_len + 2, 12), 40)
+    return ws
+
+
+def _coerce_bool(v, default=False):
+    if v is None or v == "":
+        return default
+    if isinstance(v, bool):
+        return v
+    s = str(v).strip().lower()
+    return s in ("1", "true", "sim", "yes", "y", "on")
+
+
+def _coerce_int(v, default=None):
+    if v in (None, ""):
+        return default
+    try:
+        return int(v)
+    except Exception:
+        try:
+            return int(float(v))
+        except Exception:
+            return default
+
+
+def _coerce_date(v):
+    if v in (None, ""):
+        return None
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
+        return v
+    return _parse_date(str(v))
+
+
+def _sync_pk_sequence(model):
+    try:
+        table = model.__tablename__
+        pk = sa_inspect(model).primary_key[0].name
+        max_id = db.session.execute(sa_text(f'SELECT COALESCE(MAX({pk}), 0) FROM {table}')).scalar() or 0
+        if _is_sqlite():
+            try:
+                db.session.execute(sa_text("UPDATE sqlite_sequence SET seq = :seq WHERE name = :name"), {"seq": max_id, "name": table})
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        else:
+            db.session.execute(sa_text("SELECT setval(pg_get_serial_sequence(:table, :pk), :value, true)"), {"table": table, "pk": pk, "value": max_id if max_id > 0 else 1})
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def _excel_safe_sheet_name(name: str) -> str:
+    safe = re.sub(r'[:\/?*\[\]]', '_', str(name or '').strip())[:31].strip()
+    return safe or 'Planilha'
+
+
+def _serialize_backup_value(value):
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        import base64
+        return '__bytes_base64__:' + base64.b64encode(value).decode('ascii')
+    if isinstance(value, datetime):
+        return value.isoformat(sep=' ', timespec='seconds')
+    if isinstance(value, date):
+        return value.isoformat()
+    return value
+
+
+def _deserialize_backup_value(raw, column):
+    if raw in (None, ''):
+        return None
+
+    try:
+        pytype = getattr(column.type, 'python_type', None)
+    except Exception:
+        pytype = None
+
+    if pytype is bytes and isinstance(raw, str) and raw.startswith('__bytes_base64__:'):
+        import base64
+        try:
+            return base64.b64decode(raw.split(':', 1)[1].encode('ascii'))
+        except Exception:
+            return None
+
+    if pytype is bool:
+        return _coerce_bool(raw, False)
+    if pytype is int:
+        return _coerce_int(raw)
+    if pytype is float:
+        try:
+            return float(raw)
+        except Exception:
+            return None
+    if pytype is date:
+        return _coerce_date(raw)
+    if pytype is datetime:
+        if isinstance(raw, datetime):
+            return raw
+        if isinstance(raw, date):
+            return datetime.combine(raw, dtime.min)
+        try:
+            return datetime.fromisoformat(str(raw).strip().replace('T', ' '))
+        except Exception:
+            return None
+    if pytype is bytes and isinstance(raw, (bytes, bytearray)):
+        return bytes(raw)
+    return raw
+
+
+def _sync_table_pk_sequence(table):
+    try:
+        pk_cols = list(table.primary_key.columns)
+        if len(pk_cols) != 1:
+            return
+        pk = pk_cols[0]
+        try:
+            pytype = pk.type.python_type
+        except Exception:
+            pytype = None
+        if pytype is not int:
+            return
+
+        table_name = table.name
+        pk_name = pk.name
+        max_id = db.session.execute(sa_text(f'SELECT COALESCE(MAX({pk_name}), 0) FROM {table_name}')).scalar() or 0
+        if _is_sqlite():
+            try:
+                db.session.execute(sa_text("UPDATE sqlite_sequence SET seq = :seq WHERE name = :name"), {"seq": max_id, "name": table_name})
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        else:
+            db.session.execute(
+                sa_text("SELECT setval(pg_get_serial_sequence(:table, :pk), :value, true)"),
+                {"table": table_name, "pk": pk_name, "value": max_id if max_id > 0 else 1},
+            )
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def _backup_tables_in_order():
+    return list(db.metadata.sorted_tables)
+
+
+def _backup_workbook_bytes() -> io.BytesIO:
+    wb = Workbook()
+    ws0 = wb.active
+    wb.remove(ws0)
+
+    tables = _backup_tables_in_order()
+    for table in tables:
+        headers = [c.name for c in table.columns]
+        rows_db = db.session.execute(table.select().order_by(*list(table.primary_key.columns))).mappings().all()
+        rows = [[_serialize_backup_value(row.get(col)) for col in headers] for row in rows_db]
+        _sheet_from_rows(wb, _excel_safe_sheet_name(table.name), headers, rows)
+
+    meta = wb.create_sheet(title='instrucoes')
+    meta['A1'] = 'Backup completo COOPEX'
+    meta['A2'] = 'Este arquivo exporta todas as tabelas do banco em abas separadas.'
+    meta['A3'] = 'A importação restaura os dados presentes nas abas reconhecidas, sem apagar dados ao exportar.'
+    meta['A4'] = 'Não altere os nomes das abas nem os cabeçalhos das colunas.'
+    meta['A5'] = 'Total de abas de dados: {}'.format(len(tables))
+    meta.column_dimensions['A'].width = 120
+
+    bio = io.BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    return bio
+
+
+def _sheet_rows(ws):
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        return []
+    headers = [str(h).strip() if h is not None else '' for h in rows[0]]
+    out = []
+    for row in rows[1:]:
+        if row is None:
+            continue
+        item = {}
+        has_data = False
+        for i, header in enumerate(headers):
+            if not header:
+                continue
+            val = row[i] if i < len(row) else None
+            if val not in (None, ''):
+                has_data = True
+            item[header] = val
+        if has_data:
+            out.append(item)
+    return out
+
+
+def _import_backup_workbook(file_storage):
+    wb = load_workbook(file_storage, data_only=True)
+    tables = _backup_tables_in_order()
+    table_map = {table.name: table for table in tables}
+    sheet_to_table = { _excel_safe_sheet_name(name): name for name in table_map.keys() }
+
+    available = []
+    for sheet_name in wb.sheetnames:
+        table_name = sheet_to_table.get(sheet_name)
+        if table_name:
+            available.append(table_name)
+
+    if not available:
+        raise ValueError('Nenhuma aba de tabela reconhecida foi encontrada no arquivo.')
+
+    try:
+        for table in reversed(tables):
+            if table.name in available:
+                db.session.execute(table.delete())
+        db.session.flush()
+
+        for table in tables:
+            if table.name not in available:
+                continue
+            ws = wb[_excel_safe_sheet_name(table.name)]
+            rows = _sheet_rows(ws)
+            if not rows:
+                continue
+            payload = []
+            valid_cols = {c.name: c for c in table.columns}
+            for row in rows:
+                item = {}
+                for key, raw in row.items():
+                    col = valid_cols.get(key)
+                    if not col:
+                        continue
+                    item[key] = _deserialize_backup_value(raw, col)
+                if item:
+                    payload.append(item)
+            if payload:
+                db.session.execute(table.insert(), payload)
+
+        db.session.flush()
+        for table in tables:
+            if table.name in available:
+                _sync_table_pk_sequence(table)
+    except Exception:
+        db.session.rollback()
+        raise
+
+@app.route("/admin/backup/exportar", methods=["GET"])
+@admin_perm_required("config", "ver")
+def exportar_backup_admin_xlsx():
+    if not is_admin_master():
+        flash("Apenas o administrador master pode exportar o backup completo.", "danger")
+        return redirect(url_for("admin_dashboard", tab="config"))
+
+    arquivo = _backup_workbook_bytes()
+    nome = f"backup_coopex_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(
+        arquivo,
+        as_attachment=True,
+        download_name=nome,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+@app.route("/admin/backup/importar", methods=["POST"])
+@admin_perm_required("config", "editar")
+def importar_backup_admin_xlsx():
+    if not is_admin_master():
+        flash("Apenas o administrador master pode importar backup completo.", "danger")
+        return redirect(url_for("admin_dashboard", tab="config"))
+
+    arquivo = request.files.get("arquivo_backup")
+    if not arquivo or not getattr(arquivo, "filename", ""):
+        flash("Selecione um arquivo XLSX para importar.", "warning")
+        return redirect(url_for("admin_dashboard", tab="config"))
+
+    if not arquivo.filename.lower().endswith(".xlsx"):
+        flash("Envie um arquivo no formato .xlsx.", "warning")
+        return redirect(url_for("admin_dashboard", tab="config"))
+
+    try:
+        _import_backup_workbook(arquivo)
+        db.session.commit()
+        flash("Backup importado com sucesso.", "success")
+    except Exception as e:
+        db.session.rollback()
+        try:
+            current_app.logger.exception(e)
+        except Exception:
+            pass
+        flash(f"Falha ao importar backup: {e}", "danger")
+
+    return redirect(url_for("admin_dashboard", tab="config"))
+
 # =========================
 # Configurações / Admins
 # =========================
@@ -5642,13 +6471,14 @@ def add_admin_secundario():
         flash("Apenas o administrador master pode criar outros administradores.", "danger")
         return redirect(url_for("admin_dashboard", tab="config"))
 
+    nome = (request.form.get("nome") or "").strip()
     usuario = (request.form.get("usuario") or "").strip()
     senha = (request.form.get("senha") or "").strip()
     confirmar_senha = (request.form.get("confirmar_senha") or "").strip()
     ativo = str(request.form.get("ativo") or "1").strip() == "1"
 
-    if not usuario or not senha or not confirmar_senha:
-        flash("Preencha usuário, senha e confirmação.", "warning")
+    if not nome or not usuario or not senha or not confirmar_senha:
+        flash("Preencha nome, usuário, senha e confirmação.", "warning")
         return redirect(url_for("admin_dashboard", tab="config"))
 
     if senha != confirmar_senha:
@@ -5660,6 +6490,7 @@ def add_admin_secundario():
         return redirect(url_for("admin_dashboard", tab="config"))
 
     u = Usuario(
+        nome=nome,
         usuario=usuario,
         tipo="admin",
         senha_hash="",
@@ -5807,6 +6638,211 @@ def delete_receita_coop(id):
     return redirect(url_for("admin_dashboard", tab="coop_receitas"))
 
 
+def _competencia_ref(data_base, competencia_semana):
+    base = data_base or date.today()
+    comp = (competencia_semana or '').strip().lower()
+    if comp in ('passada', 'semana_passada'):
+        base = base - timedelta(days=7)
+    elif comp in ('proxima', 'proxima_semana'):
+        base = base + timedelta(days=7)
+    return base
+
+def _competencia_label(comp):
+    comp = (comp or '').strip().lower()
+    if comp in ('passada', 'semana_passada'):
+        return 'semana_passada'
+    if comp in ('proxima', 'proxima_semana'):
+        return 'proxima_semana'
+    return 'esta_semana'
+
+def _despesa_due_date(dc):
+    base = dc.data_fim or dc.data or date.today()
+    comp = _competencia_label(getattr(dc, 'competencia_desconto', 'esta_semana'))
+    if comp == 'semana_passada':
+        return base - timedelta(days=7)
+    if comp == 'proxima_semana':
+        return base + timedelta(days=7)
+    return base
+
+
+
+def _admin_redirect_with_filters(default_tab="coop_despesas"):
+    args = {
+        "tab": request.form.get("tab") or request.args.get("tab") or default_tab,
+        "data_inicio": request.form.get("data_inicio") or request.args.get("data_inicio") or "",
+        "data_fim": request.form.get("data_fim") or request.args.get("data_fim") or "",
+        "restaurante_id": request.form.get("restaurante_id") or request.args.get("restaurante_id") or "",
+        "cooperado_id": request.form.get("cooperado_id") or request.args.get("cooperado_id") or "",
+    }
+    if request.form.get("somente_pendentes") or request.args.get("somente_pendentes"):
+        args["somente_pendentes"] = "1"
+    return redirect(url_for("admin_dashboard", **args))
+
+
+def _compute_coop_debt_snapshot(coop_id, di, df):
+    q_prod = Lancamento.query.filter(Lancamento.cooperado_id == coop_id)
+    if di:
+        q_prod = q_prod.filter(Lancamento.data >= di)
+    if df:
+        q_prod = q_prod.filter(Lancamento.data <= df)
+    prods = q_prod.all()
+
+    q_rec = ReceitaCooperado.query.filter(ReceitaCooperado.cooperado_id == coop_id)
+    if di:
+        q_rec = q_rec.filter(ReceitaCooperado.data >= di)
+    if df:
+        q_rec = q_rec.filter(ReceitaCooperado.data <= df)
+    recs = q_rec.all()
+
+    bruto = sum((p.valor or 0.0) for p in prods) + sum((r.valor or 0.0) for r in recs)
+    inss = sum((p.valor or 0.0) * INSS_ALIQ for p in prods)
+    sest = sum((p.valor or 0.0) * SEST_ALIQ for p in prods)
+    disponivel_auto = max(0.0, bruto - inss - sest)
+
+    q_desp = DespesaCooperado.query.filter(DespesaCooperado.cooperado_id == coop_id).order_by(
+        DespesaCooperado.data_fim.asc().nullslast(), DespesaCooperado.id.asc()
+    )
+    despesas = q_desp.all()
+
+    lower_due = (di - timedelta(days=7)) if di else None
+
+    itens = []
+    total_vencido_pendente = 0.0
+    total_programado = 0.0
+    total_descontado_despesa = 0.0
+    total_descontado_adiant = 0.0
+
+    for dc in despesas:
+        valor_total = float(dc.valor or 0.0)
+        if valor_total <= 0:
+            continue
+
+        due_date = _despesa_due_date(dc)
+        if lower_due and due_date < lower_due:
+            continue
+
+        vencida = (df is not None and due_date <= df)
+        pago_manual = 0.0
+        restante = valor_total
+
+        pago_auto = 0.0
+        if vencida and restante > 0 and disponivel_auto > 0:
+            pago_auto = min(restante, disponivel_auto)
+            disponivel_auto -= pago_auto
+            restante = max(0.0, restante - pago_auto)
+
+        if restante <= 0.0001:
+            status = 'quitada'
+        elif pago_auto > 0:
+            status = 'parcial'
+        elif vencida:
+            status = 'aberta'
+        else:
+            status = 'a_descontar'
+
+        if vencida:
+            if getattr(dc, 'eh_adiantamento', False):
+                total_descontado_adiant += valor_total - restante
+            else:
+                total_descontado_despesa += valor_total - restante
+
+        if restante > 0:
+            if vencida:
+                total_vencido_pendente += restante
+            else:
+                total_programado += restante
+
+        itens.append({
+            'id': dc.id,
+            'data': dc.data,
+            'data_inicio': dc.data_inicio,
+            'data_fim': dc.data_fim,
+            'due_date': due_date,
+            'descricao': dc.descricao or '',
+            'valor_total': round(valor_total, 2),
+            'pago_manual': round(pago_manual, 2),
+            'pago_auto': round(pago_auto, 2),
+            'pago_total': round(pago_auto, 2),
+            'restante': round(restante, 2),
+            'eh_adiantamento': bool(getattr(dc, 'eh_adiantamento', False)),
+            'competencia_desconto': _competencia_label(getattr(dc, 'competencia_desconto', 'esta_semana')),
+            'status': status,
+        })
+
+    return {
+        'bruto': round(bruto, 2),
+        'inss': round(inss, 2),
+        'sest': round(sest, 2),
+        'disponivel_auto_restante': round(disponivel_auto, 2),
+        'itens': itens,
+        'saldo_devedor': round(total_vencido_pendente, 2),
+        'a_descontar': round(total_programado, 2),
+        'descontado_despesa': round(total_descontado_despesa, 2),
+        'descontado_adiant': round(total_descontado_adiant, 2),
+    }
+
+
+@app.route("/coop/despesas/delete-bulk", methods=["POST"])
+@admin_perm_required("coop_despesas", "excluir")
+def delete_despesa_coop_bulk():
+    ids = request.form.getlist("ids[]") or request.form.getlist("ids")
+    ids_int = []
+    for v in ids:
+        try:
+            ids_int.append(int(v))
+        except Exception:
+            pass
+    if not ids_int:
+        flash("Selecione pelo menos uma despesa para excluir.", "warning")
+        return _admin_redirect_with_filters("coop_despesas")
+
+    DespesaCooperado.query.filter(DespesaCooperado.id.in_(ids_int)).delete(synchronize_session=False)
+    db.session.commit()
+    flash(f"{len(ids_int)} despesa(s) excluída(s).", "success")
+    return _admin_redirect_with_filters("coop_despesas")
+
+
+
+@app.route("/coop/despesas/bulk-delete-alias", methods=["POST"], endpoint="bulk_delete_despesa_coop")
+@admin_perm_required("coop_despesas", "excluir")
+def bulk_delete_despesa_coop_alias():
+    return delete_despesa_coop_bulk()
+
+
+@app.route("/coop/despesas/<int:id>/abatimentos/add", methods=["POST"])
+@admin_perm_required("coop_despesas", "editar")
+def add_abatimento_despesa_coop(id):
+    dc = DespesaCooperado.query.get_or_404(id)
+    f = request.form
+    data_ab = _parse_date(f.get("data")) or date.today()
+    valor = f.get("valor", type=float) or 0.0
+    origem = (f.get("origem") or "manual").strip().lower()[:30]
+    observacao = (f.get("observacao") or "").strip()[:255]
+
+    if valor <= 0:
+        flash("Informe um valor válido para o abatimento.", "warning")
+        return _admin_redirect_with_filters("coop_despesas")
+
+    restante_atual = max(0.0, (dc.valor or 0.0) - sum((ab.valor or 0.0) for ab in getattr(dc, "abatimentos", [])))
+    valor_final = min(valor, restante_atual) if restante_atual > 0 else 0.0
+    if valor_final <= 0:
+        flash("Essa despesa já está quitada.", "info")
+        return _admin_redirect_with_filters("coop_despesas")
+
+    db.session.add(
+        DespesaCooperadoAbatimento(
+            despesa_id=dc.id,
+            data=data_ab,
+            valor=valor_final,
+            origem=origem,
+            observacao=observacao
+        )
+    )
+    db.session.commit()
+    flash("Abatimento registrado com sucesso.", "success")
+    return _admin_redirect_with_filters("coop_despesas")
+
+
 @app.route("/coop/despesas/add", methods=["POST"])
 @admin_perm_required("coop_despesas", "criar")
 def add_despesa_coop():
@@ -5817,13 +6853,17 @@ def add_despesa_coop():
     valor_total = f.get("valor", type=float) or 0.0
     d = _parse_date(f.get("data"))
     eh_adiantamento = bool(f.get("eh_adiantamento"))
+    competencia_semana = (f.get("competencia_desconto") or f.get("competencia_semana") or "esta_semana").strip().lower()
 
     if not ids:
         flash("Selecione pelo menos um cooperado.", "warning")
-        return redirect(url_for("admin_dashboard", tab="coop_despesas"))
+        return _admin_redirect_with_filters("coop_despesas")
 
     if not d:
         d = date.today()
+
+    data_comp = _competencia_ref(d, competencia_semana)
+    di_comp, df_comp = semana_bounds(data_comp)
 
     qtd = len(ids)
     valor_unit = valor_total / qtd if qtd > 0 else 0.0
@@ -5834,14 +6874,17 @@ def add_despesa_coop():
                 cooperado_id=cid,
                 descricao=descricao,
                 valor=valor_unit,
-                data=d,
+                data=df_comp,
+                data_inicio=di_comp,
+                data_fim=df_comp,
                 eh_adiantamento=eh_adiantamento,
+                competencia_desconto=competencia_semana,
             )
         )
 
     db.session.commit()
     flash("Despesa(s) lançada(s).", "success")
-    return redirect(url_for("admin_dashboard", tab="coop_despesas"))
+    return _admin_redirect_with_filters("coop_despesas")
 
 
 @app.route("/coop/despesas/<int:id>/edit", methods=["POST"])
@@ -5853,11 +6896,19 @@ def edit_despesa_coop(id):
     dc.cooperado_id = f.get("cooperado_id", type=int)
     dc.descricao = (f.get("descricao") or "").strip()
     dc.valor = f.get("valor", type=float)
-    dc.data = _parse_date(f.get("data"))
+    data_edit = _parse_date(f.get("data")) or dc.data or date.today()
+    competencia_semana = (f.get("competencia_desconto") or f.get("competencia_semana") or "esta_semana").strip().lower()
+    data_comp = _competencia_ref(data_edit, competencia_semana)
+    di_comp, df_comp = semana_bounds(data_comp)
+    dc.data = df_comp
+    dc.data_inicio = di_comp
+    dc.data_fim = df_comp
+    dc.eh_adiantamento = bool(f.get("eh_adiantamento"))
+    dc.competencia_desconto = competencia_semana
 
     db.session.commit()
     flash("Despesa do cooperado atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="coop_despesas"))
+    return _admin_redirect_with_filters("coop_despesas")
 
 
 @app.route("/coop/despesas/<int:id>/delete", methods=["GET", "POST"])
@@ -5867,7 +6918,7 @@ def delete_despesa_coop(id):
     db.session.delete(dc)
     db.session.commit()
     flash("Despesa do cooperado excluída.", "success")
-    return redirect(url_for("admin_dashboard", tab="coop_despesas"))
+    return _admin_redirect_with_filters("coop_despesas")
 
 # =========================
 # Benefícios — Editar / Excluir (Admin)
@@ -7117,9 +8168,14 @@ def portal_cooperado():
 
     encargos_valor = inss_valor + sest_valor
 
-    total_descontos = sum((d.valor or 0.0) for d in despesas_coop)
+    debt_snapshot = _compute_coop_debt_snapshot(coop.id, di, df)
 
-    total_liquido = total_bruto - encargos_valor - total_descontos
+    # só o que venceu entra automaticamente no período; o futuro fica em "a descontar"
+    total_descontos = sum((it['pago_manual'] + it['pago_auto']) for it in debt_snapshot['itens'])
+    total_liquido = max(0.0, total_bruto - encargos_valor - total_descontos)
+    saldo_devedor = debt_snapshot['saldo_devedor']
+    total_a_descontar = debt_snapshot['a_descontar']
+    despesas_detalhadas = debt_snapshot['itens']
 
 
        # =====================================================
@@ -7383,6 +8439,9 @@ def portal_cooperado():
         total_entregas_vida=total_entregas_vida,
         data_inicio=di,
         data_fim=df,
+        saldo_devedor=saldo_devedor,
+        total_a_descontar=total_a_descontar,
+        despesas_detalhadas=despesas_detalhadas,
     )
 
 # === AVALIAR RESTAURANTE (cooperado -> restaurante)
@@ -9278,29 +10337,31 @@ def marcar_todos_avisos_lidos_restaurante():
     db.session.commit()
     return redirect(url_for("portal_restaurante_avisos"))
 
-# routes/avisos.py
-from flask import Blueprint, jsonify
-from flask_login import login_required, current_user
+# =========================
+# Avisos: contagem de não lidos (Cooperado/Restaurante)
+# =========================
+def _nocache_json(payload: dict, status: int = 200):
+    resp = jsonify(payload)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp, status
 
-bp = Blueprint("avisos", __name__)
 
-# aceita com e sem barra final, evitando 308/404 dependendo do strict_slashes
 @app.get("/avisos/unread_count")
 @app.get("/avisos/unread_count/")
+@with_db_retry
 def avisos_unread_count():
     """
-    Retorna o número de avisos não lidos para o usuário atual.
-    Mantém a lógica original (cooperado/restaurante) e melhora robustez/headers.
+    Retorna a quantidade de avisos não lidos para o usuário logado.
+    Responde sempre em JSON e evita quebrar o painel quando houver sessão vazia,
+    usuário sem vínculo, ou qualquer falha na busca.
     """
-    def _nocache(resp):
-        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        return resp
-
-    if "user_id" not in session:
-        return _nocache(jsonify(count=0)), 401
-
     user_id = session.get("user_id")
-    user_tipo = (session.get("user_tipo") or "").lower()
+    user_tipo = (session.get("user_tipo") or "").strip().lower()
+
+    if not user_id:
+        return _nocache_json({"ok": False, "unread": 0, "count": 0, "error": "Sessão ausente"}, 401)
 
     try:
         count = 0
@@ -9308,39 +10369,43 @@ def avisos_unread_count():
         if user_tipo == "cooperado":
             coop = Cooperado.query.filter_by(usuario_id=user_id).first()
             if not coop:
-                return _nocache(jsonify(count=0)), 403
+                return _nocache_json({"ok": False, "unread": 0, "count": 0, "error": "Cooperado não encontrado"}, 404)
 
-            avisos = list(get_avisos_for_cooperado(coop))
-            # busca apenas os IDs já lidos (consulta mais leve)
+            avisos = get_avisos_for_cooperado(coop) or []
             lidos_ids = {
-                row[0] for row in
-                db.session.query(AvisoLeitura.aviso_id).filter_by(cooperado_id=coop.id).all()
+                aviso_id
+                for (aviso_id,) in db.session.query(AvisoLeitura.aviso_id)
+                .filter(AvisoLeitura.cooperado_id == coop.id)
+                .all()
             }
             count = sum(1 for a in avisos if a.id not in lidos_ids)
 
         elif user_tipo == "restaurante":
             rest = Restaurante.query.filter_by(usuario_id=user_id).first()
             if not rest:
-                return _nocache(jsonify(count=0)), 403
+                return _nocache_json({"ok": False, "unread": 0, "count": 0, "error": "Restaurante não encontrado"}, 404)
 
-            avisos = list(get_avisos_for_restaurante(rest))
+            avisos = get_avisos_for_restaurante(rest) or []
             lidos_ids = {
-                row[0] for row in
-                db.session.query(AvisoLeitura.aviso_id).filter_by(restaurante_id=rest.id).all()
+                aviso_id
+                for (aviso_id,) in db.session.query(AvisoLeitura.aviso_id)
+                .filter(AvisoLeitura.restaurante_id == rest.id)
+                .all()
             }
             count = sum(1 for a in avisos if a.id not in lidos_ids)
 
-        # outros tipos: count = 0
-        resp = jsonify(count=int(count))
-        return _nocache(resp), 200
+        else:
+            return _nocache_json({"ok": True, "unread": 0, "count": 0, "error": "Tipo de usuário sem avisos"}, 200)
 
-    except Exception:
+        return _nocache_json({"ok": True, "unread": int(count), "count": int(count)}, 200)
+
+    except Exception as e:
         db.session.rollback()
         try:
             current_app.logger.exception("Erro ao calcular /avisos/unread_count")
         except Exception:
             pass
-        return _nocache(jsonify(count=0)), 500
+        return _nocache_json({"ok": False, "unread": 0, "count": 0, "error": str(e)}, 500)
 
 import click
 
@@ -9360,548 +10425,3 @@ if __name__ == "__main__":
         init_db()
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     
-
-
-# =========================
-# RH Integrado (aba separada no admin)
-# =========================
-from pathlib import Path as _Path
-try:
-    import docx as _docx
-except Exception:
-    _docx = None
-try:
-    import fitz as _fitz
-except Exception:
-    _fitz = None
-try:
-    from rapidfuzz import fuzz as _fuzz
-except Exception:
-    _fuzz = None
-
-RH_UPLOAD_DIR = os.path.join(PERSIST_ROOT, "rh_uploads")
-os.makedirs(RH_UPLOAD_DIR, exist_ok=True)
-
-class CooperadoRH(db.Model):
-    __tablename__ = "cooperado_rh"
-    id = db.Column(db.Integer, primary_key=True)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    matricula = db.Column(db.String(30), unique=True, nullable=True, index=True)
-    cpf = db.Column(db.String(14), unique=True, nullable=True, index=True)
-    data_nascimento = db.Column(db.Date, nullable=True)
-    nacionalidade = db.Column(db.String(60), nullable=True)
-    grau_escolaridade = db.Column(db.String(60), nullable=True)
-    sexo = db.Column(db.String(20), nullable=True)
-    estado_civil = db.Column(db.String(40), nullable=True)
-    telefone1 = db.Column(db.String(30), nullable=True, index=True)
-    telefone2 = db.Column(db.String(30), nullable=True)
-    email = db.Column(db.String(120), nullable=True)
-    rg = db.Column(db.String(40), nullable=True)
-    rg_orgao = db.Column(db.String(40), nullable=True)
-    rg_emissao = db.Column(db.Date, nullable=True)
-    pis = db.Column(db.String(30), nullable=True)
-    ctps_numero = db.Column(db.String(30), nullable=True)
-    ctps_serie = db.Column(db.String(30), nullable=True)
-    ctps_uf = db.Column(db.String(2), nullable=True)
-    titulo_numero = db.Column(db.String(40), nullable=True)
-    titulo_zona = db.Column(db.String(10), nullable=True)
-    titulo_secao = db.Column(db.String(10), nullable=True)
-    cnh_numero = db.Column(db.String(40), nullable=True)
-    cnh_categoria = db.Column(db.String(10), nullable=True)
-    cnh_validade = db.Column(db.Date, nullable=True)
-    renavam = db.Column(db.String(40), nullable=True)
-    renavam_validade = db.Column(db.Date, nullable=True)
-    pai_nome = db.Column(db.String(160), nullable=True)
-    sem_pai = db.Column(db.Boolean, nullable=False, default=False)
-    mae_nome = db.Column(db.String(160), nullable=True)
-    cep = db.Column(db.String(12), nullable=True)
-    rua = db.Column(db.String(160), nullable=True)
-    numero = db.Column(db.String(20), nullable=True)
-    bairro = db.Column(db.String(80), nullable=True)
-    cidade = db.Column(db.String(80), nullable=True)
-    uf = db.Column(db.String(2), nullable=True)
-    complemento = db.Column(db.String(120), nullable=True)
-    pix = db.Column(db.String(120), nullable=True)
-    banco = db.Column(db.String(60), nullable=True)
-    agencia = db.Column(db.String(20), nullable=True)
-    operacao = db.Column(db.String(20), nullable=True)
-    conta = db.Column(db.String(30), nullable=True)
-    foto_path = db.Column(db.String(300), nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    deleted_at = db.Column(db.DateTime, nullable=True)
-
-    cooperado = db.relationship("Cooperado", backref=db.backref("rh", uselist=False, cascade="all, delete-orphan"))
-
-class RHFilho(db.Model):
-    __tablename__ = "rh_filhos"
-    id = db.Column(db.Integer, primary_key=True)
-    rh_id = db.Column(db.Integer, db.ForeignKey("cooperado_rh.id", ondelete="CASCADE"), nullable=False, index=True)
-    nome = db.Column(db.String(160), nullable=False)
-    nascimento = db.Column(db.Date, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    perfil = db.relationship("CooperadoRH", backref=db.backref("filhos", cascade="all, delete-orphan", lazy=True))
-
-class RHAnexo(db.Model):
-    __tablename__ = "rh_anexos"
-    id = db.Column(db.Integer, primary_key=True)
-    rh_id = db.Column(db.Integer, db.ForeignKey("cooperado_rh.id", ondelete="CASCADE"), nullable=False, index=True)
-    tipo = db.Column(db.String(40), nullable=True)
-    titulo = db.Column(db.String(120), nullable=False, default="Documento")
-    filename = db.Column(db.String(200), nullable=False)
-    path = db.Column(db.String(350), nullable=False)
-    mime = db.Column(db.String(80), nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    perfil = db.relationship("CooperadoRH", backref=db.backref("anexos", cascade="all, delete-orphan", lazy=True))
-
-class RHDocumentoSistema(db.Model):
-    __tablename__ = "rh_documentos_sistema"
-    id = db.Column(db.Integer, primary_key=True)
-    tipo = db.Column(db.String(30), nullable=False)
-    titulo = db.Column(db.String(120), nullable=False)
-    filename = db.Column(db.String(200), nullable=False)
-    path = db.Column(db.String(350), nullable=False)
-    mime = db.Column(db.String(80), nullable=True)
-    extracted_text = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-class RHNotificacao(db.Model):
-    __tablename__ = "rh_notificacoes"
-    id = db.Column(db.Integer, primary_key=True)
-    rh_id = db.Column(db.Integer, db.ForeignKey("cooperado_rh.id", ondelete="CASCADE"), nullable=False, index=True)
-    titulo = db.Column(db.String(160), nullable=False)
-    descricao = db.Column(db.Text, nullable=True)
-    medida = db.Column(db.String(120), nullable=True)
-    data_ocorrencia = db.Column(db.Date, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    perfil = db.relationship("CooperadoRH", backref=db.backref("notificacoes", cascade="all, delete-orphan", lazy=True))
-
-
-def _rh_safe_filename(name: str) -> str:
-    return secure_filename(name or "arquivo")
-
-
-def _rh_parse_date(v: str | None):
-    return _parse_date(v)
-
-
-def _rh_norm_text(s: str) -> str:
-    s = unicodedata.normalize("NFD", s or "")
-    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
-    s = s.lower()
-    s = re.sub(r"\s+", " ", s)
-    return s.strip()
-
-
-def _rh_best_snippet(txt: str, termo: str, janela: int = 200) -> str:
-    txt = txt or ""
-    if not txt:
-        return ""
-    q = _rh_norm_text(termo)
-    norm = _rh_norm_text(txt)
-    pos = norm.find(q) if q else -1
-    if pos < 0:
-        return txt[:janela].strip()
-    ini = max(pos - janela // 2, 0)
-    fim = min(ini + janela, len(txt))
-    return txt[ini:fim].strip()
-
-
-def _rh_smart_score(txt: str, termo: str) -> float:
-    if not termo:
-        return 0.0
-    if _fuzz is None:
-        return 100.0 if _rh_norm_text(termo) in _rh_norm_text(txt or "") else 0.0
-    base = _rh_norm_text(txt)
-    q = _rh_norm_text(termo)
-    if q in base:
-        return 120.0
-    return max(_fuzz.partial_ratio(q, base), _fuzz.token_set_ratio(q, base))
-
-
-def _rh_extract_text_from_file(path_like) -> str:
-    path = _Path(path_like)
-    suf = path.suffix.lower()
-    try:
-        if suf == ".docx" and _docx is not None:
-            d = _docx.Document(str(path))
-            return "\n".join(p.text for p in d.paragraphs if (p.text or "").strip())
-        if suf == ".pdf" and _fitz is not None:
-            doc = _fitz.open(str(path))
-            parts = []
-            for page in doc:
-                parts.append(page.get_text("text"))
-            return "\n".join(parts).strip()
-        try:
-            return path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            return ""
-    except Exception:
-        return ""
-
-
-def init_rh_db():
-    try:
-        db.create_all()
-    except Exception:
-        db.session.rollback()
-
-
-def _rh_profile_for(cooperado: Cooperado, create: bool = True) -> CooperadoRH | None:
-    perfil = getattr(cooperado, "rh", None)
-    if perfil or not create:
-        return perfil
-    perfil = CooperadoRH(cooperado_id=cooperado.id)
-    if getattr(cooperado, "telefone", None) and not perfil.telefone1:
-        perfil.telefone1 = cooperado.telefone
-    if getattr(cooperado, "cnh_numero", None) and not perfil.cnh_numero:
-        perfil.cnh_numero = cooperado.cnh_numero
-    if getattr(cooperado, "cnh_validade", None) and not perfil.cnh_validade:
-        perfil.cnh_validade = cooperado.cnh_validade
-    db.session.add(perfil)
-    db.session.flush()
-    return perfil
-
-
-def _rh_sync_basic_fields(cooperado: Cooperado, perfil: CooperadoRH):
-    cooperado.telefone = perfil.telefone1 or cooperado.telefone
-    cooperado.cnh_numero = perfil.cnh_numero or cooperado.cnh_numero
-    cooperado.cnh_validade = perfil.cnh_validade or cooperado.cnh_validade
-    cooperado.ultima_atualizacao = datetime.utcnow()
-
-
-def _rh_make_username(nome: str, cpf: str | None = None) -> str:
-    base = re.sub(r"[^a-z0-9]", "", _rh_norm_text(nome))[:18] or "cooperado"
-    if cpf:
-        nums = re.sub(r"\D", "", cpf)
-        if nums:
-            base = (base[:12] + nums[-4:])[:20]
-    cand = base
-    n = 1
-    while Usuario.query.filter_by(usuario=cand).first():
-        n += 1
-        cand = f"{base[:16]}{n}"
-    return cand
-
-
-def _rh_build_admin_context(tab="rh"):
-    admin_logado = _usuario_logado()
-    if admin_logado and getattr(admin_logado, "is_master", False):
-        admin_perms = {aba: {"ver": True, "criar": True, "editar": True, "excluir": True} for aba in ADMIN_ABAS.keys()}
-    else:
-        admin_perms = get_admin_permissions_map(admin_logado.id) if admin_logado else {}
-    admins_secundarios = Usuario.query.filter_by(tipo="admin", is_master=False).order_by(Usuario.id.asc()).all()
-    cfg = get_config()
-    admin_user = Usuario.query.filter_by(tipo="admin").order_by(Usuario.id.asc()).first()
-    return dict(
-        tab=tab,
-        admin=admin_user,
-        admin_perms=admin_perms,
-        admin_is_master=is_admin_master(),
-        ADMIN_ABAS=ADMIN_ABAS,
-        admins_secundarios=admins_secundarios,
-        salario_minimo=(cfg.salario_minimo or 0.0) if cfg else 0.0,
-    )
-
-
-@app.get("/admin/rh")
-@admin_perm_required("rh", "ver")
-def admin_rh_dashboard():
-    hoje = date.today()
-    limite = hoje + timedelta(days=30)
-    base = CooperadoRH.query.filter(CooperadoRH.deleted_at.is_(None))
-    total = base.count()
-    cnh_venc = base.filter(CooperadoRH.cnh_validade.isnot(None), CooperadoRH.cnh_validade < hoje).count()
-    ren_venc = base.filter(CooperadoRH.renavam_validade.isnot(None), CooperadoRH.renavam_validade < hoje).count()
-    cnh_30 = base.filter(CooperadoRH.cnh_validade.isnot(None), CooperadoRH.cnh_validade >= hoje, CooperadoRH.cnh_validade <= limite).count()
-    ren_30 = base.filter(CooperadoRH.renavam_validade.isnot(None), CooperadoRH.renavam_validade >= hoje, CooperadoRH.renavam_validade <= limite).count()
-    docs_count = RHDocumentoSistema.query.count()
-    notif_count = RHNotificacao.query.count()
-    return render_template("rh/dashboard.html", total=total, cnh_venc=cnh_venc, ren_venc=ren_venc, cnh_30=cnh_30, ren_30=ren_30, docs_count=docs_count, notif_count=notif_count, **_rh_build_admin_context("rh"))
-
-
-@app.get("/admin/rh/cooperados")
-@admin_perm_required("rh", "ver")
-def admin_rh_cooperados_list():
-    q = (request.args.get("q") or "").strip()
-    cpf = (request.args.get("cpf") or "").strip()
-    tel = (request.args.get("tel") or "").strip()
-    mat = (request.args.get("mat") or "").strip()
-    query = db.session.query(Cooperado).outerjoin(CooperadoRH, CooperadoRH.cooperado_id == Cooperado.id).join(Usuario, Cooperado.usuario_id == Usuario.id).filter(Usuario.ativo.is_(True))
-    if q:
-        like = f"%{q}%"
-        query = query.filter(Cooperado.nome.ilike(like))
-    if cpf:
-        query = query.filter(CooperadoRH.cpf.ilike(f"%{cpf}%"))
-    if tel:
-        like = f"%{tel}%"
-        query = query.filter(or_(CooperadoRH.telefone1.ilike(like), CooperadoRH.telefone2.ilike(like), Cooperado.telefone.ilike(like)))
-    if mat:
-        query = query.filter(CooperadoRH.matricula.ilike(f"%{mat}%"))
-    cooperados = query.order_by(Cooperado.nome.asc()).all()
-    return render_template("rh/cooperados_list.html", cooperados=cooperados, q=q, cpf=cpf, tel=tel, mat=mat, **_rh_build_admin_context("rh"))
-
-
-@app.route("/admin/rh/cooperados/novo", methods=["GET", "POST"])
-@admin_perm_required("rh", "criar")
-def admin_rh_cooperados_new():
-    if request.method == "POST":
-        nome = (request.form.get("nome") or "").strip()
-        cpf = (request.form.get("cpf") or "").strip()
-        usuario_login = (request.form.get("usuario") or "").strip()
-        senha = (request.form.get("senha") or "").strip()
-        if not nome:
-            flash("Nome é obrigatório.", "warning")
-            return redirect(url_for("admin_rh_cooperados_new"))
-        if cpf and CooperadoRH.query.filter_by(cpf=cpf).first():
-            flash("Já existe cooperado RH com esse CPF.", "warning")
-            return redirect(url_for("admin_rh_cooperados_new"))
-        usuario_login = usuario_login or _rh_make_username(nome, cpf)
-        if Usuario.query.filter_by(usuario=usuario_login).first():
-            flash("Já existe um usuário com esse login.", "warning")
-            return redirect(url_for("admin_rh_cooperados_new"))
-        senha = senha or "123456"
-        u = Usuario(usuario=usuario_login, tipo="cooperado", senha_hash="")
-        u.set_password(senha)
-        db.session.add(u)
-        db.session.flush()
-        coop = Cooperado(nome=nome, usuario_id=u.id, telefone=(request.form.get("telefone1") or "").strip() or None)
-        db.session.add(coop)
-        db.session.flush()
-        perfil = CooperadoRH(cooperado_id=coop.id)
-        db.session.add(perfil)
-        _rh_apply_form_to_profile(perfil, request)
-        _rh_sync_basic_fields(coop, perfil)
-        db.session.commit()
-        flash("Cooperado RH criado com sucesso.", "success")
-        return redirect(url_for("admin_rh_cooperado_detalhe", cooperado_id=coop.id))
-    cooperado = None
-    perfil = SimpleNamespace()
-    return render_template("rh/cooperados_form.html", cooperado=cooperado, perfil=perfil, **_rh_build_admin_context("rh"))
-
-
-def _rh_apply_form_to_profile(perfil: CooperadoRH, req):
-    f = req.form
-    for field in ["matricula","cpf","nacionalidade","grau_escolaridade","sexo","estado_civil","telefone1","telefone2","email","rg","rg_orgao","pis","ctps_numero","ctps_serie","ctps_uf","titulo_numero","titulo_zona","titulo_secao","cnh_numero","cnh_categoria","renavam","pai_nome","mae_nome","cep","rua","numero","bairro","cidade","uf","complemento","pix","banco","agencia","operacao","conta"]:
-        if hasattr(perfil, field):
-            setattr(perfil, field, (f.get(field) or "").strip() or None)
-    perfil.sem_pai = bool(f.get("sem_pai"))
-    perfil.data_nascimento = _rh_parse_date(f.get("data_nascimento"))
-    perfil.rg_emissao = _rh_parse_date(f.get("rg_emissao"))
-    perfil.cnh_validade = _rh_parse_date(f.get("cnh_validade"))
-    perfil.renavam_validade = _rh_parse_date(f.get("renavam_validade"))
-    foto = req.files.get("foto")
-    if foto and foto.filename:
-        fn = _rh_safe_filename(foto.filename)
-        rel = f"fotos/{int(time.time())}_{fn}"
-        dest = os.path.join(RH_UPLOAD_DIR, rel)
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        foto.save(dest)
-        perfil.foto_path = rel
-
-
-@app.route("/admin/rh/cooperados/<int:cooperado_id>/editar", methods=["GET", "POST"])
-@admin_perm_required("rh", "editar")
-def admin_rh_cooperado_editar(cooperado_id: int):
-    coop = Cooperado.query.get_or_404(cooperado_id)
-    perfil = _rh_profile_for(coop, create=True)
-    if request.method == "POST":
-        coop.nome = (request.form.get("nome") or coop.nome or "").strip()
-        _rh_apply_form_to_profile(perfil, request)
-        _rh_sync_basic_fields(coop, perfil)
-        db.session.commit()
-        flash("Ficha RH atualizada com sucesso.", "success")
-        return redirect(url_for("admin_rh_cooperado_detalhe", cooperado_id=coop.id))
-    return render_template("rh/cooperados_form.html", cooperado=coop, perfil=perfil, **_rh_build_admin_context("rh"))
-
-
-@app.get("/admin/rh/cooperados/<int:cooperado_id>")
-@admin_perm_required("rh", "ver")
-def admin_rh_cooperado_detalhe(cooperado_id: int):
-    coop = Cooperado.query.get_or_404(cooperado_id)
-    perfil = _rh_profile_for(coop, create=True)
-    return render_template("rh/cooperado_detalhe.html", cooperado=coop, perfil=perfil, **_rh_build_admin_context("rh"))
-
-
-@app.get("/admin/rh/cooperados/<int:cooperado_id>/ficha")
-@admin_perm_required("rh", "ver")
-def admin_rh_cooperado_ficha(cooperado_id: int):
-    coop = Cooperado.query.get_or_404(cooperado_id)
-    perfil = _rh_profile_for(coop, create=True)
-    return render_template("rh/cooperado_ficha.html", cooperado=coop, perfil=perfil, hoje=date.today(), **_rh_build_admin_context("rh"))
-
-
-@app.post("/admin/rh/cooperados/<int:cooperado_id>/excluir")
-@admin_perm_required("rh", "excluir")
-def admin_rh_cooperados_delete(cooperado_id: int):
-    coop = Cooperado.query.get_or_404(cooperado_id)
-    perfil = _rh_profile_for(coop, create=False)
-    if perfil:
-        perfil.deleted_at = datetime.utcnow()
-    u = Usuario.query.get(coop.usuario_id)
-    if u:
-        u.ativo = False
-    db.session.commit()
-    flash("Cooperado arquivado no RH.", "success")
-    return redirect(url_for("admin_rh_cooperados_list"))
-
-
-@app.post("/admin/rh/cooperados/<int:cooperado_id>/filhos/add")
-@admin_perm_required("rh", "editar")
-def admin_rh_add_filho(cooperado_id: int):
-    coop = Cooperado.query.get_or_404(cooperado_id)
-    perfil = _rh_profile_for(coop, create=True)
-    nome = (request.form.get("nome") or "").strip()
-    if not nome:
-        flash("Informe o nome do filho.", "warning")
-        return redirect(url_for("admin_rh_cooperado_detalhe", cooperado_id=cooperado_id))
-    db.session.add(RHFilho(rh_id=perfil.id, nome=nome, nascimento=_rh_parse_date(request.form.get("nascimento"))))
-    db.session.commit()
-    flash("Filho adicionado.", "success")
-    return redirect(url_for("admin_rh_cooperado_detalhe", cooperado_id=cooperado_id))
-
-
-@app.post("/admin/rh/cooperados/<int:cooperado_id>/anexos/add")
-@admin_perm_required("rh", "editar")
-def admin_rh_add_anexo(cooperado_id: int):
-    coop = Cooperado.query.get_or_404(cooperado_id)
-    perfil = _rh_profile_for(coop, create=True)
-    arquivo = request.files.get("arquivo")
-    if not arquivo or not arquivo.filename:
-        flash("Selecione um arquivo.", "warning")
-        return redirect(url_for("admin_rh_cooperado_detalhe", cooperado_id=cooperado_id))
-    fn = _rh_safe_filename(arquivo.filename)
-    rel = f"anexos/{perfil.id}/{int(time.time())}_{fn}"
-    dest = os.path.join(RH_UPLOAD_DIR, rel)
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
-    arquivo.save(dest)
-    db.session.add(RHAnexo(rh_id=perfil.id, tipo=(request.form.get("tipo") or "").strip() or None, titulo=(request.form.get("titulo") or "Documento").strip(), filename=fn, path=rel, mime=arquivo.mimetype))
-    db.session.commit()
-    flash("Anexo enviado.", "success")
-    return redirect(url_for("admin_rh_cooperado_detalhe", cooperado_id=cooperado_id))
-
-
-@app.get("/admin/rh/anexos/<int:anexo_id>/baixar")
-@admin_perm_required("rh", "ver")
-def admin_rh_baixar_anexo(anexo_id: int):
-    a = RHAnexo.query.get_or_404(anexo_id)
-    full = os.path.join(RH_UPLOAD_DIR, a.path or "")
-    if not os.path.exists(full):
-        abort(404)
-    return send_file(full, as_attachment=True, download_name=a.filename)
-
-
-@app.get("/admin/rh/cooperados/vencimentos")
-@admin_perm_required("rh", "ver")
-def admin_rh_cooperados_vencimentos():
-    hoje = date.today()
-    dias = int(request.args.get("dias", "30") or "30")
-    limite = hoje + timedelta(days=dias)
-    base = CooperadoRH.query.filter(CooperadoRH.deleted_at.is_(None))
-    cnh_vencidos = base.filter(CooperadoRH.cnh_validade.isnot(None), CooperadoRH.cnh_validade < hoje).order_by(CooperadoRH.cnh_validade.asc()).all()
-    cnh_a_vencer = base.filter(CooperadoRH.cnh_validade.isnot(None), CooperadoRH.cnh_validade >= hoje, CooperadoRH.cnh_validade <= limite).order_by(CooperadoRH.cnh_validade.asc()).all()
-    ren_vencidos = base.filter(CooperadoRH.renavam_validade.isnot(None), CooperadoRH.renavam_validade < hoje).order_by(CooperadoRH.renavam_validade.asc()).all()
-    ren_a_vencer = base.filter(CooperadoRH.renavam_validade.isnot(None), CooperadoRH.renavam_validade >= hoje, CooperadoRH.renavam_validade <= limite).order_by(CooperadoRH.renavam_validade.asc()).all()
-    return render_template("rh/cooperados_vencimentos.html", dias=dias, hoje=hoje, cnh_vencidos=cnh_vencidos, cnh_a_vencer=cnh_a_vencer, ren_vencidos=ren_vencidos, ren_a_vencer=ren_a_vencer, **_rh_build_admin_context("rh"))
-
-
-@app.route("/admin/rh/documentos-sistema", methods=["GET", "POST"])
-@admin_perm_required("rh", "ver")
-def admin_rh_documentos_sistema():
-    if request.method == "POST":
-        if not admin_has_perm("rh", "criar"):
-            flash("Você não tem permissão para enviar documentos do RH.", "danger")
-            return redirect(url_for("admin_rh_documentos_sistema"))
-        tipo = (request.form.get("tipo") or "").strip().lower()
-        titulo = (request.form.get("titulo") or "").strip() or "Documento"
-        arquivo = request.files.get("arquivo")
-        if tipo not in ("estatuto", "regimento", "outros"):
-            flash("Tipo inválido.", "warning")
-            return redirect(url_for("admin_rh_documentos_sistema"))
-        if not arquivo or not arquivo.filename:
-            flash("Envie um arquivo PDF ou DOCX.", "warning")
-            return redirect(url_for("admin_rh_documentos_sistema"))
-        fn = _rh_safe_filename(arquivo.filename)
-        rel = f"sistema/{tipo}/{int(time.time())}_{fn}"
-        dest = os.path.join(RH_UPLOAD_DIR, rel)
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        arquivo.save(dest)
-        extracted = _rh_extract_text_from_file(dest)
-        db.session.add(RHDocumentoSistema(tipo=tipo, titulo=titulo, filename=fn, path=rel, mime=arquivo.mimetype, extracted_text=extracted))
-        db.session.commit()
-        flash("Documento enviado e indexado.", "success")
-        return redirect(url_for("admin_rh_documentos_sistema"))
-    docs = RHDocumentoSistema.query.order_by(RHDocumentoSistema.created_at.desc()).all()
-    return render_template("rh/sistema_docs.html", docs=docs, **_rh_build_admin_context("rh"))
-
-
-@app.post("/admin/rh/documentos-sistema/reindex")
-@admin_perm_required("rh", "editar")
-def admin_rh_docs_reindex():
-    docs = RHDocumentoSistema.query.order_by(RHDocumentoSistema.created_at.desc()).all()
-    ok = 0
-    for d in docs:
-        full = os.path.join(RH_UPLOAD_DIR, d.path or "")
-        if not os.path.exists(full):
-            continue
-        d.extracted_text = _rh_extract_text_from_file(full)
-        ok += 1
-    db.session.commit()
-    flash(f"Reindex concluído. Atualizados: {ok}.", "success")
-    return redirect(url_for("admin_rh_documentos_sistema"))
-
-
-@app.get("/admin/rh/documentos-sistema/<int:doc_id>/baixar")
-@admin_perm_required("rh", "ver")
-def admin_rh_documento_baixar(doc_id: int):
-    d = RHDocumentoSistema.query.get_or_404(doc_id)
-    full = os.path.join(RH_UPLOAD_DIR, d.path or "")
-    if not os.path.exists(full):
-        abort(404)
-    return send_file(full, as_attachment=True, download_name=d.filename)
-
-
-@app.get("/admin/rh/pesquisa")
-@admin_perm_required("rh", "ver")
-def admin_rh_pesquisa():
-    termo = (request.args.get("termo") or "").strip()
-    resultados = []
-    if termo:
-        docs = RHDocumentoSistema.query.order_by(RHDocumentoSistema.created_at.desc()).all()
-        for d in docs:
-            txt = d.extracted_text or ""
-            score = _rh_smart_score(txt, termo)
-            if score < 25:
-                continue
-            resultados.append({"doc_id": d.id, "tipo": (d.tipo or "").capitalize(), "titulo": d.titulo or d.filename, "score": round(score, 1), "snippet": _rh_best_snippet(txt, termo)})
-        resultados.sort(key=lambda x: x["score"], reverse=True)
-    return render_template("rh/pesquisa.html", termo=termo, resultados=resultados, **_rh_build_admin_context("rh"))
-
-
-@app.route("/admin/rh/notificacoes", methods=["GET", "POST"])
-@admin_perm_required("rh", "ver")
-def admin_rh_notificacoes():
-    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
-    if request.method == "POST":
-        if not admin_has_perm("rh", "criar"):
-            flash("Você não tem permissão para criar notificações.", "danger")
-            return redirect(url_for("admin_rh_notificacoes"))
-        cooperado_id = request.form.get("cooperado_id", type=int)
-        coop = Cooperado.query.get_or_404(cooperado_id)
-        perfil = _rh_profile_for(coop, create=True)
-        db.session.add(RHNotificacao(rh_id=perfil.id, titulo=(request.form.get("titulo") or "Notificação").strip(), descricao=(request.form.get("descricao") or "").strip() or None, medida=(request.form.get("medida") or "").strip() or None, data_ocorrencia=_rh_parse_date(request.form.get("data_ocorrencia"))))
-        db.session.commit()
-        flash("Notificação registrada.", "success")
-        return redirect(url_for("admin_rh_notificacoes"))
-    notificacoes = RHNotificacao.query.order_by(RHNotificacao.created_at.desc()).all()
-    return render_template("rh/notificacoes.html", cooperados=cooperados, notificacoes=notificacoes, **_rh_build_admin_context("rh"))
-
-
-try:
-    with app.app_context():
-        init_rh_db()
-except Exception as _rh_e:
-    try:
-        app.logger.warning(f"Falha ao inicializar RH: {_rh_e}")
-    except Exception:
-        pass
