@@ -8397,6 +8397,27 @@ def portal_cooperado():
 
     for l in producoes:
         l.minha_avaliacao = minhas.get(l.id)
+        try:
+            l.eh_farmacia = bool((l.descricao or '').strip().lower().startswith('entrega farmácia') or (l.descricao or '').strip().lower().startswith('entrega farmacia'))
+        except Exception:
+            l.eh_farmacia = False
+
+    entregas_farmacia_ativas = (
+        EntregaFarmacia.query
+        .filter_by(cooperado_id=coop.id)
+        .filter(~EntregaFarmacia.status.in_(['entregue', 'nao_entregue']))
+        .order_by(
+            case((EntregaFarmacia.status == 'proximo', 0),
+                 (EntregaFarmacia.status == 'em_rota', 1),
+                 (EntregaFarmacia.status == 'atribuida', 2),
+                 (EntregaFarmacia.status == 'fabricando', 3),
+                 (EntregaFarmacia.status == 'pendente', 4),
+                 else_=5),
+            EntregaFarmacia.ordem_rota.asc(),
+            EntregaFarmacia.criado_em.asc()
+        )
+        .all()
+    )
 
     # =========================
     # Receitas / Despesas
@@ -8708,6 +8729,9 @@ def portal_cooperado():
         saldo_devedor=saldo_devedor,
         total_a_descontar=total_a_descontar,
         despesas_detalhadas=despesas_detalhadas,
+        entregas_farmacia_ativas=entregas_farmacia_ativas,
+        serializar_entrega_farmacia=_serializar_entrega_farmacia,
+        status_entrega_label=_status_entrega_label,
     )
 
 # === AVALIAR RESTAURANTE (cooperado -> restaurante)
