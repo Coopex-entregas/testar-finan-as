@@ -328,6 +328,7 @@
     <a href="{{ url_for('documentos_publicos') }}" class="menu-link"><i class="bi bi-folder2-open"></i><span>Documentos</span></a>
     <a href="{{ url_for('tabelas_publicas') }}" class="menu-link"><i class="bi bi-table"></i><span>Tabelas</span></a>
     <a href="{{ url_for('portal_cooperado_avisos') }}" class="menu-link"><i class="bi bi-megaphone"></i><span>Avisos</span>{% if unread>0 %}<span class="badge rounded-pill bg-danger ms-auto">{{ unread }}</span>{% endif %}</a>
+    <button class="menu-link" type="button" onclick="goToFarmaciaArea()"><i class="bi bi-bicycle"></i><span>Entregas Farmácia</span></button>
     <button class="menu-link" type="button" data-bs-toggle="modal" data-bs-target="#calcModal"><i class="bi bi-calculator"></i><span>Calculadora</span></button>
     <button class="menu-link" type="button" data-bs-toggle="offcanvas" data-bs-target="#financasSheet"><i class="bi bi-wallet2"></i><span>Finanças pessoais</span></button>
     <button class="menu-link" type="button" data-bs-toggle="modal" data-bs-target="#cxbModal"><i class="bi bi-cash-coin"></i><span>Custo x benefício</span></button>
@@ -497,6 +498,12 @@
           </div>
         </div>
 
+        <div class="kpi-card span-2" role="button" tabindex="0" onclick="goToFarmaciaArea()" onkeypress="if(event.key==='Enter'){goToFarmaciaArea()}" style="cursor:pointer;background:linear-gradient(180deg,#eef3ff 0%,#ffffff 100%);border-color:rgba(39,71,217,.18)">
+            <div class="kpi-title">Entregas da farmácia</div>
+            <div class="kpi-value mono" style="color:var(--royal)">Ver rota e interagir</div>
+            <div class="kpi-sub">Abrir entregas atribuídas pela farmácia</div>
+          </div>
+
         <div class="soft-card mt-3 p-3" style="background:#f8fbff;border-color:rgba(39,71,217,.08)">
           <div class="d-flex align-items-start gap-2">
             <i class="bi bi-info-circle" style="color:var(--royal);font-size:1.05rem"></i>
@@ -520,7 +527,7 @@
           <div class="item-card">
             <div class="item-row">
               <div class="flex-grow-1 min-w-0">
-                <div class="item-title">{{ lanc.descricao }}</div>
+                <div class="item-title">{{ lanc.descricao }}{% if lanc.eh_farmacia %} <span class="section-chip" style="margin-left:8px;padding:3px 8px;font-size:.65rem"><i class="bi bi-capsule-pill"></i> Farmácia</span>{% endif %}</div>
                 <div class="item-meta mt-1">
                   <i class="bi bi-shop me-1"></i>{{ lanc.restaurante.nome }}
                   &nbsp;·&nbsp;<i class="bi bi-calendar-event me-1"></i>{{ lanc.data.strftime('%d/%m/%Y') }}
@@ -590,6 +597,64 @@
           <div class="item-card text-center muted">Nenhuma produção neste período.</div>
           {% endfor %}
         </div>
+      </div>
+
+      <div class="section-card" id="farmaciaArea">
+        <div class="section-head">
+          <h2 class="section-title">Entregas da farmácia</h2>
+          <span class="section-chip">Sem atrapalhar suas produções</span>
+        </div>
+        <div class="item-small mb-3">Aqui ficam apenas as entregas atribuídas a você que ainda estão em aberto. Quando uma entrega da farmácia for concluída com valor acima de R$ 0,00, a produção entra normalmente na lista acima.</div>
+        {% if entregas_farmacia_ativas %}
+          <div class="list-stack">
+            {% for e in entregas_farmacia_ativas %}{% set s = serializar_entrega_farmacia(e) %}
+            <div class="item-card" data-farmacia-item>
+              <div class="item-row">
+                <div class="flex-grow-1 min-w-0">
+                  <div class="item-title">{{ s.pedido_numero or s.codigo }} <span class="section-chip" style="margin-left:8px;padding:3px 8px;font-size:.65rem"><i class="bi bi-capsule-pill"></i> Farmácia</span></div>
+                  <div class="item-meta mt-1">{{ s.cliente_nome }} • {{ s.endereco }}</div>
+                  <div class="item-meta mt-1">{{ s.medicamento_nome or s.descricao }}{% if s.medicamento_codigo %} • Cód. {{ s.medicamento_codigo }}{% endif %}</div>
+                  <div class="item-meta mt-1">Cobrança da entrega: {% if s.valor_entrega > 0 %}<b>R$ {{ '%.2f'|format(s.valor_entrega) }}</b>{% else %}<b>Valor fechado / sem cobrança</b>{% endif %}{% if s.pagamento_status != 'pago' and s.valor_pedido > 0 %} • Pedido a cobrar: <b>R$ {{ '%.2f'|format(s.valor_pedido) }}</b>{% endif %}</div>
+                  {% if s.refrigerado %}<div class="item-small mt-1" style="color:var(--warn)"><i class="bi bi-snow"></i> Pedido resfriado</div>{% endif %}
+                  {% if s.foto_pedido_url %}<div class="item-small mt-1"><a href="{{ s.foto_pedido_url }}" target="_blank">Ver foto do pedido</a></div>{% endif %}
+                </div>
+                <div class="text-end">
+                  <div><span class="badge b-{{ e.status }}">{{ status_entrega_label(e.status) }}</span></div>
+                  <div class="item-small mt-2">Ordem {{ loop.index }}</div>
+                </div>
+              </div>
+              <div class="mt-3 d-grid" style="grid-template-columns:1fr 1fr;gap:8px">
+                <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}">
+                  <input type="hidden" name="acao" value="em_rota">
+                  <button class="btn btn-outline w-100" type="submit">Em rota</button>
+                </form>
+                <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}">
+                  <input type="hidden" name="acao" value="proximo">
+                  <button class="btn btn-royal w-100" type="submit">Próximo da vez</button>
+                </form>
+              </div>
+              <details class="mt-3">
+                <summary class="item-small" style="cursor:pointer;font-weight:800">Entregue / não entregue</summary>
+                <div class="mt-3 d-grid" style="gap:10px">
+                  <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" class="d-grid" style="gap:8px">
+                    <input type="hidden" name="acao" value="entregue">
+                    <input class="form-control" name="entregue_para" placeholder="Quem recebeu?" required>
+                    <button class="btn btn-success" type="submit">Confirmar entrega</button>
+                  </form>
+                  <form method="post" action="{{ url_for('cooperado_atualizar_status_entrega_farmacia', entrega_id=e.id) }}" class="d-grid" style="gap:8px">
+                    <input type="hidden" name="acao" value="nao_entregue">
+                    <input class="form-control" name="motivo_nao_entrega" placeholder="Motivo da não entrega" required>
+                    <textarea class="form-control" name="detalhe_nao_entrega" rows="2" placeholder="Detalhe / observação"></textarea>
+                    <button class="btn btn-outline-danger" type="submit">Registrar não entrega</button>
+                  </form>
+                </div>
+              </details>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="item-card text-center muted">Nenhuma entrega da farmácia atribuída a você neste momento.</div>
+        {% endif %}
       </div>
     </section>
 
@@ -1187,6 +1252,13 @@ const MY_ESCALA   = {{ minha_escala_json | default([]) | tojson }};
   closeBtn?.addEventListener('click', closeMenu);
   backdrop?.addEventListener('click', closeMenu);
 })();
+</script>
+<script>
+function goToFarmaciaArea(){
+  const btn=document.querySelector('[data-tab="producoes"]');
+  if(btn){ btn.click(); }
+  setTimeout(()=>{ document.getElementById('farmaciaArea')?.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
+}
 </script>
 <script>
 (function(){
