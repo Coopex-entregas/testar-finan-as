@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Documentos do Cooperado — {{ cooperado.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <a class="btn btn-outline-secondary mb-3" href="{{ url_for('admin_dashboard') }}?tab=escalas">
+      <i class="bi bi-arrow-left"></i> Voltar ao painel
+    </a>
+
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <img src="{{ cooperado.foto_url or url_for('static', filename='img/default.png') }}" class="rounded-circle" style="width:54px;height:54px;object-fit:cover">
+      <div>
+        <h4 class="mb-0">{{ cooperado.nome }}</h4>
+        <small class="text-muted">ID: {{ cooperado.id }}</small>
+      </div>
+    </div>
+
+    <div class="alert alert-info d-flex justify-content-between align-items-center">
+      <div>
+        <b>Prazo-limite geral:</b> {{ docinfo.prazo_final.strftime('%d/%m/%Y') }} —
+        <b>faltam</b> <span id="dias_restantes">{{ docinfo.dias_ate_prazo }}</span> <b>dias</b>.
+      </div>
+      <div class="ms-3">
+        {% set tudo_ok = (docinfo.cnh.ok and docinfo.placa.ok) %}
+        {% if tudo_ok %}
+          <span class="badge bg-success"><i class="bi bi-check2-circle"></i> Tudo em dia! Continue assim 👏</span>
+        {% else %}
+          <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Pendências a regularizar até 31/12</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="POST" class="row g-4">
+      <!-- CNH -->
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header"><b>CNH</b></div>
+          <div class="card-body row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Número</label>
+              <input type="text" name="cnh_numero" class="form-control" value="{{ docinfo.cnh.numero or '' }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Validade (mês/dia fixos, renova a cada ano)</label>
+              <input type="date" name="cnh_validade" class="form-control" value="{{ docinfo.cnh.validade.strftime('%Y-%m-%d') if docinfo.cnh.validade else '' }}">
+              {% if docinfo.cnh.prox_validade %}
+                <small class="text-muted">Próxima ocorrência anual: {{ docinfo.cnh.prox_validade.strftime('%d/%m/%Y') }}</small>
+              {% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label d-block">Status</label>
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="cnh_mode" id="cnh_auto" value="auto" {{ 'checked' if docinfo.cnh.modo=='auto' else '' }}>
+                <label class="btn btn-outline-secondary" for="cnh_auto">Automático</label>
+
+                <input type="radio" class="btn-check" name="cnh_mode" id="cnh_ok" value="ok" {{ 'checked' if docinfo.cnh.modo=='ok' else '' }}>
+                <label class="btn btn-outline-success" for="cnh_ok">Em dia</label>
+
+                <input type="radio" class="btn-check" name="cnh_mode" id="cnh_pend" value="pendente" {{ 'checked' if docinfo.cnh.modo=='pendente' else '' }}>
+                <label class="btn btn-outline-danger" for="cnh_pend">Pendente</label>
+              </div>
+              <div class="mt-2">
+                {% if docinfo.cnh.ok %}
+                  <span class="badge bg-success"><i class="bi bi-check2-circle"></i> Em dia</span>
+                {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Pendente</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLACA -->
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header"><b>Placa</b></div>
+          <div class="card-body row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Placa</label>
+              <input type="text" name="placa" class="form-control" value="{{ docinfo.placa.numero or '' }}" placeholder="ABC1234 / ABC1D23">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Validade (mês/dia fixos, renova a cada ano)</label>
+              <input type="date" name="placa_validade" class="form-control" value="{{ docinfo.placa.validade.strftime('%Y-%m-%d') if docinfo.placa.validade else '' }}">
+              {% if docinfo.placa.prox_validade %}
+                <small class="text-muted">Próxima ocorrência anual: {{ docinfo.placa.prox_validade.strftime('%d/%m/%Y') }}</small>
+              {% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label d-block">Status</label>
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="placa_mode" id="placa_auto" value="auto" {{ 'checked' if docinfo.placa.modo=='auto' else '' }}>
+                <label class="btn btn-outline-secondary" for="placa_auto">Automático</label>
+
+                <input type="radio" class="btn-check" name="placa_mode" id="placa_ok" value="ok" {{ 'checked' if docinfo.placa.modo=='ok' else '' }}>
+                <label class="btn btn-outline-success" for="placa_ok">Em dia</label>
+
+                <input type="radio" class="btn-check" name="placa_mode" id="placa_pend" value="pendente" {{ 'checked' if docinfo.placa.modo=='pendente' else '' }}>
+                <label class="btn btn-outline-danger" for="placa_pend">Pendente</label>
+              </div>
+              <div class="mt-2">
+                {% if docinfo.placa.ok %}
+                  <span class="badge bg-success"><i class="bi bi-check2-circle"></i> Em dia</span>
+                {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Pendente</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary"><i class="bi bi-save"></i> Salvar</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('admin_dashboard') }}?tab=escalas">Cancelar</a>
+      </div>
+    </form>
+
+    <div class="mt-4">
+      {% if docinfo.cnh.ok and docinfo.placa.ok %}
+        <div class="alert alert-success mb-0">
+          <i class="bi bi-emoji-smile"></i>
+          Parabéns! <b>CNH</b> e <b>Placa</b> estão em dia. Continue assim 👏
+        </div>
+      {% else %}
+        <div class="alert alert-warning mb-0">
+          <i class="bi bi-hourglass-split"></i>
+          Regularize as pendências até <b>{{ docinfo.prazo_final.strftime('%d/%m/%Y') }}</b>.
+          Faltam <b><span id="dias_restantes2">{{ docinfo.dias_ate_prazo }}</span> dias</b>.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Contagem regressiva em tempo real até 31/12 (prazo final)
+    (function(){
+      const diasEl1 = document.getElementById('dias_restantes');
+      const diasEl2 = document.getElementById('dias_restantes2');
+      function update() {
+        const prazo = new Date({{ docinfo.prazo_final.year }}, {{ docinfo.prazo_final.month - 1 }}, {{ docinfo.prazo_final.day }}, 23, 59, 59);
+        const now = new Date();
+        const diff = prazo - now;
+        const dias = Math.max(0, Math.ceil(diff / (1000*60*60*24)));
+        if (diasEl1) diasEl1.textContent = dias;
+        if (diasEl2) diasEl2.textContent = dias;
+      }
+      update();
+      setInterval(update, 60*1000); // atualiza a cada minuto
+    })();
+  </script>
+</body>
+</html>

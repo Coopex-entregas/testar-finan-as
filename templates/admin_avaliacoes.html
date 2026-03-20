@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Painel Admin - Avaliações - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <style>
+    :root{
+      --royal-blue:#2747d9;
+      --royal-blue-2:#3358f0;
+      --royal-dark:#16258a;
+      --royal-soft:#eef3ff;
+      --bg:#f4f7fc;
+      --card:#ffffff;
+      --text:#182033;
+      --muted:#7b879f;
+      --border:#e6ebf5;
+      --success:#12b76a;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+      --shadow:0 10px 30px rgba(17,24,39,.08);
+      --sidebar-w:278px;
+      --radius:20px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html{
+      scroll-behavior:smooth;
+    }
+
+    body{
+      margin:0;
+      font-family:'Inter',sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(39,71,217,.10), transparent 28%),
+        linear-gradient(180deg, #f7f9fe 0%, #f2f5fb 100%);
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    .layout{
+      display:flex;
+      min-height:100vh;
+      width:100%;
+    }
+
+    /* SIDEBAR ============================================================ */
+
+    .sidebar{
+      position:fixed;
+      top:0;
+      left:0;
+      width:var(--sidebar-w);
+      height:100vh;
+      padding:18px 14px;
+      background:
+        linear-gradient(180deg, rgba(51,88,240,1) 0%, rgba(39,71,217,1) 38%, rgba(22,37,138,1) 100%);
+      color:#fff;
+      box-shadow:0 0 26px rgba(0,0,0,.22);
+      z-index:1020;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .sidebar::-webkit-scrollbar{
+      width:8px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb{
+      background:rgba(255,255,255,.18);
+      border-radius:999px;
+    }
+
+    .brand{
+      position:relative;
+      padding:16px 16px 14px;
+      margin-bottom:14px;
+      border-radius:18px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(8px);
+      overflow:visible;
+    }
+
+    .brand::after{
+      content:"";
+      position:absolute;
+      inset:auto -20px -20px auto;
+      width:90px;
+      height:90px;
+      background:radial-gradient(circle, rgba(255,255,255,.22), transparent 70%);
+      pointer-events:none;
+    }
+
+    .brand-title{
+      margin:0;
+      font-family:'Orbitron',sans-serif;
+      font-size:clamp(.98rem, 1.08vw, 1.14rem);
+      letter-spacing:.9px;
+      text-transform:uppercase;
+      line-height:1.28;
+      white-space:normal;
+      word-break:break-word;
+      max-width:100%;
+      position:relative;
+      z-index:1;
+    }
+
+    .brand-title .brand-line{
+      display:block;
+    }
+
+    .brand-sub{
+      display:block;
+      margin-top:6px;
+      font-size:.74rem;
+      opacity:.82;
+      position:relative;
+      z-index:1;
+    }
+
+    .sidebar-nav{
+      padding:0;
+      margin:0;
+    }
+
+    .nav-section-label{
+      font-size:.68rem;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.60);
+      margin:14px 8px 8px;
+    }
+
+    .sidebar-divider{
+      border-color:rgba(255,255,255,.08);
+      margin:12px 0 8px;
+    }
+
+    .nav-link-main,
+    .nav-link-group-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      border:0;
+      border-radius:14px;
+      padding:10px 12px;
+      margin:4px 0;
+      background:transparent;
+      color:#fff;
+      text-decoration:none;
+      font-size:.92rem;
+      cursor:pointer;
+      transition:all .18s ease;
+    }
+
+    .nav-link-main:hover,
+    .nav-link-group-toggle:hover{
+      background:rgba(255,255,255,.10);
+      transform:translateY(-1px);
+    }
+
+    .nav-link-main.active{
+      background:rgba(255,255,255,.16);
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow:0 8px 18px rgba(0,0,0,.10);
+    }
+
+    .nav-link-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .nav-link-icon{
+      width:22px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      font-size:1rem;
+    }
+
+    .nav-caret{
+      font-size:.82rem;
+      opacity:.72;
+    }
+
+    .nav-sublinks{
+      padding-left:16px;
+      margin-bottom:6px;
+    }
+
+    .nav-sublink{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      margin:4px 0;
+      border-radius:12px;
+      color:rgba(255,255,255,.84);
+      text-decoration:none;
+      font-size:.84rem;
+      transition:all .18s ease;
+    }
+
+    .nav-sublink:hover{
+      color:#fff;
+      background:rgba(255,255,255,.10);
+      transform:translateX(2px);
+    }
+
+    .nav-sublink.active{
+      color:#fff;
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.14);
+    }
+
+    .sidebar-footer{
+      margin-top:auto;
+      padding-top:10px;
+    }
+
+    /* MAIN =============================================================== */
+
+    .main{
+      flex:1;
+      margin-left:var(--sidebar-w);
+      width:calc(100% - var(--sidebar-w));
+      max-width:none;
+      padding:22px 24px 32px;
+    }
+
+    /* AQUI FOI A CORREÇÃO PRINCIPAL */
+    .content-shell{
+      width:100%;
+      max-width:none !important;
+      margin:0 0 38px 0;
+    }
+
+    .hero{
+      position:relative;
+      width:100%;
+      padding:22px;
+      border-radius:28px;
+      background:
+        linear-gradient(135deg, rgba(39,71,217,1) 0%, rgba(51,88,240,1) 52%, rgba(22,37,138,1) 100%);
+      color:#fff;
+      box-shadow:0 18px 40px rgba(39,71,217,.22);
+      overflow:hidden;
+      margin-bottom:18px;
+    }
+
+    .hero::before,
+    .hero::after{
+      content:"";
+      position:absolute;
+      border-radius:50%;
+      background:rgba(255,255,255,.10);
+      pointer-events:none;
+    }
+
+    .hero::before{
+      width:240px;
+      height:240px;
+      top:-90px;
+      right:-60px;
+    }
+
+    .hero::after{
+      width:160px;
+      height:160px;
+      bottom:-60px;
+      left:-40px;
+    }
+
+    .hero-top{
+      position:relative;
+      z-index:1;
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      align-items:flex-start;
+      flex-wrap:wrap;
+    }
+
+    .hero-title{
+      margin:0;
+      font-size:1.55rem;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .hero-sub{
+      margin-top:6px;
+      color:rgba(255,255,255,.84);
+      font-size:.95rem;
+    }
+
+    .hero-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .glass-btn{
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.18);
+      backdrop-filter:blur(10px);
+      border-radius:14px;
+      padding:9px 14px;
+      text-decoration:none;
+      font-size:.88rem;
+      font-weight:600;
+      transition:all .18s ease;
+    }
+
+    .glass-btn:hover{
+      color:#fff;
+      background:rgba(255,255,255,.18);
+      transform:translateY(-1px);
+    }
+
+    .type-switch{
+      margin-top:16px;
+      position:relative;
+      z-index:1;
+      display:inline-flex;
+      gap:8px;
+      flex-wrap:wrap;
+      padding:8px;
+      border-radius:18px;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.14);
+      backdrop-filter:blur(10px);
+    }
+
+    .type-btn{
+      border:0;
+      text-decoration:none;
+      border-radius:14px;
+      padding:10px 14px;
+      font-size:.88rem;
+      font-weight:700;
+      transition:all .18s ease;
+    }
+
+    .type-btn.active{
+      background:#fff;
+      color:var(--royal-dark);
+      box-shadow:0 8px 18px rgba(0,0,0,.10);
+    }
+
+    .type-btn.inactive{
+      color:#fff;
+      background:transparent;
+    }
+
+    .type-btn.inactive:hover{
+      color:#fff;
+      background:rgba(255,255,255,.12);
+    }
+
+    .card-modern{
+      width:100%;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+
+    .section-card{
+      padding:18px;
+      margin-bottom:16px;
+    }
+
+    .section-title{
+      margin:0 0 14px;
+      font-size:1rem;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .filter-grid{
+      display:grid;
+      grid-template-columns:1.2fr 1.2fr .8fr .8fr;
+      gap:12px;
+      width:100%;
+    }
+
+    .input-shell label{
+      display:block;
+      margin:0 0 6px;
+      font-size:.78rem;
+      font-weight:700;
+      color:#45506a;
+    }
+
+    .input-shell .form-select,
+    .input-shell .form-control{
+      min-height:42px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#fbfcff;
+      box-shadow:none;
+    }
+
+    .input-shell .form-select:focus,
+    .input-shell .form-control:focus{
+      border-color:#98abff;
+      box-shadow:0 0 0 .18rem rgba(39,71,217,.12);
+      background:#fff;
+    }
+
+    .filter-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .btn-royal{
+      background:linear-gradient(135deg,var(--royal-blue),var(--royal-blue-2));
+      color:#fff;
+      border:0;
+      border-radius:14px;
+      padding:10px 14px;
+      font-weight:700;
+      box-shadow:0 10px 20px rgba(39,71,217,.16);
+    }
+
+    .btn-royal:hover{
+      color:#fff;
+      transform:translateY(-1px);
+    }
+
+    .btn-soft{
+      background:#fff;
+      color:#334155;
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:10px 14px;
+      font-weight:700;
+      text-decoration:none;
+    }
+
+    .btn-soft:hover{
+      background:#f8faff;
+      color:#1f2937;
+    }
+
+    .subtab-wrap{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+
+    .subtab-btn{
+      border:1px solid var(--border);
+      background:#fff;
+      color:#334155;
+      border-radius:14px;
+      padding:10px 14px;
+      font-size:.88rem;
+      font-weight:800;
+      cursor:pointer;
+      transition:all .18s ease;
+      box-shadow:0 4px 14px rgba(17,24,39,.04);
+    }
+
+    .subtab-btn:hover{
+      transform:translateY(-1px);
+      background:#f8fbff;
+    }
+
+    .subtab-btn.active{
+      background:linear-gradient(135deg,var(--royal-blue),var(--royal-blue-2));
+      color:#fff;
+      border-color:transparent;
+      box-shadow:0 12px 24px rgba(39,71,217,.18);
+    }
+
+    .subtab-pane{
+      display:none;
+      width:100%;
+    }
+
+    .subtab-pane.active{
+      display:block;
+    }
+
+    .kpi-grid{
+      display:grid;
+      grid-template-columns:repeat(6, minmax(0, 1fr));
+      gap:14px;
+      margin-bottom:16px;
+      width:100%;
+    }
+
+    .kpi-card{
+      position:relative;
+      overflow:hidden;
+      padding:18px;
+      border-radius:22px;
+      background:#fff;
+      border:1px solid var(--border);
+      box-shadow:var(--shadow);
+      min-height:112px;
+    }
+
+    .kpi-card::after{
+      content:"";
+      position:absolute;
+      width:70px;
+      height:70px;
+      right:-18px;
+      bottom:-18px;
+      border-radius:18px;
+      transform:rotate(22deg);
+      background:linear-gradient(135deg, rgba(39,71,217,.12), rgba(39,71,217,.04));
+    }
+
+    .kpi-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      position:relative;
+      z-index:1;
+    }
+
+    .kpi-label{
+      font-size:.78rem;
+      font-weight:700;
+      color:var(--muted);
+      letter-spacing:.02em;
+    }
+
+    .kpi-icon{
+      width:38px;
+      height:38px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:var(--royal-soft);
+      color:var(--royal-blue);
+      font-size:1rem;
+      flex-shrink:0;
+    }
+
+    .kpi-value{
+      position:relative;
+      z-index:1;
+      margin-top:14px;
+      font-size:1.7rem;
+      line-height:1;
+      font-weight:800;
+      color:#152033;
+    }
+
+    .content-grid{
+      display:grid;
+      grid-template-columns:1.08fr .92fr;
+      gap:16px;
+      align-items:start;
+      margin-bottom:16px;
+      width:100%;
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:#fff;
+      width:100%;
+    }
+
+    .table-modern{
+      margin:0;
+      width:100%;
+    }
+
+    .table-modern thead th{
+      position:sticky;
+      top:0;
+      z-index:1;
+      background:#f8faff;
+      border-bottom:1px solid var(--border);
+      color:#4b5565;
+      font-size:.76rem;
+      font-weight:800;
+      letter-spacing:.04em;
+      white-space:nowrap;
+      padding:.88rem .8rem;
+    }
+
+    .table-modern tbody td{
+      padding:.82rem .8rem;
+      border-color:#eef2f8;
+      vertical-align:middle;
+      font-size:.9rem;
+    }
+
+    .table-modern tbody tr{
+      transition:background .14s ease;
+    }
+
+    .table-modern tbody tr:hover{
+      background:#f8fbff;
+    }
+
+    .table-detail td{
+      font-size:.92rem;
+    }
+
+    .mini-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:34px;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:.75rem;
+      font-weight:800;
+      background:#eef3ff;
+      color:#2747d9;
+    }
+
+    .score-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      min-width:68px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:.78rem;
+      font-weight:800;
+      background:#f8faff;
+      border:1px solid var(--border);
+      color:#152033;
+    }
+
+    .progress-modern{
+      height:10px;
+      border-radius:999px;
+      background:#edf2fb;
+      overflow:hidden;
+    }
+
+    .progress-bar-modern{
+      height:100%;
+      border-radius:999px;
+      background:linear-gradient(90deg, var(--royal-blue), var(--royal-blue-2));
+    }
+
+    .progress-bar-modern.success{
+      background:linear-gradient(90deg, #0ea765, #21c97f);
+    }
+
+    .progress-bar-modern.warning{
+      background:linear-gradient(90deg, #f59e0b, #fbbf24);
+    }
+
+    .progress-bar-modern.danger{
+      background:linear-gradient(90deg, #ef4444, #f87171);
+    }
+
+    .chart-shell{
+      height:350px;
+      padding:14px 14px 8px;
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:linear-gradient(180deg, #fbfcff, #ffffff);
+    }
+
+    .legend-note{
+      color:var(--muted);
+      font-size:.8rem;
+      margin-top:10px;
+    }
+
+    .insight-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:12px;
+    }
+
+    .insight-card{
+      padding:16px;
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+      min-height:108px;
+    }
+
+    .insight-label{
+      color:var(--muted);
+      font-size:.78rem;
+      font-weight:700;
+      margin-bottom:8px;
+    }
+
+    .insight-value{
+      font-size:1rem;
+      font-weight:800;
+      color:#162033;
+      line-height:1.35;
+    }
+
+    .sent-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:.74rem;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+    }
+
+    .sent-pill.positivo{
+      background:rgba(18,183,106,.12);
+      color:#087443;
+    }
+
+    .sent-pill.neutro{
+      background:#eef2f7;
+      color:#475467;
+    }
+
+    .sent-pill.negativo{
+      background:rgba(239,68,68,.12);
+      color:#b42318;
+    }
+
+    .critico-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:.72rem;
+      font-weight:800;
+    }
+
+    .critico-pill.sim{
+      background:rgba(239,68,68,.12);
+      color:#b42318;
+    }
+
+    .critico-pill.nao{
+      background:rgba(18,183,106,.12);
+      color:#067647;
+    }
+
+    .text-muted-soft{
+      color:var(--muted);
+    }
+
+    .detail-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+      margin-bottom:16px;
+      width:100%;
+    }
+
+    .detail-card{
+      width:100%;
+      min-width:0;
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:#fff;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .detail-head{
+      padding:14px 16px;
+      border-bottom:1px solid var(--border);
+      background:linear-gradient(180deg, #fbfcff, #f7faff);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .detail-title{
+      margin:0;
+      font-size:.95rem;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .detail-body{
+      padding:0;
+      width:100%;
+    }
+
+    .table-slim{
+      margin:0;
+      width:100%;
+    }
+
+    .table-slim thead th{
+      background:#fcfdff;
+      font-size:.74rem;
+      color:#667085;
+      font-weight:800;
+      letter-spacing:.03em;
+      border-bottom:1px solid var(--border);
+      white-space:nowrap;
+    }
+
+    .table-slim tbody td{
+      font-size:.88rem;
+      padding:.75rem .8rem;
+      border-color:#eef2f8;
+      vertical-align:middle;
+    }
+
+    .table-slim tbody tr:hover{
+      background:#fafcff;
+    }
+
+    @media (max-width: 1200px){
+      .kpi-grid{
+        grid-template-columns:repeat(3, minmax(0, 1fr));
+      }
+      .content-grid{
+        grid-template-columns:1fr;
+      }
+      .insight-grid{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+      }
+      .detail-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 991.98px){
+      :root{ --sidebar-w:74px; }
+
+      .sidebar{
+        padding:18px 8px;
+      }
+
+      .brand-title,
+      .brand-sub,
+      .nav-section-label,
+      .nav-link-label{
+        display:none;
+      }
+
+      .nav-sublinks{
+        padding-left:10px;
+      }
+
+      .main{
+        margin-left:var(--sidebar-w);
+        width:calc(100% - var(--sidebar-w));
+        padding:16px 10px;
+      }
+
+      .content-shell{
+        width:100%;
+        max-width:none !important;
+        margin:0 0 30px 0;
+      }
+
+      .filter-grid{
+        grid-template-columns:1fr 1fr;
+      }
+    }
+
+    @media (max-width: 767.98px){
+      .hero{
+        padding:18px;
+        border-radius:22px;
+      }
+
+      .hero-title{
+        font-size:1.28rem;
+      }
+
+      .filter-grid{
+        grid-template-columns:1fr;
+      }
+
+      .kpi-grid{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+      }
+
+      .insight-grid{
+        grid-template-columns:1fr;
+      }
+
+      .section-card{
+        padding:14px;
+      }
+
+      .table-modern thead th,
+      .table-modern tbody td,
+      .table-slim thead th,
+      .table-slim tbody td{
+        padding:.72rem .68rem;
+      }
+
+      .chart-shell{
+        height:300px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <aside class="sidebar">
+
+    <div class="brand">
+      <h1 class="brand-title">
+        <span class="brand-line">PAINEL</span>
+        <span class="brand-line">COOPEX</span>
+      </h1>
+      <span class="brand-sub">Administração Central</span>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <div class="nav-section-label">Visão Geral</div>
+
+      <a class="nav-sublink"
+         href="{{ url_for('admin_dashboard', tab='resumo') }}">
+        <i class="bi bi-cash"></i>
+        <span class="nav-link-label">Resumo</span>
+      </a>
+
+      <a class="nav-link-main active"
+         href="{{ url_for('admin_avaliacoes') }}">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-stars"></i></span>
+          <span class="nav-link-label">Avaliações</span>
+        </div>
+      </a>
+
+      <hr class="sidebar-divider">
+
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuFinanceiro"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span>
+          <span class="nav-link-label">Financeiro</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuFinanceiro" class="collapse show nav-sublinks">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='lancamentos') }}">
+          <i class="bi bi-journal-text"></i> <span class="nav-link-label">Lançamentos</span>
+        </a>
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='receitas') }}">
+          <i class="bi bi-cash"></i> <span class="nav-link-label">Receitas Coop</span>
+        </a>
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='despesas') }}">
+          <i class="bi bi-cart-dash"></i> <span class="nav-link-label">Despesas Coop</span>
+        </a>
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='coop_receitas') }}">
+          <i class="bi bi-cash-coin"></i> <span class="nav-link-label">Receitas Cooperados</span>
+        </a>
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='coop_despesas') }}">
+          <i class="bi bi-people"></i> <span class="nav-link-label">Despesas Cooperados</span>
+        </a>
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='beneficios') }}">
+          <i class="bi bi-heart-pulse"></i> <span class="nav-link-label">Benefícios</span>
+        </a>
+      </div>
+
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuCadastros"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-people"></i></span>
+          <span class="nav-link-label">Cadastros</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuCadastros" class="collapse show nav-sublinks">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='cooperados') }}">
+          <i class="bi bi-person-badge"></i> <span class="nav-link-label">Cooperados</span>
+        </a>
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='restaurantes') }}">
+          <i class="bi bi-shop"></i> <span class="nav-link-label">Estabelecimentos</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}"
+           href="{{ url_for('admin_documentos') }}">
+          <i class="bi bi-folder2"></i> <span class="nav-link-label">Documentos</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}"
+           href="{{ url_for('admin_tabelas') }}">
+          <i class="bi bi-table"></i> <span class="nav-link-label">Tabelas</span>
+        </a>
+      </div>
+
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuOperacao"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span>
+          <span class="nav-link-label">Operação</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuOperacao" class="collapse show nav-sublinks">
+        <a class="nav-sublink" href="{{ url_for('admin_dashboard', tab='escalas') }}">
+          <i class="bi bi-calendar2-week"></i> <span class="nav-link-label">Escalas</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}"
+           href="{{ url_for('admin_avisos') }}">
+          <i class="bi bi-megaphone"></i> <span class="nav-link-label">Avisos</span>
+        </a>
+      </div>
+
+      <hr class="sidebar-divider">
+
+      <div class="sidebar-footer">
+        <a class="nav-link-main" href="{{ url_for('admin_dashboard', tab='config') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-gear"></i></span>
+            <span class="nav-link-label">Configurações</span>
+          </div>
+        </a>
+
+        <a class="nav-link-main" href="{{ url_for('logout') }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-box-arrow-right"></i></span>
+            <span class="nav-link-label">Sair</span>
+          </div>
+        </a>
+      </div>
+
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="content-shell">
+
+      <section class="hero">
+        <div class="hero-top">
+          <div>
+            <h2 class="hero-title">
+              <i class="bi bi-stars"></i>
+              Avaliações
+            </h2>
+            <div class="hero-sub">
+              {{ 'Visão do cooperado sobre os restaurantes' if (tipo|default('restaurante'))=='restaurante' else 'Visão dos restaurantes sobre os cooperados' }}
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <a class="glass-btn"
+               href="{{ url_for('admin_export_avaliacoes_csv',
+                                tipo=tipo|default('restaurante'),
+                                restaurante_id=_flt.restaurante_id|default(''),
+                                cooperado_id=_flt.cooperado_id|default(''),
+                                data_inicio=_flt.data_inicio|default(''),
+                                data_fim=_flt.data_fim|default('')) }}">
+              <i class="bi bi-download"></i> Exportar CSV
+            </a>
+          </div>
+        </div>
+
+        <div class="type-switch">
+          <a class="type-btn {{ 'active' if (tipo|default('restaurante'))=='restaurante' else 'inactive' }}"
+             href="{{ url_for('admin_avaliacoes',
+                              tipo='restaurante',
+                              restaurante_id=_flt.restaurante_id|default(''),
+                              cooperado_id=_flt.cooperado_id|default(''),
+                              data_inicio=_flt.data_inicio|default(''),
+                              data_fim=_flt.data_fim|default('')) }}">
+            Cooperado → Restaurante
+          </a>
+
+          <a class="type-btn {{ 'active' if (tipo|default('restaurante'))=='cooperado' else 'inactive' }}"
+             href="{{ url_for('admin_avaliacoes',
+                              tipo='cooperado',
+                              restaurante_id=_flt.restaurante_id|default(''),
+                              cooperado_id=_flt.cooperado_id|default(''),
+                              data_inicio=_flt.data_inicio|default(''),
+                              data_fim=_flt.data_fim|default('')) }}">
+            Restaurante → Cooperado
+          </a>
+        </div>
+      </section>
+
+      <section class="card-modern section-card">
+        <h3 class="section-title">
+          <i class="bi bi-funnel"></i>
+          Filtros rápidos
+        </h3>
+
+        <form method="GET" action="{{ url_for('admin_avaliacoes') }}" id="formFiltrosAvaliacao">
+          <input type="hidden" name="tipo" value="{{ tipo|default('restaurante') }}">
+
+          <div class="filter-grid">
+            <div class="input-shell">
+              <label>Restaurante</label>
+              <select class="form-select form-select-sm" name="restaurante_id">
+                <option value="">Todos</option>
+                {% for r in (restaurantes|default([])) %}
+                  <option value="{{ r.id }}" {{ 'selected' if ((_flt.restaurante_id|default(0))==r.id) else '' }}>
+                    {{ r.nome }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="input-shell">
+              <label>Cooperado</label>
+              <select class="form-select form-select-sm" name="cooperado_id">
+                <option value="">Todos</option>
+                {% for c in (cooperados|default([])) %}
+                  <option value="{{ c.id }}" {{ 'selected' if ((_flt.cooperado_id|default(0))==c.id) else '' }}>
+                    {{ c.nome }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="input-shell">
+              <label>De</label>
+              <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ _flt.data_inicio|default('') }}">
+            </div>
+
+            <div class="input-shell">
+              <label>Até</label>
+              <input type="date" class="form-control form-control-sm" name="data_fim" value="{{ _flt.data_fim|default('') }}">
+            </div>
+          </div>
+
+          <div class="filter-actions">
+            <button class="btn btn-royal btn-sm" type="submit">
+              <i class="bi bi-search"></i> Aplicar filtros
+            </button>
+
+            <button type="button" id="btnSemanaAtual" class="btn-soft btn-sm">
+              <i class="bi bi-calendar-week"></i> Esta semana
+            </button>
+
+            <button type="button" id="btnMesAtual" class="btn-soft btn-sm">
+              <i class="bi bi-calendar-month"></i> Este mês
+            </button>
+
+            <a class="btn-soft btn-sm"
+               href="{{ url_for('admin_avaliacoes', tipo=tipo|default('restaurante')) }}">
+              <i class="bi bi-x-circle"></i> Limpar
+            </a>
+          </div>
+        </form>
+      </section>
+
+      <div class="subtab-wrap">
+        <button type="button" class="subtab-btn active" data-target="tab-detalhes">
+          <i class="bi bi-list-ul"></i> Principal — Detalhes
+        </button>
+        <button type="button" class="subtab-btn" data-target="tab-indicadores">
+          <i class="bi bi-grid-1x2-fill"></i> Cards e Indicadores
+        </button>
+      </div>
+
+      <section id="tab-detalhes" class="subtab-pane active">
+
+        <div class="detail-grid">
+          {% if (tipo|default('restaurante'))=='restaurante' %}
+            <div class="detail-card">
+              <div class="detail-head">
+                <h4 class="detail-title">
+                  <i class="bi bi-shop-window"></i>
+                  Detalhes por restaurante
+                </h4>
+                <span class="mini-badge">{{ ranking|default([])|length }}</span>
+              </div>
+              <div class="detail-body table-wrap">
+                <table class="table table-slim align-middle">
+                  <thead>
+                    <tr>
+                      <th>Restaurante</th>
+                      <th class="text-center">Qtd</th>
+                      <th class="text-center">Geral</th>
+                      <th class="text-center">Trat.</th>
+                      <th class="text-center">Amb.</th>
+                      <th class="text-center">Sup.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% set _rk = ranking|default([]) %}
+                    {% if _rk and (_rk|length) > 0 %}
+                      {% for r in _rk %}
+                        <tr>
+                          <td class="fw-semibold">{{ r.rest_nome }}</td>
+                          <td class="text-center"><span class="mini-badge">{{ r.qtd|default(0) }}</span></td>
+                          <td class="text-center"><span class="score-pill">{{ '%.2f'|format(r.m_geral|default(0)) }}</span></td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_trat|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_amb|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_sup|default(0)) }}</td>
+                        </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="6" class="text-center text-muted-soft">Sem dados.</td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-head">
+                <h4 class="detail-title">
+                  <i class="bi bi-person-circle"></i>
+                  Detalhes por cooperado
+                </h4>
+                <span class="text-muted-soft small">Agrupado pela média enviada a cada restaurante</span>
+              </div>
+              <div class="detail-body table-wrap">
+                <table class="table table-slim align-middle">
+                  <thead>
+                    <tr>
+                      <th>Cooperado</th>
+                      <th class="text-center">Qtd</th>
+                      <th class="text-center">Média</th>
+                      <th>Observação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% set coop_resumo = {} %}
+                    {% for a in (avaliacoes|default([])) %}
+                      {% set _ = coop_resumo.update({
+                        a.coop_nome: {
+                          'sum': (coop_resumo.get(a.coop_nome, {}).get('sum', 0) + (a.geral or 0)),
+                          'count': (coop_resumo.get(a.coop_nome, {}).get('count', 0) + 1)
+                        }
+                      }) %}
+                    {% endfor %}
+
+                    {% if coop_resumo %}
+                      {% for nome, item in coop_resumo.items() %}
+                        {% set media = (item.sum / item.count) if item.count else 0 %}
+                        <tr>
+                          <td class="fw-semibold">{{ nome }}</td>
+                          <td class="text-center"><span class="mini-badge">{{ item.count }}</span></td>
+                          <td class="text-center"><span class="score-pill">{{ '%.2f'|format(media) }}</span></td>
+                          <td class="text-muted-soft">Avaliações feitas pelo cooperado no período filtrado</td>
+                        </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="4" class="text-center text-muted-soft">Sem dados.</td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% else %}
+            <div class="detail-card">
+              <div class="detail-head">
+                <h4 class="detail-title">
+                  <i class="bi bi-person-badge"></i>
+                  Detalhes por cooperado
+                </h4>
+                <span class="mini-badge">{{ ranking|default([])|length }}</span>
+              </div>
+              <div class="detail-body table-wrap">
+                <table class="table table-slim align-middle">
+                  <thead>
+                    <tr>
+                      <th>Cooperado</th>
+                      <th class="text-center">Qtd</th>
+                      <th class="text-center">Geral</th>
+                      <th class="text-center">Pont.</th>
+                      <th class="text-center">Educ.</th>
+                      <th class="text-center">Efic.</th>
+                      <th class="text-center">Apres.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% set _rk = ranking|default([]) %}
+                    {% if _rk and (_rk|length) > 0 %}
+                      {% for r in _rk %}
+                        <tr>
+                          <td class="fw-semibold">{{ r.coop_nome }}</td>
+                          <td class="text-center"><span class="mini-badge">{{ r.qtd|default(0) }}</span></td>
+                          <td class="text-center"><span class="score-pill">{{ '%.2f'|format(r.m_geral|default(0)) }}</span></td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_pont|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_educ|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_efic|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_apres|default(0)) }}</td>
+                        </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="7" class="text-center text-muted-soft">Sem dados.</td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-head">
+                <h4 class="detail-title">
+                  <i class="bi bi-shop"></i>
+                  Detalhes por restaurante
+                </h4>
+                <span class="text-muted-soft small">Agrupado pelas avaliações recebidas dos restaurantes</span>
+              </div>
+              <div class="detail-body table-wrap">
+                <table class="table table-slim align-middle">
+                  <thead>
+                    <tr>
+                      <th>Restaurante</th>
+                      <th class="text-center">Qtd</th>
+                      <th class="text-center">Média</th>
+                      <th>Observação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% set rest_resumo = {} %}
+                    {% for a in (avaliacoes|default([])) %}
+                      {% set _ = rest_resumo.update({
+                        a.rest_nome: {
+                          'sum': (rest_resumo.get(a.rest_nome, {}).get('sum', 0) + (a.geral or 0)),
+                          'count': (rest_resumo.get(a.rest_nome, {}).get('count', 0) + 1)
+                        }
+                      }) %}
+                    {% endfor %}
+
+                    {% if rest_resumo %}
+                      {% for nome, item in rest_resumo.items() %}
+                        {% set media = (item.sum / item.count) if item.count else 0 %}
+                        <tr>
+                          <td class="fw-semibold">{{ nome }}</td>
+                          <td class="text-center"><span class="mini-badge">{{ item.count }}</span></td>
+                          <td class="text-center"><span class="score-pill">{{ '%.2f'|format(media) }}</span></td>
+                          <td class="text-muted-soft">Notas lançadas por este restaurante no período filtrado</td>
+                        </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="4" class="text-center text-muted-soft">Sem dados.</td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <section class="card-modern section-card">
+          <h3 class="section-title">
+            <i class="bi bi-list-stars"></i>
+            Avaliações detalhadas
+          </h3>
+
+          <div class="table-wrap">
+            <table class="table table-modern table-detail align-middle">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Restaurante</th>
+                  <th>Cooperado</th>
+                  <th class="text-center">Geral</th>
+                  {% if (tipo|default('restaurante'))=='restaurante' %}
+                    <th class="text-center">Trat.</th>
+                    <th class="text-center">Amb.</th>
+                    <th class="text-center">Sup.</th>
+                  {% else %}
+                    <th class="text-center">Pont.</th>
+                    <th class="text-center">Educ.</th>
+                    <th class="text-center">Efic.</th>
+                    <th class="text-center">Apres.</th>
+                  {% endif %}
+                  <th>Comentário</th>
+                  <th class="text-center">Média</th>
+                  <th class="text-center">Sentimento</th>
+                  <th>Temas</th>
+                  <th class="text-center">Crítico?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set _avs = avaliacoes|default([]) %}
+                {% if _avs and (_avs|length) > 0 %}
+                  {% for a in _avs %}
+                    <tr>
+                      <td class="text-nowrap">{{ a.criado_em.strftime('%d/%m/%Y %H:%M') if a.criado_em else '-' }}</td>
+                      <td class="fw-semibold">{{ a.rest_nome|default('-') }}</td>
+                      <td class="fw-semibold">{{ a.coop_nome|default('-') }}</td>
+                      <td class="text-center"><span class="score-pill">{{ a.geral|default('') }}</span></td>
+
+                      {% if (tipo|default('restaurante'))=='restaurante' %}
+                        <td class="text-center">{{ a.trat|default('') }}</td>
+                        <td class="text-center">{{ a.amb|default('') }}</td>
+                        <td class="text-center">{{ a.sup|default('') }}</td>
+                      {% else %}
+                        <td class="text-center">{{ a.pont|default('') }}</td>
+                        <td class="text-center">{{ a.educ|default('') }}</td>
+                        <td class="text-center">{{ a.efic|default('') }}</td>
+                        <td class="text-center">{{ a.apres|default('') }}</td>
+                      {% endif %}
+
+                      <td>{{ a.comentario|default('') }}</td>
+                      <td class="text-center">{{ a.media if a.media is not none else '' }}</td>
+                      <td class="text-center">
+                        {% set sent = (a.sentimento|default('')|lower) %}
+                        <span class="sent-pill {{ sent if sent in ['positivo','neutro','negativo'] else 'neutro' }}">
+                          {{ a.sentimento|default('-') }}
+                        </span>
+                      </td>
+                      <td>{{ a.temas|default('') }}</td>
+                      <td class="text-center">
+                        <span class="critico-pill {{ 'sim' if a.alerta else 'nao' }}">
+                          {{ 'SIM' if a.alerta else 'NÃO' }}
+                        </span>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="{{ 11 if (tipo|default('restaurante'))=='restaurante' else 13 }}"
+                        class="text-center text-muted-soft">
+                      Nenhuma avaliação
+                    </td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="tab-indicadores" class="subtab-pane">
+        {% set _k = kpis|default({}) %}
+
+        <section class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-label">Avaliações</div>
+              <div class="kpi-icon"><i class="bi bi-chat-square-heart"></i></div>
+            </div>
+            <div class="kpi-value">{{ _k.qtd|default(0) }}</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-label">Média geral</div>
+              <div class="kpi-icon"><i class="bi bi-star-half"></i></div>
+            </div>
+            <div class="kpi-value">{{ '%.2f'|format(_k.geral|default(0)) }}</div>
+          </div>
+
+          {% if (tipo|default('restaurante'))=='restaurante' %}
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Tratamento</div>
+                <div class="kpi-icon"><i class="bi bi-emoji-smile"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.2f'|format(_k.trat|default(0)) }}</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Ambiente</div>
+                <div class="kpi-icon"><i class="bi bi-shop-window"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.2f'|format(_k.amb|default(0)) }}</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Suporte</div>
+                <div class="kpi-icon"><i class="bi bi-headset"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.2f'|format(_k.sup|default(0)) }}</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Compatibilidade</div>
+                <div class="kpi-icon"><i class="bi bi-heart-pulse"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.0f'|format((_k.geral|default(0) / 5) * 100) }}%</div>
+            </div>
+          {% else %}
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Pontualidade</div>
+                <div class="kpi-icon"><i class="bi bi-clock-history"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.2f'|format(_k.pont|default(0)) }}</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Educação</div>
+                <div class="kpi-icon"><i class="bi bi-hand-thumbs-up"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.2f'|format(_k.educ|default(0)) }}</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Eficiência</div>
+                <div class="kpi-icon"><i class="bi bi-lightning-charge"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.2f'|format(_k.efic|default(0)) }}</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Apresentação</div>
+                <div class="kpi-icon"><i class="bi bi-person-badge"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.2f'|format(_k.apres|default(0)) }}</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <div class="kpi-label">Compatibilidade</div>
+                <div class="kpi-icon"><i class="bi bi-heart-pulse"></i></div>
+              </div>
+              <div class="kpi-value">{{ '%.0f'|format((_k.geral|default(0) / 5) * 100) }}%</div>
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="content-grid">
+          <div class="card-modern section-card">
+            <h3 class="section-title">
+              <i class="bi bi-trophy"></i>
+              Ranking por {{ 'restaurante' if (tipo|default('restaurante'))=='restaurante' else 'cooperado' }}
+            </h3>
+
+            <div class="table-wrap">
+              <table class="table table-modern align-middle">
+                <thead>
+                  <tr>
+                    {% if (tipo|default('restaurante'))=='restaurante' %}
+                      <th>Restaurante</th>
+                      <th class="text-center">Avaliações</th>
+                      <th class="text-center">Média</th>
+                      <th class="text-center">Trat.</th>
+                      <th class="text-center">Amb.</th>
+                      <th class="text-center">Sup.</th>
+                    {% else %}
+                      <th>Cooperado</th>
+                      <th class="text-center">Avaliações</th>
+                      <th class="text-center">Média</th>
+                      <th class="text-center">Pont.</th>
+                      <th class="text-center">Educ.</th>
+                      <th class="text-center">Efic.</th>
+                      <th class="text-center">Apres.</th>
+                    {% endif %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if (tipo|default('restaurante'))=='restaurante' %}
+                    {% set _rk = ranking|default([]) %}
+                    {% set _have = false %}
+                    {% for r in _rk %}
+                      {% if (r.qtd|default(0)) >= 3 %}
+                        {% set _have = true %}
+                        <tr>
+                          <td class="fw-semibold">{{ r.rest_nome }}</td>
+                          <td class="text-center"><span class="mini-badge">{{ r.qtd }}</span></td>
+                          <td class="text-center"><span class="score-pill"><i class="bi bi-star-fill text-warning"></i>{{ '%.2f'|format(r.m_geral|default(0)) }}</span></td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_trat|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_amb|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_sup|default(0)) }}</td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                    {% if not _have %}
+                      <tr>
+                        <td colspan="6" class="text-center text-muted-soft">Sem dados suficientes</td>
+                      </tr>
+                    {% endif %}
+                  {% else %}
+                    {% set _rk = ranking|default([]) %}
+                    {% set _have = false %}
+                    {% for r in _rk %}
+                      {% if (r.qtd|default(0)) >= 3 %}
+                        {% set _have = true %}
+                        <tr>
+                          <td class="fw-semibold">{{ r.coop_nome }}</td>
+                          <td class="text-center"><span class="mini-badge">{{ r.qtd }}</span></td>
+                          <td class="text-center"><span class="score-pill"><i class="bi bi-star-fill text-warning"></i>{{ '%.2f'|format(r.m_geral|default(0)) }}</span></td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_pont|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_educ|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_efic|default(0)) }}</td>
+                          <td class="text-center">{{ '%.2f'|format(r.m_apres|default(0)) }}</td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                    {% if not _have %}
+                      <tr>
+                        <td colspan="7" class="text-center text-muted-soft">Sem dados suficientes</td>
+                      </tr>
+                    {% endif %}
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card-modern section-card">
+            <h3 class="section-title">
+              <i class="bi bi-bar-chart-line"></i>
+              Top 10 — Média geral
+            </h3>
+
+            <div class="chart-shell">
+              <canvas id="chartTop"></canvas>
+            </div>
+
+            <div class="legend-note">
+              Gráfico único para manter a página leve e com carregamento mais rápido.
+            </div>
+          </div>
+        </section>
+
+        <section class="card-modern section-card">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h3 class="section-title m-0">
+              <i class="bi bi-heart-fill text-danger"></i>
+              Compatibilidade Cooperado × Restaurante
+            </h3>
+            <div class="text-muted-soft" style="font-size:.82rem;">
+              Percentual = <strong>(média ★ ÷ 5) × 100</strong>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table table-modern align-middle">
+              <thead>
+                <tr>
+                  <th style="min-width:220px;">Cooperado</th>
+                  <th style="min-width:220px;">Restaurante</th>
+                  <th class="text-center">Média ★</th>
+                  <th style="min-width:220px;">Compatibilidade</th>
+                  <th class="text-center">Avaliações</th>
+                  <th class="text-center">360°</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set _compat = compat|default([]) %}
+                {% if _compat and (_compat|length) > 0 %}
+                  {% set shown = 0 %}
+                  {% for row in _compat %}
+                    {% if (row.count|default(0)) >= 1 %}
+                      {% set shown = shown + 1 %}
+                      {% set pct = ((row.avg|default(0) / 5.0) * 100.0) %}
+                      <tr>
+                        <td class="fw-semibold">{{ row.coop|default('-') }}</td>
+                        <td class="fw-semibold">{{ row.rest|default('-') }}</td>
+                        <td class="text-center">
+                          <span class="score-pill">
+                            <i class="bi bi-star-fill text-warning"></i>
+                            {{ '%.2f'|format(row.avg|default(0)) }}
+                          </span>
+                        </td>
+                        <td>
+                          <div class="progress-modern">
+                            <div class="progress-bar-modern {{ 'success' if pct>=80 else ('warning' if pct>=60 else 'danger') }}"
+                                 style="width: {{ '%.0f'|format(pct) }}%;"></div>
+                          </div>
+                          <div class="small text-muted-soft mt-2">
+                            {{ '%.0f'|format(pct) }}%
+                            {% if (tipo|default('restaurante'))=='restaurante' %}
+                              (coop → rest)
+                            {% else %}
+                              (rest → coop)
+                            {% endif %}
+                          </div>
+                        </td>
+                        <td class="text-center"><span class="mini-badge">{{ row.count|default(0) }}</span></td>
+                        <td class="text-center">
+                          {% if compat360 is defined %}
+                            {% set k = row.key if row.key is defined else (row.pair_key if row.pair_key is defined else None) %}
+                            {% set x = (compat360.get(k) if k else None) %}
+                            {% if x %}
+                              {% set pct_cr = ((x.avg_cr|default(0) / 5.0)*100.0) %}
+                              {% set pct_rc = ((x.avg_rc|default(0) / 5.0)*100.0) %}
+                              {% set pct_mix = ((pct_cr + pct_rc)/2.0) %}
+                              <span class="score-pill">{{ '%.0f'|format(pct_mix) }}%</span>
+                            {% else %}
+                              <span class="text-muted-soft">—</span>
+                            {% endif %}
+                          {% else %}
+                            <span class="text-muted-soft">—</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endif %}
+                  {% endfor %}
+                  {% if shown == 0 %}
+                    <tr>
+                      <td colspan="6" class="text-center text-muted-soft">Sem dados suficientes.</td>
+                    </tr>
+                  {% endif %}
+                {% else %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted-soft">Sem dados suficientes.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card-modern section-card">
+          <h3 class="section-title">
+            <i class="bi bi-graph-up-arrow"></i>
+            Insights rápidos
+          </h3>
+          <div id="insightsWrap" class="insight-grid"></div>
+        </section>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  window.addEventListener('load', function(){
+
+    const form = document.getElementById('formFiltrosAvaliacao');
+
+    function pad(n){
+      return String(n).padStart(2, '0');
+    }
+
+    function toISO(d){
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    }
+
+    (function(){
+      const btn = document.getElementById('btnSemanaAtual');
+      if(!btn || !form) return;
+
+      btn.addEventListener('click', ()=>{
+        const now = new Date();
+        const day = now.getDay();
+        const diffToMonday = day === 0 ? -6 : (1 - day);
+
+        const first = new Date(now);
+        first.setDate(now.getDate() + diffToMonday);
+
+        const last = new Date(first);
+        last.setDate(first.getDate() + 6);
+
+        const di = form.querySelector('input[name="data_inicio"]');
+        const df = form.querySelector('input[name="data_fim"]');
+
+        if (di) di.value = toISO(first);
+        if (df) df.value = toISO(last);
+
+        form.submit();
+      });
+    })();
+
+    (function(){
+      const btn = document.getElementById('btnMesAtual');
+      if(!btn || !form) return;
+
+      btn.addEventListener('click', ()=>{
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+
+        const first = new Date(y, m, 1);
+        const last = new Date(y, m + 1, 0);
+
+        const di = form.querySelector('input[name="data_inicio"]');
+        const df = form.querySelector('input[name="data_fim"]');
+
+        if (di) di.value = toISO(first);
+        if (df) df.value = toISO(last);
+
+        form.submit();
+      });
+    })();
+
+    (function initSubtabs(){
+      const buttons = document.querySelectorAll('.subtab-btn');
+      const panes = document.querySelectorAll('.subtab-pane');
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', function(){
+          const target = this.getAttribute('data-target');
+
+          buttons.forEach(b => b.classList.remove('active'));
+          panes.forEach(p => p.classList.remove('active'));
+
+          this.classList.add('active');
+          const pane = document.getElementById(target);
+          if (pane) pane.classList.add('active');
+
+          if (target === 'tab-indicadores' && window._coopexChart && typeof window._coopexChart.resize === 'function') {
+            setTimeout(() => window._coopexChart.resize(), 80);
+          }
+        });
+      });
+    })();
+
+    (function initChart(){
+      const ensureChartJS = () => new Promise((resolve)=>{
+        if (window.Chart) return resolve();
+        const s = document.createElement('script');
+        s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+        s.onload = () => resolve();
+        document.head.appendChild(s);
+      });
+
+      const dataTop = {{ chart_top|default({'labels':[], 'values':[]})|tojson }};
+      const el = document.getElementById('chartTop');
+
+      if (!el || !dataTop || !Array.isArray(dataTop.labels) || dataTop.labels.length === 0) return;
+
+      ensureChartJS().then(()=>{
+        window._coopexChart = new Chart(el, {
+          type: 'bar',
+          data: {
+            labels: dataTop.labels,
+            datasets: [{
+              label: 'Média Geral',
+              data: dataTop.values,
+              borderRadius: 10,
+              maxBarThickness: 34
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 500
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: {
+                  color: '#667085',
+                  font: { size: 11, weight: '600' }
+                }
+              },
+              y: {
+                beginAtZero: true,
+                max: 5,
+                ticks: {
+                  stepSize: 1,
+                  color: '#667085',
+                  font: { size: 11, weight: '600' }
+                },
+                grid: {
+                  color: 'rgba(15,23,42,0.08)'
+                }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(17,24,39,0.92)',
+                padding: 10,
+                displayColors: false
+              }
+            }
+          }
+        });
+      });
+    })();
+
+    (function insights(){
+      const wrap = document.getElementById('insightsWrap');
+      if (!wrap) return;
+
+      const tipo = "{{ tipo|default('restaurante') }}";
+      const k = {{ kpis|default({})|tojson }};
+      const pct = v => Math.max(0, Math.min(100, Math.round((Number(v || 0) / 5) * 100)));
+
+      function card(title, value){
+        const div = document.createElement('div');
+        div.className = 'insight-card';
+        div.innerHTML = `
+          <div class="insight-label">${title}</div>
+          <div class="insight-value">${value}</div>
+        `;
+        return div;
+      }
+
+      if (tipo === 'restaurante') {
+        const vals = [
+          { label:'Tratamento', v:Number(k.trat || 0) },
+          { label:'Ambiente',   v:Number(k.amb || 0) },
+          { label:'Suporte',    v:Number(k.sup || 0) }
+        ];
+
+        const sorted = vals.slice().sort((a,b)=>a.v-b.v);
+        const worst = sorted[0];
+        const best = sorted[sorted.length - 1];
+        const comp = pct(k.geral || 0);
+
+        wrap.appendChild(card('Compatibilidade média', comp + '%'));
+        wrap.appendChild(card('Ponto forte', `${best.label} · ${best.v.toFixed(2)}★`));
+        wrap.appendChild(card('Ponto de atenção', `${worst.label} · ${worst.v.toFixed(2)}★`));
+        wrap.appendChild(card('Amostra', `${(k.qtd || 0)} avaliação(ões)`));
+      } else {
+        const vals = [
+          { label:'Pontualidade', v:Number(k.pont || 0) },
+          { label:'Educação',     v:Number(k.educ || 0) },
+          { label:'Eficiência',   v:Number(k.efic || 0) },
+          { label:'Apresentação', v:Number(k.apres || 0) }
+        ];
+
+        const sorted = vals.slice().sort((a,b)=>a.v-b.v);
+        const worst = sorted[0];
+        const best = sorted[sorted.length - 1];
+        const comp = pct(k.geral || 0);
+
+        wrap.appendChild(card('Compatibilidade média', comp + '%'));
+        wrap.appendChild(card('Ponto forte', `${best.label} · ${best.v.toFixed(2)}★`));
+        wrap.appendChild(card('Ponto de atenção', `${worst.label} · ${worst.v.toFixed(2)}★`));
+        wrap.appendChild(card('Amostra', `${(k.qtd || 0)} avaliação(ões)`));
+      }
+    })();
+
+  });
+</script>
+</body>
+</html>

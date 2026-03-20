@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Documentos da Cooperativa</title>
+
+  <!-- Bootstrap / Icons / Tipografia -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --royal:#2747d9; --royal-2:#3b61e3;
+      --bg:#f6f8fb; --ink:#1a1f2b;
+      --soft:#eef2ff; --muted:#6b7280;
+    }
+    html,body{height:100%}
+    body{background:var(--bg); color:var(--ink); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;}
+    .wrap{max-width:640px; margin:0 auto;}
+
+    /* Topbar */
+    .topbar{
+      position:sticky; top:0; z-index:10; background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      color:#fff; box-shadow:0 4px 18px #0002;
+    }
+    .brand{font-weight:800; letter-spacing:.2px;}
+    .btn-top{color:#fff; border-color:#ffffff55}
+    .btn-top:hover{color:#fff; border-color:#ffffff80; background:#ffffff20}
+
+    /* Busca */
+    .search-wrap{position:sticky; top:62px; z-index:5; background:var(--bg); padding-top:.5rem}
+    .search{border-radius:12px}
+
+    /* Card da lista */
+    .doc-row{
+      border:1px solid #e9edf5; border-radius:18px; padding:14px 16px; margin-bottom:12px; background:#fff;
+      box-shadow:0 8px 24px #00000010; transition:transform .08s ease, box-shadow .12s ease, background .12s ease; cursor:pointer;
+      outline: none;
+    }
+    .doc-row:hover{box-shadow:0 10px 28px #00000014; transform:translateY(-1px)}
+    .doc-row:active{transform:scale(.995)}
+    .doc-row:focus-visible{box-shadow:0 0 0 3px #2747d922, 0 8px 24px #00000012}
+    .doc-title{font-weight:800; font-size:1.06rem; line-height:1.25}
+    .doc-cat{font-size:.75rem; color:var(--royal); text-transform:uppercase; letter-spacing:.08em; font-weight:700}
+    .doc-date{color:var(--muted); font-size:.88rem}
+    .doc-desc{font-size:.95rem; color:#222; background:var(--soft); border-radius:12px; padding:.6em .9em}
+    .chip{display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .6rem; border-radius:999px; background:#f1f4ff; font-weight:600; font-size:.8rem}
+
+    /* Modal leitor */
+    .modal-dialog.modal-fullscreen{margin:0; max-width:100vw; width:100vw; height:100vh}
+    .modal-content{border-radius:0; height:100vh; background:#fff}
+    .reader-frame,.reader-img{width:100%; height:85vh; border:0; background:#fff; display:block; margin:0 auto}
+    @media (max-width:520px){ .reader-frame,.reader-img{height:76vh} }
+
+    /* Botões */
+    .btn-royal{background:var(--royal); color:#fff}
+    .btn-royal:hover{background:var(--royal-2); color:#fff}
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="wrap d-flex align-items-center justify-content-between p-2">
+      <a href="{{ back_href or url_for('portal_cooperado') }}" class="btn btn-outline-light btn-sm btn-top" id="btnVoltar">
+        <i class="bi bi-arrow-left"></i> Voltar
+      </a>
+      <div class="brand">Documentos</div>
+      <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm btn-top" title="Sair">
+        <i class="bi bi-box-arrow-right"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- BUSCA -->
+  <div class="wrap search-wrap px-3">
+    <div class="input-group mb-2">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input id="busca" type="text" class="form-control search" placeholder="Buscar por título, categoria ou descrição…">
+      {% if documentos and documentos|length > 0 %}
+      <span class="input-group-text bg-white"><span id="count" class="badge text-bg-light">{{ documentos|length }}</span></span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- LISTA -->
+  <main class="wrap p-3 pt-2">
+    {% if not documentos %}
+      <div class="text-muted text-center py-5">
+        <i class="bi bi-inbox"></i> Nenhum documento disponível no momento.
+      </div>
+    {% else %}
+      {% for d in documentos %}
+        {% set titulo = d.titulo or 'Sem título' %}
+        {% set cat = d.categoria or 'Outro' %}
+        {% set nome_arquivo = d.arquivo_nome or '' %}
+        {% set ext = nome_arquivo.split('.')[-1]|lower if '.' in nome_arquivo else '' %}
+        <article class="doc-row position-relative"
+                 tabindex="0" role="button" aria-label="Abrir {{ titulo }}"
+                 data-title="{{ titulo|lower }}"
+                 data-cat="{{ cat|lower }}"
+                 data-desc="{{ (d.descricao or '')|lower }}"
+                 data-url="{{ d.arquivo_url or url_for('baixar_documento', doc_id=d.id) }}"
+                 data-title-full="{{ titulo }}"
+                 data-ext="{{ ext }}">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="pe-1">
+              <div class="doc-cat">{{ cat|upper }}</div>
+              <div class="doc-title d-flex align-items-center gap-2">
+                <i class="bi bi-file-earmark-text"></i> {{ titulo }}
+              </div>
+              <div class="doc-date">
+                {{ d.enviado_em.strftime('%d/%m/%Y %H:%M') if d.enviado_em else '' }}
+              </div>
+              {% if d.descricao %}
+                <div class="doc-desc mt-2">{{ d.descricao }}</div>
+              {% endif %}
+              <div class="mt-2 d-flex flex-wrap gap-2">
+                <span class="chip"><i class="bi bi-file-earmark"></i> {{ nome_arquivo or '—' }}</span>
+                {% if ext %}<span class="chip"><i class="bi bi-tag"></i> {{ ext|upper }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          <!-- Mantemos um link invisível para acessibilidade e “stretched area” -->
+          <a href="#" class="stretched-link" aria-hidden="true"></a>
+        </article>
+      {% endfor %}
+    {% endif %}
+
+    <div class="text-center mt-3 mb-2">
+      <small class="text-muted">© {{ current_year|default('') }} Coopex</small>
+    </div>
+  </main>
+
+  <!-- MODAL FULLSCREEN -->
+  <div class="modal fade" id="modalLivro" tabindex="-1" aria-labelledby="modalLivroLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <div class="doc-cat mb-0" id="modalLivroCat"></div>
+            <h5 class="modal-title" id="modalLivroLabel"></h5>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <a id="modalAbrirNovaAba" href="#" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-box-arrow-up-right"></i> Abrir em nova aba
+            </a>
+            <a id="modalBaixar" href="#" download class="btn btn-primary btn-sm">
+              <i class="bi bi-download"></i> Baixar
+            </a>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+        </div>
+        <div class="modal-body p-2">
+          <iframe id="modalLivroFrame" class="reader-frame d-none" allowfullscreen></iframe>
+          <img id="modalLivroImg" class="reader-img d-none" alt="">
+          <div id="livroAviso" class="small text-muted mt-2 d-none">
+            Se o arquivo não abrir no visualizador, utilize os botões “Abrir em nova aba” ou “Baixar”.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Voltar com histórico + fallback -->
+  <script>
+    (function(){
+      const a = document.getElementById('btnVoltar');
+      if (!a) return;
+      try {
+        const ref = document.referrer;
+        if (ref && new URL(ref).origin === location.origin) {
+          a.addEventListener('click', function(e){
+            e.preventDefault();
+            history.back();
+          });
+        } else {
+          if (!a.getAttribute('href') || a.getAttribute('href') === '#') {
+            a.setAttribute('href', "{{ url_for('portal_cooperado') }}");
+          }
+        }
+      } catch(_) {}
+    })();
+  </script>
+
+  <!-- Busca local + contagem -->
+  <script>
+    (function(){
+      const q = document.getElementById('busca');
+      const rows = [...document.querySelectorAll('.doc-row')];
+      const cnt = document.getElementById('count');
+      if (!q || rows.length === 0) return;
+
+      function apply(){
+        const s = (q.value || '').trim().toLowerCase();
+        let vis = 0;
+        rows.forEach(r=>{
+          const hit = !s
+            || r.dataset.title.includes(s)
+            || r.dataset.cat.includes(s)
+            || r.dataset.desc.includes(s);
+          r.style.display = hit ? '' : 'none';
+          if (hit) vis++;
+        });
+        if (cnt) cnt.textContent = vis;
+      }
+      q.addEventListener('input', apply);
+      apply();
+    })();
+  </script>
+
+  <!-- Abrir modal (PDF/Imagem/Outros) com clique no CARD inteiro -->
+  <script>
+    (function(){
+      const modalEl = document.getElementById('modalLivro');
+      const modal = new bootstrap.Modal(modalEl);
+      const lbl = document.getElementById('modalLivroLabel');
+      const catEl = document.getElementById('modalLivroCat');
+      const frame = document.getElementById('modalLivroFrame');
+      const img = document.getElementById('modalLivroImg');
+      const aviso = document.getElementById('livroAviso');
+      const baixar = document.getElementById('modalBaixar');
+      const novaAba = document.getElementById('modalAbrirNovaAba');
+
+      function openViewer(url, title, ext, cat){
+        lbl.textContent = title || '';
+        catEl.textContent = (cat || '').toUpperCase();
+        baixar.href = url; novaAba.href = url;
+
+        frame.classList.add('d-none'); img.classList.add('d-none'); aviso.classList.add('d-none');
+
+        const e = (ext || '').toLowerCase();
+        if (e === 'pdf') {
+          frame.src = url;
+          frame.classList.remove('d-none');
+        } else if (['jpg','jpeg','png','webp','gif','bmp','svg'].includes(e)) {
+          img.src = url;
+          img.classList.remove('d-none');
+        } else {
+          aviso.classList.remove('d-none');
+        }
+        modal.show();
+      }
+
+      // Clique em qualquer ponto do card
+      document.addEventListener('click', function(ev){
+        const card = ev.target.closest('.doc-row');
+        if (!card) return;
+        const url = card.dataset.url || '#';
+        const title = card.dataset.titleFull || '';
+        const ext = card.dataset.ext || '';
+        const cat = card.dataset.cat || '';
+        ev.preventDefault();
+        openViewer(url, title, ext, cat);
+      });
+
+      // Acessibilidade: abrir com Enter/Espaço
+      document.addEventListener('keydown', function(ev){
+        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+        const card = ev.target.closest('.doc-row');
+        if (!card) return;
+        ev.preventDefault();
+        openViewer(card.dataset.url || '#',
+                   card.dataset.titleFull || '',
+                   card.dataset.ext || '',
+                   card.dataset.cat || '');
+      });
+
+      modalEl.addEventListener('hidden.bs.modal', ()=>{ frame.src=''; img.src=''; });
+    })();
+  </script>
+
+  <!-- Persistência de scroll -->
+  <script>
+    (function(){
+      try{
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        const key = 'scroll:'+location.pathname+location.search;
+        window.addEventListener('beforeunload', ()=> sessionStorage.setItem(key, String(window.scrollY)));
+        window.addEventListener('DOMContentLoaded', ()=>{
+          const y = parseInt(sessionStorage.getItem(key)||'0',10);
+          if (!isNaN(y)) window.scrollTo({top:y, behavior:'instant' in window ? 'instant':'auto'});
+        });
+      }catch(_){}
+    })();
+  </script>
+</body>
+</html>
