@@ -15,7 +15,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);
 </style>
 </head>
 <body>
-<div class="header"><div class="wrap" style="padding:0"><h1 style="margin:0">Rota da farmácia</h1><div>Olá, {{ coop.nome }}. Arraste a sequência e atualize a rota.</div></div></div>
+<div class="header"><div class="wrap" style="padding:0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><h1 style="margin:0">Rota da farmácia</h1><div>Olá, {{ coop.nome }}. Arraste a sequência e atualize a rota.</div></div><a class="btn light" href="{{ url_for('logout') }}">Sair</a></div></div>
 <div class="wrap">
   {% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="hero-card">{% for cat,msg in msgs %}<div class="card">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
   <section id="tab-rota" class="hero-card">
