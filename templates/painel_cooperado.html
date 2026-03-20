@@ -137,7 +137,7 @@
       border-radius:20px;box-shadow:var(--shadow)
     }
 
-    .filter-card{padding:14px}
+    .filter-card{padding:10px}.filter-mini{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}.filter-mini .form-label{font-size:.68rem;margin-bottom:4px}.filter-mini .form-control{min-height:38px;font-size:.88rem;border-radius:12px}.filter-mini .btn-royal{min-height:38px;border-radius:12px;padding:0 12px;white-space:nowrap}.filter-note{font-size:.68rem;color:var(--muted);margin-top:6px}
     .form-label{font-size:.78rem;font-weight:700;color:#334155;margin-bottom:6px}
     .form-control,.form-select{
       border-radius:14px;border:1px solid rgba(15,23,42,.10);
@@ -183,7 +183,7 @@
     .section-title{font-size:1rem;font-weight:800;color:var(--ink);margin:0}
     .section-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--royal-soft);color:var(--royal-3);font-size:.76rem;font-weight:800}
 
-    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .kpi-card{border:1px solid var(--line);border-radius:16px;padding:12px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%)}
     .kpi-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;font-weight:800;color:var(--muted)}
     .kpi-value{font-size:1.02rem;font-weight:800;line-height:1.15;color:var(--ink);margin-top:5px}
@@ -268,7 +268,27 @@
       body{background:#fff}
       .section-card,.item-card,.surface-card,.hero-card{box-shadow:none!important}
     }
-  </style>
+  @media (max-width:420px){
+    .filter-card{padding:8px}
+    .filter-mini{grid-template-columns:1fr 1fr auto;gap:6px}
+    .filter-mini .form-control{min-height:36px;font-size:.82rem;padding:.35rem .5rem}
+    .filter-mini .btn-royal{min-height:36px;padding:0 10px;font-size:.8rem}
+    .filter-mini .form-label{font-size:.64rem}
+}
+
+.help-tip{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:999px;
+  background:#eef2ff;color:#2747d9;font-size:.72rem;font-weight:800;
+  margin-left:6px;cursor:pointer;border:1px solid rgba(39,71,217,.12)
+}
+.help-box{
+  margin-top:8px;padding:10px 12px;border-radius:12px;
+  background:#f8fbff;border:1px solid rgba(39,71,217,.10);
+  color:var(--muted);font-size:.78rem;display:none
+}
+.help-box.show{display:block}
+</style>
 </head>
 <body>
 {% set _unread = unread if unread is defined else (avisos_nao_lidos_count if avisos_nao_lidos_count is defined else (avisos_unread_count if avisos_unread_count is defined else 0)) %}
@@ -343,26 +363,6 @@
     </div>
   </header>
 
-  <section class="hero-cards">
-    <div class="hero-grid">
-      <div class="hero-card primary">
-        <div class="hero-label">Líquido do período</div>
-        <div class="hero-value mono">R$ {{ '%.2f'|format(total_liquido|default(0)) }}</div>
-        <div class="hero-sub">Após descontos aplicados</div>
-      </div>
-      <div class="hero-card">
-        <div class="hero-label">Bruto</div>
-        <div class="hero-value tight mono">R$ {{ '%.2f'|format(total_bruto|default(0)) }}</div>
-        <div class="hero-sub">Total recebido</div>
-      </div>
-      <div class="hero-card">
-        <div class="hero-label">Avisos</div>
-        <div class="hero-value tight mono">{{ unread }}</div>
-        <div class="hero-sub">Não lidos</div>
-      </div>
-    </div>
-  </section>
-
   <div class="flash-stack">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -386,20 +386,21 @@
     <div class="surface-card filter-card">
       <form method="GET" action="{{ url_for('portal_cooperado') }}" id="periodoForm">
         <input type="hidden" name="active_tab" id="activeTabInput" value="{{ _active_tab_req or 'resumo' }}">
-        <div class="row g-2 align-items-end">
-          <div class="col-6">
+        <div class="filter-mini">
+          <div>
             <label class="form-label">Início</label>
             <input type="date" class="form-control" name="data_inicio" value="{{ (data_inicio.strftime('%Y-%m-%d') if data_inicio else request.args.get('data_inicio','')) }}">
           </div>
-          <div class="col-6">
+          <div>
             <label class="form-label">Fim</label>
             <input type="date" class="form-control" name="data_fim" value="{{ (data_fim.strftime('%Y-%m-%d') if data_fim else request.args.get('data_fim','')) }}">
           </div>
-          <div class="col-12 d-grid mt-1">
-            <button class="btn btn-royal" type="submit"><i class="bi bi-funnel me-1"></i>Aplicar período</button>
+          <div>
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-royal" type="submit"><i class="bi bi-funnel"></i></button>
           </div>
         </div>
-        <div class="hero-sub mt-2">O painel permanece na mesma aba até você mudar.</div>
+        
       </form>
     </div>
   </section>
@@ -415,52 +416,94 @@
   </section>
 
   <main class="tab-panel-wrap" id="painelTabsContent">
-    <section class="tab-pane-custom" id="tab-resumo">
-      <div class="section-card">
-        <div class="section-head">
-          <h2 class="section-title">Visão geral</h2>
-          <span class="section-chip"><i class="bi bi-stars"></i> Coopex</span>
+    
+
+<section class="tab-pane-custom" id="tab-resumo">
+      <div class="section-card" style="background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);border-color:rgba(39,71,217,.10)">
+        <div class="section-head" style="align-items:flex-start">
+          <div>
+            <h2 class="section-title" style="font-size:1.05rem">Resumo</h2>
+            
+          </div>
+          <span class="section-chip"><i class="bi bi-check2-circle"></i> Coopex</span>
         </div>
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-title">Total de comandas</div>
-            <div class="kpi-value mono">{{ _qtd_prod }}</div>
-            <div class="kpi-sub">Quantidade total</div>
+
+        <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
+          <div class="kpi-card" role="button" tabindex="0" onclick="document.querySelector('[data-tab=&quot;producoes&quot;]')?.click()" onkeypress="if(event.key==='Enter'){document.querySelector('[data-tab=&quot;producoes&quot;]')?.click()}" style="cursor:pointer;background:linear-gradient(180deg,#f0fff4 0%,#ffffff 100%);border-color:rgba(22,163,74,.14)">
+            <div class="kpi-title">Receita</div>
+            <div class="kpi-value mono" style="color:var(--ok);font-size:1.15rem">R$ {{ '%.2f'|format(total_bruto|default(0)) }}</div>
+            <div class="kpi-sub">Toque para ver as produções</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-title">Média de avaliação</div>
-            <div class="kpi-value mono">{{ '%.2f'|format(nota_vida|default(0))|replace('.',',') }}</div>
-            <div class="kpi-sub">{{ _score_title }} · {{ _score_label }}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-title">Total bruto</div>
-            <div class="kpi-value mono">R$ {{ '%.2f'|format(total_bruto|default(0)) }}</div>
-            <div class="kpi-sub">Recebido no período</div>
-          </div>
-          <div class="kpi-card">
+
+          <div class="kpi-card" role="button" tabindex="0" onclick="document.querySelector('[data-tab=&quot;ajustes&quot;]')?.click()" onkeypress="if(event.key==='Enter'){document.querySelector('[data-tab=&quot;ajustes&quot;]')?.click()}" style="cursor:pointer;background:linear-gradient(180deg,#fff7f7 0%,#ffffff 100%);border-color:rgba(220,38,38,.12)">
             <div class="kpi-title">Descontos</div>
-            <div class="kpi-value mono">R$ {{ '%.2f'|format(total_descontos|default(0)) }}</div>
-            <div class="kpi-sub">Individuais</div>
+            <div class="kpi-value mono" style="color:var(--bad);font-size:1.15rem">R$ {{ '%.2f'|format(total_descontos|default(0)) }}</div>
+            <div class="kpi-sub">Toque para ver os descontos</div>
           </div>
+
           <div class="kpi-card">
-            <div class="kpi-title">INSS (4%)</div>
-            <div class="kpi-value mono">R$ {{ '%.2f'|format(inss_valor|default(0)) }}</div>
-            <div class="kpi-sub">Estimado</div>
+            <div class="kpi-title">INSS / SEST-SENAT</div>
+            <div class="mono" style="font-size:1rem;line-height:1.45;color:var(--ink);margin-top:6px">
+              <div style="margin-bottom:12px">
+                <span style="font-weight:700">INSS (4%):</span>
+                <span style="font-weight:400"> R$ {{ '%.2f'|format(inss_valor|default(0)) }}</span>
+              </div>
+              <div style="margin-top:12px">
+                <span style="font-weight:700">SEST/SENAT (0,5%):</span>
+                <span style="font-weight:400"> R$ {{ '%.2f'|format(sest_senat_valor|default(0)) }}</span>
+              </div>
+            </div>
+            <div class="kpi-sub"></div>
           </div>
+
           <div class="kpi-card">
-            <div class="kpi-title">SEST/SENAT</div>
-            <div class="kpi-value mono">R$ {{ '%.2f'|format(sest_senat_valor|default(0)) }}</div>
-            <div class="kpi-sub">0,5%</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-title">Complemento INSS</div>
+            <div class="kpi-title">
+              Complemento INSS
+              <span class="help-tip" onclick="document.getElementById('helpComplemento')?.classList.toggle('show')">?</span>
+            </div>
             <div class="kpi-value mono">R$ {{ '%.2f'|format(inss_complemento|default(0)) }}</div>
             <div class="kpi-sub">Meta sugerida</div>
+            <div class="help-box" id="helpComplemento">
+              O complemento é o valor total que devemos atingir para o INSS. Esse complemento é opcional. Caso tenha interesse em complementar, fale com a administração.
+            </div>
           </div>
-          <div class="kpi-card span-2">
-            <div class="kpi-title">Total líquido</div>
-            <div class="kpi-value mono" style="color:var(--ok);font-size:1.2rem">R$ {{ '%.2f'|format(total_liquido|default(0)) }}</div>
-            <div class="kpi-sub">Após descontos e encargos</div>
+
+          <div class="kpi-card" role="button" tabindex="0"
+               onclick="document.querySelector('[data-tab=&quot;ajustes&quot;]')?.click()"
+               onkeypress="if(event.key==='Enter'){document.querySelector('[data-tab=&quot;ajustes&quot;]')?.click()}"
+               style="cursor:pointer;background:linear-gradient(180deg,#fffdf4 0%,#ffffff 100%);border-color:rgba(245,158,11,.18)">
+            <div class="kpi-title">Ver pendências</div>
+            <div class="kpi-value mono" style="font-size:1.1rem;color:var(--warning)">
+              {% set _pend_total = (saldo_devedor|default(0)) + (total_a_descontar|default(0)) %}
+              {% if _pend_total > 0 %}
+                R$ {{ '%.2f'|format(_pend_total) }}
+              {% else %}
+                R$ 0,00
+              {% endif %}
+            </div>
+            <div class="kpi-sub">
+              {% if _pend_total > 0 %}
+                Você tem pendências
+              {% else %}
+                Sem pendências
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="kpi-card span-2" style="background:linear-gradient(135deg,#2747d9 0%,#3157ff 100%);border-color:transparent">
+            <div class="kpi-title" style="color:rgba(255,255,255,.78)">Total a receber</div>
+            <div class="kpi-value mono" style="color:#fff;font-size:1.45rem">R$ {{ '%.2f'|format(total_liquido|default(0)) }}</div>
+            <div class="kpi-sub" style="color:rgba(255,255,255,.82)">Valor final depois dos descontos e encargos</div>
+          </div>
+        </div>
+
+        <div class="soft-card mt-3 p-3" style="background:#f8fbff;border-color:rgba(39,71,217,.08)">
+          <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle" style="color:var(--royal);font-size:1.05rem"></i>
+            <div class="item-small" style="line-height:1.45">
+              <b>Saldo devedor</b> só existe quando a produção não conseguiu pagar o que já venceu.
+              Em <b>Ver pendências</b>, você vê a descrição, o valor original, quanto já foi descontado e quanto ainda falta.
+            </div>
           </div>
         </div>
       </div>
@@ -550,7 +593,8 @@
       </div>
     </section>
 
-    <section class="tab-pane-custom" id="tab-ajustes">
+    
+<section class="tab-pane-custom" id="tab-ajustes">
       <div class="section-card">
         <div class="section-head">
           <h2 class="section-title">Créditos da cooperativa</h2>
@@ -573,9 +617,85 @@
         </div>
       </div>
 
+      <div class="section-card" style="background:linear-gradient(180deg,#ffffff 0%,#fafcff 100%)">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Extrato de pendências</h2>
+            <div class="item-small mt-1">Aqui mostra de onde veio cada pendência e quanto ainda falta pagar.</div>
+          </div>
+          <span class="section-chip mono">R$ {{ '%.2f'|format((saldo_devedor|default(0)) + (total_a_descontar|default(0))) }}</span>
+        </div>
+
+        <div class="list-stack">
+          {% for d in despesas_detalhadas %}
+          <div class="item-card" style="border-color:{% if d.status == 'pendente' or d.status == 'parcial' %}rgba(245,158,11,.18){% elif d.status == 'a_descontar' %}rgba(39,71,217,.12){% else %}rgba(16,185,129,.12){% endif %}">
+            <div class="item-row">
+              <div class="flex-grow-1 min-w-0">
+                <div class="item-title">
+                  {% if d.eh_adiantamento %}<i class="bi bi-cash-coin me-1"></i>Adiantamento{% else %}<i class="bi bi-dash-circle me-1"></i>Pendência{% endif %}
+                  — {{ d.descricao }}
+                </div>
+
+                <div class="item-meta mt-1">
+                  <i class="bi bi-calendar-event me-1"></i>
+                  Referência:
+                  {{ d.data_fim.strftime('%d/%m/%Y') if d.data_fim else (d.data.strftime('%d/%m/%Y') if d.data else '—') }}
+                  &nbsp;·&nbsp;
+                  {% if d.competencia_desconto == 'semana_passada' %}
+                    Produção da semana passada
+                  {% elif d.competencia_desconto == 'proxima_semana' %}
+                    Produção da próxima semana
+                  {% else %}
+                    Produção desta semana
+                  {% endif %}
+                </div>
+
+                <div class="item-meta mt-1">
+                  Valor original: <b>R$ {{ '%.2f'|format(d.valor_total|default(0)) }}</b>
+                  &nbsp;·&nbsp;
+                  Descontado automaticamente: <b>R$ {{ '%.2f'|format(d.pago_auto|default(0)) }}</b>
+                  &nbsp;·&nbsp;
+                  Faltou pagar: <b>R$ {{ '%.2f'|format(d.restante|default(0)) }}</b>
+                </div>
+
+                <div class="mt-2">
+                  {% if d.status == 'quitada' %}
+                    <span class="section-chip" style="background:#ecfdf3;color:#166534">Quitada</span>
+                  {% elif d.status == 'parcial' %}
+                    <span class="section-chip" style="background:#fff7ed;color:#9a3412">Parcial</span>
+                  {% elif d.status == 'a_descontar' %}
+                    <span class="section-chip" style="background:#eef2ff;color:#1d4ed8">A descontar</span>
+                  {% else %}
+                    <span class="section-chip" style="background:#fff7ed;color:#9a3412">Pendente</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="text-end">
+                <div class="item-amount danger mono">R$ {{ '%.2f'|format(d.restante|default(0)) }}</div>
+                <div class="item-small">restante</div>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="item-card text-center muted">Nenhuma pendência para mostrar.</div>
+          {% endfor %}
+        </div>
+
+        <div class="soft-card mt-3 p-3" style="background:#fff8eb;border-color:rgba(245,158,11,.18)">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <div class="item-title"><i class="bi bi-exclamation-circle me-1"></i>Saldo devedor</div>
+              <div class="item-small mt-1">Valor que realmente ficou sem pagar porque a produção não foi suficiente.</div>
+            </div>
+            <div class="item-amount mono" style="color:var(--warning)">R$ {{ '%.2f'|format(saldo_devedor|default(0)) }}</div>
+          </div>
+        </div>
+      </div>
+
       <div class="section-card">
         <div class="section-head">
-          <h2 class="section-title">Descontos e despesas</h2>
+          <h2 class="section-title">Descontos aplicados no período</h2>
           <span class="section-chip mono">R$ {{ '%.2f'|format((despesas_coop|sum(attribute='valor'))|default(0)) }}</span>
         </div>
         <div class="list-stack">
@@ -1073,6 +1193,7 @@ const MY_ESCALA   = {{ minha_escala_json | default([]) | tojson }};
   const buttons=[...document.querySelectorAll('.tab-btn')];
   const panes=[...document.querySelectorAll('.tab-pane-custom')];
   const activeInput=document.getElementById('activeTabInput');
+  const panel=document.getElementById('painelTabsContent');
   const params=new URLSearchParams(window.location.search);
   const valid=['resumo','producoes','ajustes','escalas','trocas'];
   let current=params.get('active_tab') || localStorage.getItem('coopex_active_tab') || (activeInput?.value || 'resumo');
@@ -1082,6 +1203,7 @@ const MY_ESCALA   = {{ minha_escala_json | default([]) | tojson }};
     buttons.forEach(btn=>btn.classList.toggle('active', btn.dataset.tab===name));
     panes.forEach(p=>p.classList.toggle('active', p.id===`tab-${name}`));
     if (activeInput) activeInput.value=name;
+    current=name;
     localStorage.setItem('coopex_active_tab', name);
     if (updateHistory){
       const url=new URL(window.location.href);
@@ -1091,6 +1213,43 @@ const MY_ESCALA   = {{ minha_escala_json | default([]) | tojson }};
   }
 
   buttons.forEach(btn=>btn.addEventListener('click', ()=>showTab(btn.dataset.tab)));
+
+  let startX=0;
+  let startY=0;
+  let tracking=false;
+
+  panel?.addEventListener('touchstart', (e)=>{
+    if (!e.changedTouches || !e.changedTouches.length) return;
+    const t=e.changedTouches[0];
+    startX=t.clientX;
+    startY=t.clientY;
+    tracking=true;
+  }, {passive:true});
+
+  panel?.addEventListener('touchend', (e)=>{
+    if (!tracking || !e.changedTouches || !e.changedTouches.length) return;
+    tracking=false;
+
+    const target=e.target;
+    if (target && target.closest('input, textarea, select, button, a, .modal, .offcanvas, [contenteditable="true"]')) return;
+
+    const t=e.changedTouches[0];
+    const dx=t.clientX-startX;
+    const dy=t.clientY-startY;
+
+    if (Math.abs(dx) < 60) return;
+    if (Math.abs(dx) <= Math.abs(dy)) return;
+
+    const idx=valid.indexOf(current);
+    if (idx === -1) return;
+
+    if (dx < 0 && idx < valid.length-1){
+      showTab(valid[idx+1]);
+    } else if (dx > 0 && idx > 0){
+      showTab(valid[idx-1]);
+    }
+  }, {passive:true});
+
   showTab(current, false);
 })();
 </script>
