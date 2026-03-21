@@ -5789,43 +5789,32 @@
     });
   })();
 
-  // ===== Preservar aba ativa via ?tab= =====
+  // ===== Sincronizar aba ativa pela URL =====
   document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(location.search);
-    const targetTab = params.get('tab');
-
-    if (targetTab) {
-      const link = document.querySelector(`.sidebar .nav-link[href="#${targetTab}"]`);
-      if (link) new bootstrap.Tab(link).show();
-    }
-
-    document.querySelectorAll('.sidebar .nav-link[data-bs-toggle="tab"]').forEach(a => {
-      a.addEventListener('shown.bs.tab', (e) => {
-        const id = e.target.getAttribute('href')?.slice(1) || '';
-        if (!id) return;
-
-        const p = new URLSearchParams(location.search);
-        p.set('tab', id);
-        history.replaceState(null, '', location.pathname + '?' + p.toString() + e.target.getAttribute('href'));
-      });
+    const currentTab = (new URL(location.href)).searchParams.get('tab') || '{{ _tab }}' || 'lancamentos';
+    document.querySelectorAll('.sidebar a[href^="#"]').forEach(a => {
+      const tab = (a.getAttribute('href') || '').replace('#','');
+      const isActive = tab === currentTab;
+      a.classList.toggle('active', isActive);
+      a.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      const isActive = pane.id === currentTab;
+      pane.classList.toggle('show', isActive);
+      pane.classList.toggle('active', isActive);
     });
 
-    // Contagem regressiva até 31/12 (aba Escalas)
     const anoSpan = document.getElementById('prazoAno');
     const diasSpan = document.getElementById('prazoDias');
-
     function updatePrazo() {
       const now = new Date();
       let target = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
       if (now > target) target = new Date(now.getFullYear() + 1, 11, 31, 23, 59, 59);
-
       const diff = target - now;
       const dias = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-
       if (anoSpan) anoSpan.textContent = target.getFullYear();
       if (diasSpan) diasSpan.textContent = dias;
     }
-
     updatePrazo();
     setInterval(updatePrazo, 60 * 1000);
   });
@@ -6566,90 +6555,133 @@ document.addEventListener('DOMContentLoaded', function(){ const cAll=document.ge
 
 <script>
 (function(){
-  const mainSel = '.main';
-  const activeTab = () => {
-    const el = document.querySelector('.sidebar .nav-link-main.active, .sidebar .nav-link.active');
-    const href = el?.getAttribute('href') || '';
-    return href.startsWith('#') ? href.slice(1) : (new URL(location.href).searchParams.get('tab') || 'lancamentos');
-  };
+  const swapSel = '.layout';
+
+  function getCurrentUrl(){ return new URL(location.href); }
+  function currentTab(){ return getCurrentUrl().searchParams.get('tab') || '{{ _tab }}' || 'lancamentos'; }
+
+  function syncActiveUi(){
+    const tab = currentTab();
+    document.querySelectorAll('.sidebar a[href^="#"]').forEach(a => {
+      const name = (a.getAttribute('href') || '').slice(1);
+      const isActive = name === tab;
+      a.classList.toggle('active', isActive);
+      a.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      const isActive = pane.id === tab;
+      pane.classList.toggle('show', isActive);
+      pane.classList.toggle('active', isActive);
+    });
+  }
+
+  function rerunScripts(root){
+    root.querySelectorAll('script').forEach(oldScript => {
+      const s = document.createElement('script');
+      for (const attr of oldScript.attributes) s.setAttribute(attr.name, attr.value);
+      s.textContent = oldScript.textContent;
+      oldScript.replaceWith(s);
+    });
+  }
 
   async function fetchAndSwap(url, push=true){
-    const res = await fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+    const res = await fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest','Accept':'text/html'}});
     const text = await res.text();
+    if (!res.ok) { location.href = url; return; }
     const doc = new DOMParser().parseFromString(text, 'text/html');
-    const nextMain = doc.querySelector(mainSel);
-    const curMain = document.querySelector(mainSel);
-    if (nextMain && curMain){
-      const sy = window.scrollY;
-      curMain.innerHTML = nextMain.innerHTML;
-      if (push) history.pushState({}, '', url);
-      window.scrollTo({top: sy});
-      bindAdminFast();
-    } else if (push) {
-      location.href = url;
-    }
+    const next = doc.querySelector(swapSel);
+    const cur = document.querySelector(swapSel);
+    if (!next || !cur) { location.href = url; return; }
+    const sy = window.scrollY;
+    cur.innerHTML = next.innerHTML;
+    document.title = doc.title || document.title;
+    if (push) history.pushState({}, '', res.url || url);
+    rerunScripts(cur);
+    bindAdminFast();
+    syncActiveUi();
+    window.scrollTo({top: sy});
   }
 
   async function submitViaFetch(form){
     const method = (form.getAttribute('method') || 'GET').toUpperCase();
     const action = form.getAttribute('action') || location.href;
-    const currentTab = activeTab();
+    const current = getCurrentUrl();
     const u = new URL(action, location.origin);
     const fd = new FormData(form);
-    if (!fd.get('tab')) fd.set('tab', currentTab);
-    u.searchParams.set('tab', currentTab);
+    const tab = currentTab();
+    fd.set('tab', tab);
+    u.searchParams.set('tab', tab);
+
     if (method === 'GET'){
-      for (const [k,v] of fd.entries()) u.searchParams.set(k, v);
-      return fetchAndSwap(u.toString());
+      const merged = new URL(current.href);
+      merged.pathname = u.pathname;
+      merged.searchParams.set('tab', tab);
+      for (const key of [...merged.searchParams.keys()]) {
+        if (key === 'page') merged.searchParams.delete(key);
+      }
+      for (const [k,v] of fd.entries()) merged.searchParams.set(k, v);
+      return fetchAndSwap(merged.toString());
     }
-    const res = await fetch(u.toString(), {method:'POST', body: fd, headers:{'X-Requested-With':'XMLHttpRequest'}});
+
+    const res = await fetch(u.toString(), {method:'POST', body: fd, headers:{'X-Requested-With':'XMLHttpRequest','Accept':'text/html'}});
+    const finalUrl = res.redirected ? res.url : u.toString();
     const text = await res.text();
     const doc = new DOMParser().parseFromString(text, 'text/html');
-    const nextMain = doc.querySelector(mainSel);
-    const curMain = document.querySelector(mainSel);
-    if (nextMain && curMain){
-      const sy = window.scrollY;
-      curMain.innerHTML = nextMain.innerHTML;
-      const finalUrl = res.url || u.toString();
-      history.replaceState({}, '', finalUrl);
-      window.scrollTo({top: sy});
-      bindAdminFast();
-    } else {
-      location.reload();
-    }
+    const next = doc.querySelector(swapSel);
+    const cur = document.querySelector(swapSel);
+    if (!res.ok || !next || !cur) { location.href = finalUrl; return; }
+    const sy = window.scrollY;
+    cur.innerHTML = next.innerHTML;
+    document.title = doc.title || document.title;
+    history.replaceState({}, '', finalUrl);
+    rerunScripts(cur);
+    bindAdminFast();
+    syncActiveUi();
+    window.scrollTo({top: sy});
   }
 
   window.bindAdminFast = function(){
-    document.querySelectorAll('.sidebar [data-bs-toggle="tab"]').forEach(a => {
-      a.addEventListener('click', (e) => {
-        const href = a.getAttribute('href') || '';
-        if (!href.startsWith('#')) return;
+    document.querySelectorAll('.sidebar a[href^="#"]').forEach(a => {
+      a.onclick = (e) => {
         e.preventDefault();
-        const tab = href.slice(1);
-        const u = new URL(location.href);
+        const tab = (a.getAttribute('href') || '').slice(1);
+        if (!tab) return;
+        const u = getCurrentUrl();
         u.searchParams.set('tab', tab);
         fetchAndSwap(u.toString());
-      }, {once:true});
+      };
     });
 
     document.querySelectorAll('form[method="POST"], form[method="GET"]').forEach(f => {
       if (f.closest('.sidebar')) return;
-      f.addEventListener('submit', (e) => {
+      f.onsubmit = (e) => {
         if (f.target === '_blank') return;
         e.preventDefault();
         submitViaFetch(f);
-      }, {once:true});
+      };
     });
 
-    document.querySelectorAll('a[href*="/delete"], a[href*="/excluir"], a[data-fast-nav="1"]').forEach(a => {
-      a.addEventListener('click', (e) => {
-        const href = a.getAttribute('href');
-        if (!href || href.startsWith('#')) return;
+    document.querySelectorAll('a[href]').forEach(a => {
+      const href = a.getAttribute('href') || '';
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      if (a.target === '_blank' || a.hasAttribute('download')) return;
+      const low = href.toLowerCase();
+      const isFast = a.dataset.fastNav === '1' || low.includes('/delete') || low.includes('/excluir') || low.includes('/edit') || low.includes('/editar') || low.includes('/filtrar_');
+      if (!isFast) return;
+      a.onclick = (e) => {
         e.preventDefault();
-        fetchAndSwap(new URL(href, location.origin).toString());
-      }, {once:true});
+        const u = new URL(href, location.origin);
+        if (!u.searchParams.get('tab')) u.searchParams.set('tab', currentTab());
+        const current = getCurrentUrl();
+        ['data_inicio','data_fim','restaurante_id','cooperado_id','considerar_periodo','somente_pendentes'].forEach(k => {
+          if (!u.searchParams.get(k) && current.searchParams.get(k)) u.searchParams.set(k, current.searchParams.get(k));
+        });
+        fetchAndSwap(u.toString());
+      };
     });
-  }
+
+    syncActiveUi();
+  };
 
   window.addEventListener('popstate', () => fetchAndSwap(location.href, false));
   document.addEventListener('DOMContentLoaded', bindAdminFast);
