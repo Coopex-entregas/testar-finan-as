@@ -1176,6 +1176,27 @@
 
         <!-- Gráficos -->
         <div class="row g-2 mt-3">
+          <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+              <h6 class="mb-2 d-flex align-items-center gap-1">
+                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
+                <span>Evolução Mensal — Cooperativa</span>
+              </h6>
+              <canvas id="chartCoop"></canvas>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+              <h6 class="mb-2 d-flex align-items-center gap-1">
+                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
+                <span>Evolução Mensal — Cooperados</span>
+              </h6>
+              <canvas id="chartCooperados"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
               <h6 class="mb-2 d-flex align-items-center gap-1">
@@ -1427,7 +1448,7 @@
       ];
 
       const RESTS = [
-        {% for r in rest_list %}
+        {% for r in restaurantes %}
           { id: {{ r.id }}, nome: "{{ r.nome|e }}" }{{ "," if not loop.last }}
         {% endfor %}
       ];
@@ -1564,11 +1585,9 @@
           tReceber += aReceber;
           tPend += saldoPend;
 
-          const detalhes = (r.pendencia_texto || r.pendenciaTexto || '').trim();
-          const detalhesHtml = detalhes ? `<div class="small text-muted mt-1">${detalhes}</div>` : '';
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="text-break"><div class="fw-semibold">${r.nome || '—'}</div>${detalhesHtml}</td>
+            <td class="text-break">${r.nome || '—'}</td>
             <td class="text-end">${fmtBR(prod)}</td>
             <td class="text-end">${fmtBR(inss4)}</td>
             <td class="text-end">${fmtBR(sest05)}</td>
@@ -1576,7 +1595,7 @@
             <td class="text-end text-danger">${fmtBR(des)}</td>
             <td class="text-end text-danger">${fmtBR(adiant)}</td>
             <td class="text-end fw-bold">${fmtBR(aReceber)}</td>
-            <td class="text-end fw-bold text-warning" title="${detalhes.replace(/"/g, '&quot;')}">${fmtBR(saldoPend)}</td>`;
+            <td class="text-end fw-bold text-warning">${fmtBR(saldoPend)}</td>`;
           tbody.appendChild(tr);
         });
 
@@ -1783,31 +1802,9 @@
             type: 'bar',
             data: {
               labels,
-              datasets: [{ label: 'Produções', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
+              datasets: [{ label: 'Produções por Estabelecimento', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
             },
-            options: {
-              responsive: true,
-              indexAxis: 'y',
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  callbacks: {
-                    label: (ctx) => `Produções: ${fmtBR(ctx.parsed.x ?? 0)}`
-                  }
-                }
-              },
-              scales: {
-                x: {
-                  beginAtZero: true,
-                  grid: { display: false },
-                  ticks: { callback: (v) => moneyTick(v) }
-                },
-                y: {
-                  grid: { color: 'rgba(148,163,184,0.25)' },
-                  ticks: { callback: (v, i) => labels[i] || '' }
-                }
-              }
-            }
+            options: { ...baseChartOptions, plugins: { ...baseChartOptions.plugins, legend: { display: false } }, indexAxis: 'y' }
           });
         })();
       });
@@ -2996,7 +2993,7 @@
           </tbody>
           <tfoot>
             <tr class="table-light">
-              <th colspan="3" class="text-end">Total</th>
+              <th colspan="6" class="text-end">Total</th>
               <th class="text-end">R$ {{ '%.2f'|format(total_receitas_coop_table) }}</th>
               <th></th>
             </tr>
@@ -3761,7 +3758,7 @@
             </tr>
           </thead>
           <tbody id="tbodyCooperados">
-            {% for coop in cooperados %}
+            {% for coop in cooperados_todos|default(cooperados) %}
               <tr data-nome="{{ coop.nome|lower }}"
                   data-user="{{ coop.usuario_ref.usuario|lower }}"
                   data-fone="{{ (coop.telefone or '')|replace('(','')|replace(')','')|replace('-','')|replace(' ','')|replace('+','')|lower }}">
@@ -4207,7 +4204,7 @@
             </tr>
           </thead>
           <tbody id="tbodyRestaurantes">
-            {% for r in restaurantes %}
+            {% for r in rest_list %}
               <tr data-nome="{{ r.nome|lower }}" data-user="{{ r.usuario_ref.usuario|lower }}" data-periodo="{{ r.periodo|lower }}">
                 <td class="text-center">
                   <img src="{{ r.foto_url or url_for('static', filename='img/default.png') }}"
