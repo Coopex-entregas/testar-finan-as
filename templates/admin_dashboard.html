@@ -753,18 +753,21 @@
                (despesas_corp if despesas_corp is defined else
                 []))) %}
 
-        {% if not fast_mode %}
-{# ---------- Totais (lado servidor, para primeiro paint) ---------- #}
-        {# Produções (considera restaurante/cooperado) #}
-        {% set ns_prod = namespace(total=0) %}
-        {% for p in _producoes %}
-          {% set d   = ymd(p.data) %}
-          {% set okd = (not ri or d >= ri) and (not rf or d <= rf) %}
-          {% set okc = (not cid or (p.cooperado and p.cooperado.id==cid)) %}
-          {% set okr = (not rid or (p.restaurante and p.restaurante.id==rid)) %}
-          {% if okd and okc and okr %}
-            {% set ns_prod.total = ns_prod.total + (p.valor or 0) %}
-          {% endif %}
+                {# Totais calculados no backend para evitar recalcular tudo em Jinja #}
+        {% set total_producoes_f = total_producoes|default(0) %}
+        {% set total_inss_4_f    = total_inss|default(0) %}
+        {% set total_sest_05_f   = total_sest|default(0) %}
+        {% set total_encargos_f  = total_encargos|default(0) %}
+
+        {% set total_receitas_corp_f = total_receitas|default(0) %}
+        {% set total_despesas_corp_f = total_despesas|default(0) %}
+
+        {% set total_receitas_coop_f = total_receitas_coop|default(0) %}
+        {% set total_despesas_coop_f = total_despesas_coop|default(0) %}
+
+        {% set total_receitas_coop_full_f = (total_producoes_f|default(0)) + (total_receitas_coop_f|default(0)) %}
+        {% set _resultado_corp = (total_receitas_corp_f|default(0)) - (total_despesas_corp_f|default(0)) %}
+        {% set _total_receitas_geral = (total_receitas_corp_f|default(0)) + (total_receitas_coop_full_f|default(0)) %}
         {% endfor %}
         {% set total_producoes_f = ns_prod.total %}
         {% set total_inss_4_f    = total_producoes_f * 0.04 %}
@@ -1358,100 +1361,17 @@
       // ---- Filtros atuais (mais seguro com tojson) ----
       const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
 
-      // ---- Bases compactas ----
-      const PRODUCOES = [
-        {% for l in _producoes %}
-          {
-            id: {{ l.id }},
-            data: "{{ ymd(l.data) }}",
-            valor: {{ (l.valor or 0)|float }},
-            cooperado_id: {{ l.cooperado.id if l.cooperado else 'null' }},
-            cooperado_nome: "{{ (l.cooperado.nome if l.cooperado else '')|e }}",
-            restaurante_id: {{ l.restaurante.id if l.restaurante else 'null' }},
-            restaurante_nome: "{{ (l.restaurante.nome if l.restaurante else '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
+      // ---- Bases compactas (payload único vindo do backend) ----
+      const RESUMO_PAYLOAD = {{ admin_resumo_payload|default({})|tojson|safe }};
 
-      const REC_COOP = [
-        {% for r in receitas_coop %}
-          {
-            id: {{ r.id }},
-            data: "{{ ymd(r.data) }}",
-            valor: {{ (r.valor or 0)|float }},
-            cooperado_id: {{ r.cooperado.id if r.cooperado else 'null' }},
-            cooperado_nome: "{{ (r.cooperado.nome if r.cooperado else '')|e }}",
-            descricao: "{{ (r.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      // Adiantamento deve aparecer na coluna própria do resumo e no total do rodapé.
-      const DESP_COOP = [
-        {% for d in despesas_coop %}
-          {% set _is_ad_js = 1 if (d.eh_adiantamento if d.eh_adiantamento is defined else (d.adiantamento in [True, 1, '1', 'true', 'True', 'on'])) else 0 %}
-          {% set _abat_manual = namespace(v=0) %}{% if d.abatimentos is defined %}{% for ab in d.abatimentos %}{% set _abat_manual.v = _abat_manual.v + (ab.valor or 0) %}{% endfor %}{% endif %}
-          {
-            id: {{ d.id }},
-            data: "{{ ymd(d.data) }}",
-            valor: {{ (d.valor or 0)|float }},
-            cooperado_id: {{ d.cooperado.id if d.cooperado else 'null' }},
-            cooperado_nome: "{{ (d.cooperado.nome if d.cooperado else (d.cooperado_nome if d.cooperado_nome is defined else ''))|e }}",
-            descricao: "{{ (d.descricao or '')|e }}",
-            adiantamento: {{ _is_ad_js }},
-            competencia_desconto: "{{ (d.competencia_desconto if d.competencia_desconto is defined else 'esta_semana')|e }}",
-            valor_pago_manual: {{ _abat_manual.v|float }}
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      // Receitas e Despesas da COOPERATIVA
-      const REC_COOP_CORP = [
-        {% for r in _rec_coop_corp %}
-          {
-            id: {{ r.id }},
-            data: "{{ ymd(r.data or r.data_lancamento) }}",
-            valor: {{ (r.valor|default(r.valor_total, true)|default(0, true))|float }},
-            descricao: "{{ (r.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const DESP_COOP_CORP = [
-        {% for d in _desp_coop_corp %}
-          {
-            id: {{ d.id }},
-            data: "{{ ymd(d.data or d.data_lancamento) }}",
-            valor: {{ (d.valor|default(d.valor_total, true)|default(0, true))|float }},
-            descricao: "{{ (d.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const BENEFICIOS_VIEW = [
-        {% for b in beneficios_view %}
-          {
-            id: {{ b.id }},
-            data_inicial: "{{ ymd(b.data_inicial) }}",
-            data_final: "{{ ymd(b.data_final) }}",
-            data_lancamento: "{{ ymd(b.data_lancamento) }}",
-            tipo: "{{ (b.tipo or '')|e }}",
-            valor_total: {{ (b.valor_total or 0)|float }}
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const COOPS = [
-        {% for c in cooperados %}
-          { id: {{ c.id }}, nome: "{{ c.nome|e }}" }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const RESTS = [
-        {% for r in rest_list %}
-          { id: {{ r.id }}, nome: "{{ r.nome|e }}" }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
+      const PRODUCOES = Array.isArray(RESUMO_PAYLOAD.producoes) ? RESUMO_PAYLOAD.producoes : [];
+      const REC_COOP = Array.isArray(RESUMO_PAYLOAD.receitas_cooperados) ? RESUMO_PAYLOAD.receitas_cooperados : [];
+      const DESP_COOP = Array.isArray(RESUMO_PAYLOAD.despesas_cooperados) ? RESUMO_PAYLOAD.despesas_cooperados : [];
+      const REC_COOP_CORP = Array.isArray(RESUMO_PAYLOAD.receitas_cooperativa) ? RESUMO_PAYLOAD.receitas_cooperativa : [];
+      const DESP_COOP_CORP = Array.isArray(RESUMO_PAYLOAD.despesas_cooperativa) ? RESUMO_PAYLOAD.despesas_cooperativa : [];
+      const BENEFICIOS_VIEW = Array.isArray(RESUMO_PAYLOAD.beneficios) ? RESUMO_PAYLOAD.beneficios : [];
+      const COOPS = Array.isArray(RESUMO_PAYLOAD.cooperados) ? RESUMO_PAYLOAD.cooperados : [];
+      const RESTS = Array.isArray(RESUMO_PAYLOAD.restaurantes) ? RESUMO_PAYLOAD.restaurantes : [];
 
       // ---- Utils ----
       const parseISO = s => (!s) ? null : new Date(s + 'T00:00:00');
@@ -2642,15 +2562,14 @@
                 {% else %}<span class="badge bg-secondary">Não pago</span>{% endif %}
               </td>
               <td class="taxa-adm-actions-cell">
-                <form method="POST" action="{{ url_for('atualizar_taxa_admin_status', id=tx.id) }}" class="taxa-adm-inline-form">
+                <form method="POST" action="{{ url_for('atualizar_taxa_admin_status', id=tx.id) }}" class="taxa-adm-inline-form taxa-adm-inline-form-autodata" data-autosave-on-date="1">
                   <select name="status_pagamento" class="form-select form-select-sm taxa-adm-status">
                     <option value="nao_pago" {{ 'selected' if tx.status == 'nao_pago' else '' }}>Não pago</option>
                     <option value="parcial" {{ 'selected' if tx.status == 'parcial' else '' }}>Parcial</option>
                     <option value="pago" {{ 'selected' if tx.status == 'pago' else '' }}>Pago</option>
                   </select>
                   <input type="number" step="0.01" name="valor_pago" class="form-control form-control-sm taxa-adm-valor" value="{{ '%.2f'|format(tx.valor_pago) }}" placeholder="Pago">
-                  <input type="date" name="data_pagamento" class="form-control form-control-sm taxa-adm-data" value="{{ tx.data_pagamento.strftime('%Y-%m-%d') if tx.data_pagamento else '' }}">
-                  <button class="btn btn-success btn-sm taxa-adm-save" type="submit"><i class="bi bi-save"></i></button>
+                  <input type="date" name="data_pagamento" class="form-control form-control-sm taxa-adm-data js-taxa-adm-date-autosave" value="{{ tx.data_pagamento.strftime('%Y-%m-%d') if tx.data_pagamento else '' }}">
                 </form>
               </td>
             </tr>
@@ -6918,6 +6837,21 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="modal fade" id="modalAbatimentoDespesaCoop" tabindex="-1"><div class="modal-dialog"><form method="POST" class="modal-content"><div class="modal-header"><h5 class="modal-title">Registrar abatimento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body row g-2 px-3"><div class="col-12"><label class="form-label">Data</label><input type="date" class="form-control" name="data" required></div><div class="col-12"><label class="form-label">Valor</label><input type="number" step="0.01" class="form-control" name="valor" required></div><div class="col-12"><label class="form-label">Origem</label><select class="form-select" name="origem"><option value="manual">Manual</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="desconto">Desconto</option></select></div><div class="col-12"><label class="form-label">Observação</label><input type="text" class="form-control" name="observacao"></div></div><div class="modal-footer"><button class="btn btn-royal">Salvar</button></div></form></div></div>
 <script>
 document.addEventListener('DOMContentLoaded', function(){ const cAll=document.getElementById('checkAllDespesas'); cAll?.addEventListener('change', ()=> document.querySelectorAll('#tblDespesasCoop tbody input[type="checkbox"]').forEach(ch=> ch.checked=cAll.checked)); const el=document.getElementById('modalAbatimentoDespesaCoop'); el?.addEventListener('show.bs.modal', (ev)=>{ const btn=ev.relatedTarget; const form=el.querySelector('form'); if(form && btn?.dataset?.url) form.action=btn.dataset.url; });});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.js-taxa-adm-date-autosave').forEach(function(input){
+    input.addEventListener('change', function(){
+      const form = input.closest('form.taxa-adm-inline-form-autodata');
+      if (!form || form.dataset.sending === '1') return;
+      form.dataset.sending = '1';
+      input.setAttribute('readonly', 'readonly');
+      form.submit();
+    });
+  });
+});
 </script>
 
 </body>
