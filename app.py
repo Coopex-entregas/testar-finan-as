@@ -7048,13 +7048,34 @@ def edit_despesa_coop(id):
     return _admin_redirect_with_filters("coop_despesas")
 
 
+@app.route("/coop/despesas/delete", methods=["POST"], defaults={"id": None})
 @app.route("/coop/despesas/<int:id>/delete", methods=["GET", "POST"])
 @admin_perm_required("coop_despesas", "excluir")
-def delete_despesa_coop(id):
-    dc = DespesaCooperado.query.get_or_404(id)
-    db.session.delete(dc)
+def delete_despesa_coop(id=None):
+    ids = request.form.getlist("ids[]") or request.form.getlist("despesa_ids[]")
+    ids = [int(x) for x in ids if str(x).isdigit()]
+
+    if id is not None:
+        ids = [id]
+
+    if not ids:
+        flash("Nenhuma despesa selecionada.", "warning")
+        return _admin_redirect_with_filters("coop_despesas")
+
+    itens = DespesaCooperado.query.filter(DespesaCooperado.id.in_(ids)).all()
+    if not itens:
+        flash("Nenhuma despesa encontrada para exclusão.", "warning")
+        return _admin_redirect_with_filters("coop_despesas")
+
+    qtd = len(itens)
+    for dc in itens:
+        db.session.delete(dc)
     db.session.commit()
-    flash("Despesa do cooperado excluída.", "success")
+
+    if qtd == 1:
+        flash("Despesa do cooperado excluída.", "success")
+    else:
+        flash(f"{qtd} despesas do cooperado excluídas.", "success")
     return _admin_redirect_with_filters("coop_despesas")
 
 # =========================
