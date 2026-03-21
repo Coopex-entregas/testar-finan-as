@@ -4269,7 +4269,7 @@ def admin_dashboard():
         inss4 = sum((l.valor or 0.0) * INSS_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
         sest05 = sum((l.valor or 0.0) * SEST_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
         des = round(snap.get("descontado_despesa", 0.0), 2)
-        adiant = round(sum((d.valor or 0.0) for d in despesas_coop if getattr(d, "cooperado_id", None) == coop.id and bool(getattr(d, "eh_adiantamento", False))), 2)
+        adiant = round(snap.get("descontado_adiant", 0.0), 2)
         if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"]:
             _a_receber = round(max(0.0, snap["disponivel_auto_restante"]), 2)
             _saldo_pendente = round(snap["saldo_devedor"], 2)
@@ -6692,70 +6692,133 @@ def _compute_coop_debt_snapshot(coop_id, di, df):
     def up(v: Decimal) -> Decimal:
         return v.quantize(CENT, rounding=ROUND_CEILING)
 
-    q_prod = Lancamento.query.filter(Lancamento.cooperado_id == coop_id)
+    end_date = df or date.today()
+
+    # Produção exibida no filtro atual
+    q_prod_view = Lancamento.query.filter(Lancamento.cooperado_id == coop_id)
     if di:
-        q_prod = q_prod.filter(Lancamento.data >= di)
+        q_prod_view = q_prod_view.filter(Lancamento.data >= di)
     if df:
-        q_prod = q_prod.filter(Lancamento.data <= df)
-    prods = q_prod.all()
+        q_prod_view = q_prod_view.filter(Lancamento.data <= df)
+    prods_view = q_prod_view.all()
+    bruto_prod_view = sum((D(p.valor) for p in prods_view), Decimal("0.00"))
+    inss_view = up(bruto_prod_view * D(INSS_ALIQ)) if bruto_prod_view > 0 else Decimal("0.00")
+    sest_view = up(bruto_prod_view * D(SEST_ALIQ)) if bruto_prod_view > 0 else Decimal("0.00")
 
-    # Regra do resumo: apenas PRODUÇÕES abatem dívidas.
-    bruto_prod = sum((D(p.valor) for p in prods), Decimal("0.00"))
-    inss = up(bruto_prod * D(INSS_ALIQ)) if bruto_prod > 0 else Decimal("0.00")
-    sest = up(bruto_prod * D(SEST_ALIQ)) if bruto_prod > 0 else Decimal("0.00")
-    disponivel_auto = money(max(Decimal("0.00"), bruto_prod - inss - sest))
+    # Produções históricas até o fim do filtro: usadas para carregar dívida adiante por semana.
+    q_prod_hist = Lancamento.query.filter(
+        Lancamento.cooperado_id == coop_id,
+        Lancamento.data <= end_date,
+    )
+    prods_hist = q_prod_hist.order_by(Lancamento.data.asc(), Lancamento.id.asc()).all()
 
-    q_desp = DespesaCooperado.query.filter(DespesaCooperado.cooperado_id == coop_id)
-    despesas = q_desp.all()
+    despesas = (
+        DespesaCooperado.query
+        .filter(DespesaCooperado.cooperado_id == coop_id)
+        .order_by(DespesaCooperado.data.asc(), DespesaCooperado.id.asc())
+        .all()
+    )
 
-    lower_due = di if di else None
+    def week_start(d):
+        return d - timedelta(days=d.weekday())
 
-    despesas_ordenadas = []
+    # Agrupa produção líquida por semana (sem carregar crédito positivo para semana futura).
+    prod_liq_by_week = defaultdict(lambda: Decimal("0.00"))
+    for p in prods_hist:
+        bruto = money(D(p.valor))
+        if bruto <= 0:
+            continue
+        inss = up(bruto * D(INSS_ALIQ))
+        sest = up(bruto * D(SEST_ALIQ))
+        liq = money(max(Decimal("0.00"), bruto - inss - sest))
+        prod_liq_by_week[week_start(p.data)] += liq
+
+    debt_items = []
+    first_week = week_start(end_date)
+    if despesas:
+        first_week = min(first_week, *(week_start(_despesa_due_date(dc)) for dc in despesas))
+    if prods_hist:
+        first_week = min(first_week, *(week_start(p.data) for p in prods_hist))
+
     for dc in despesas:
         due_date = _despesa_due_date(dc)
-        if lower_due and due_date < lower_due:
+        valor_total = money(D(dc.valor))
+        if valor_total <= 0:
             continue
-        despesas_ordenadas.append((dc, due_date))
+        pago_manual = Decimal("0.00")
+        for ab in getattr(dc, 'abatimentos', []) or []:
+            ab_data = getattr(ab, 'data', None) or end_date
+            if ab_data and ab_data <= end_date:
+                pago_manual += money(D(ab.valor))
+        pago_manual = money(min(valor_total, pago_manual))
+        restante_inicial = money(max(Decimal("0.00"), valor_total - pago_manual))
+        debt_items.append({
+            'obj': dc,
+            'id': dc.id,
+            'descricao': dc.descricao or '',
+            'data': dc.data,
+            'data_inicio': dc.data_inicio,
+            'data_fim': dc.data_fim,
+            'due_date': due_date,
+            'valor_total': valor_total,
+            'pago_manual': pago_manual,
+            'restante': restante_inicial,
+            'eh_adiantamento': bool(getattr(dc, 'eh_adiantamento', False)),
+            'competencia_desconto': _competencia_label(getattr(dc, 'competencia_desconto', 'esta_semana')),
+            'pago_auto_total': Decimal("0.00"),
+            'pago_auto_periodo': Decimal("0.00"),
+        })
 
-    # Prioridade do abatimento: 1) adiantamento 2) despesas.
-    despesas_ordenadas.sort(key=lambda t: (0 if getattr(t[0], 'eh_adiantamento', False) else 1, t[1], t[0].id))
+    current_week = first_week
+    last_week = week_start(end_date)
+    while current_week <= last_week:
+        week_end = min(current_week + timedelta(days=6), end_date)
+        disponivel_semana = money(prod_liq_by_week.get(current_week, Decimal("0.00")))
+        vencidas = [it for it in debt_items if it['due_date'] <= week_end and it['restante'] > 0]
+        vencidas.sort(key=lambda it: (0 if it['eh_adiantamento'] else 1, it['due_date'], it['id']))
+        for it in vencidas:
+            if disponivel_semana <= 0:
+                break
+            pago = min(it['restante'], disponivel_semana)
+            pago = money(pago)
+            if pago <= 0:
+                continue
+            it['restante'] = money(max(Decimal("0.00"), it['restante'] - pago))
+            it['pago_auto_total'] += pago
+            if di and current_week + timedelta(days=6) < di:
+                pass
+            else:
+                it['pago_auto_periodo'] += pago
+            disponivel_semana = money(max(Decimal("0.00"), disponivel_semana - pago))
+        current_week += timedelta(days=7)
 
-    itens = []
     total_vencido_pendente = Decimal("0.00")
     total_programado = Decimal("0.00")
     total_descontado_despesa = Decimal("0.00")
     total_descontado_adiant = Decimal("0.00")
-
-    for dc, due_date in despesas_ordenadas:
-        valor_total = money(D(dc.valor))
-        if valor_total <= 0:
-            continue
-
-        vencida = (df is not None and due_date <= df)
-        pago_manual = Decimal("0.00")
-        restante = valor_total
-
-        pago_auto = Decimal("0.00")
-        if vencida and restante > 0 and disponivel_auto > 0:
-            pago_auto = min(restante, disponivel_auto)
-            disponivel_auto = money(disponivel_auto - pago_auto)
-            restante = money(max(Decimal("0.00"), restante - pago_auto))
+    itens = []
+    for it in sorted(debt_items, key=lambda x: (x['due_date'], x['id'])):
+        due_date = it['due_date']
+        vencida = due_date <= end_date
+        restante = money(it['restante'])
+        pago_auto_total = money(it['pago_auto_total'])
+        pago_manual = money(it['pago_manual'])
+        pago_total = money(min(it['valor_total'], pago_manual + pago_auto_total))
 
         if restante <= Decimal("0.00"):
             status = 'quitada'
-        elif pago_auto > 0:
+        elif pago_total > 0:
             status = 'parcial'
         elif vencida:
             status = 'aberta'
         else:
             status = 'a_descontar'
 
-        pago_real = money(valor_total - restante)
         if vencida:
-            if getattr(dc, 'eh_adiantamento', False):
-                total_descontado_adiant += pago_real
+            if it['eh_adiantamento']:
+                total_descontado_adiant += money(pago_auto_total)
             else:
-                total_descontado_despesa += pago_real
+                total_descontado_despesa += money(pago_auto_total)
 
         if restante > 0:
             if vencida:
@@ -6764,27 +6827,45 @@ def _compute_coop_debt_snapshot(coop_id, di, df):
                 total_programado += restante
 
         itens.append({
-            'id': dc.id,
-            'data': dc.data,
-            'data_inicio': dc.data_inicio,
-            'data_fim': dc.data_fim,
+            'id': it['id'],
+            'data': it['data'],
+            'data_inicio': it['data_inicio'],
+            'data_fim': it['data_fim'],
             'due_date': due_date,
-            'descricao': dc.descricao or '',
-            'valor_total': float(money(valor_total)),
+            'descricao': it['descricao'],
+            'valor_total': float(money(it['valor_total'])),
             'pago_manual': float(money(pago_manual)),
-            'pago_auto': float(money(pago_auto)),
-            'pago_total': float(money(pago_auto)),
+            'pago_auto': float(money(pago_auto_total)),
+            'pago_total': float(money(pago_total)),
             'restante': float(money(restante)),
-            'eh_adiantamento': bool(getattr(dc, 'eh_adiantamento', False)),
-            'competencia_desconto': _competencia_label(getattr(dc, 'competencia_desconto', 'esta_semana')),
+            'eh_adiantamento': it['eh_adiantamento'],
+            'competencia_desconto': it['competencia_desconto'],
             'status': status,
         })
 
+    # A receber do período atual = líquido do período visível que não foi usado em dívidas vencidas dentro do fim do filtro.
+    auto_consumido_total = money(total_descontado_adiant + total_descontado_despesa)
+    disponivel_periodo = money(max(Decimal("0.00"), bruto_prod_view - inss_view - sest_view))
+    pago_no_periodo = Decimal("0.00")
+    # recalcula quanto do período atual foi usado olhando semanas dentro do filtro
+    if di:
+        cur = week_start(di)
+    else:
+        cur = week_start(end_date)
+    while cur <= last_week:
+        if di and cur + timedelta(days=6) < di:
+            cur += timedelta(days=7)
+            continue
+        pago_no_periodo += sum((it['pago_auto_periodo'] for it in debt_items), Decimal("0.00"))
+        break
+    pago_no_periodo = money(sum((it['pago_auto_periodo'] for it in debt_items), Decimal("0.00")))
+    disponivel_auto_restante = money(max(Decimal("0.00"), disponivel_periodo - pago_no_periodo))
+
     return {
-        'bruto': float(money(bruto_prod)),
-        'inss': float(money(inss)),
-        'sest': float(money(sest)),
-        'disponivel_auto_restante': float(money(disponivel_auto)),
+        'bruto': float(money(bruto_prod_view)),
+        'inss': float(money(inss_view)),
+        'sest': float(money(sest_view)),
+        'disponivel_auto_restante': float(money(disponivel_auto_restante)),
         'itens': itens,
         'saldo_devedor': float(money(total_vencido_pendente)),
         'a_descontar': float(money(total_programado)),
@@ -6858,7 +6939,9 @@ def add_abatimento_despesa_coop(id):
 @admin_perm_required("coop_despesas", "criar")
 def add_despesa_coop():
     f = request.form
-    ids = f.getlist("cooperado_ids[]")
+    ids_raw = f.getlist("cooperado_ids[]")
+    exclude_raw = f.getlist("cooperado_excluir_ids[]")
+    usar_todos = any(str(v).lower() == "all" for v in ids_raw)
 
     descricao = (f.get("descricao") or "").strip()
     valor_total = f.get("valor", type=float) or 0.0
@@ -6866,8 +6949,38 @@ def add_despesa_coop():
     eh_adiantamento = bool(f.get("eh_adiantamento"))
     competencia_semana = (f.get("competencia_desconto") or f.get("competencia_semana") or "esta_semana").strip().lower()
 
+    ativos = {
+        c.id: c for c in Cooperado.query.join(Usuario, Cooperado.usuario_id == Usuario.id)
+        .filter(Usuario.ativo.is_(True)).all()
+    }
+
+    ids = []
+    if usar_todos:
+        ids = list(ativos.keys())
+    else:
+        for v in ids_raw:
+            try:
+                cid = int(v)
+            except Exception:
+                continue
+            if cid in ativos:
+                ids.append(cid)
+
+    excluir_ids = set()
+    for v in exclude_raw:
+        try:
+            cid = int(v)
+        except Exception:
+            continue
+        if cid in ativos:
+            excluir_ids.add(cid)
+
+    ids = [cid for cid in ids if cid not in excluir_ids]
+    # remove duplicados preservando ordem
+    ids = list(dict.fromkeys(ids))
+
     if not ids:
-        flash("Selecione pelo menos um cooperado.", "warning")
+        flash("Selecione pelo menos um cooperado ativo.", "warning")
         return _admin_redirect_with_filters("coop_despesas")
 
     if not d:
@@ -6877,14 +6990,20 @@ def add_despesa_coop():
     di_comp, df_comp = semana_bounds(data_comp)
 
     qtd = len(ids)
-    valor_unit = valor_total / qtd if qtd > 0 else 0.0
+    valor_unit = round(valor_total / qtd, 2) if qtd > 0 else 0.0
+    valores = [valor_unit] * qtd
+    # ajusta centavos no último para fechar exatamente o total
+    if qtd > 0:
+        soma_base = round(valor_unit * qtd, 2)
+        diff = round(valor_total - soma_base, 2)
+        valores[-1] = round(valores[-1] + diff, 2)
 
-    for cid in ids:
+    for cid, v in zip(ids, valores):
         db.session.add(
             DespesaCooperado(
                 cooperado_id=cid,
                 descricao=descricao,
-                valor=valor_unit,
+                valor=v,
                 data=df_comp,
                 data_inicio=di_comp,
                 data_fim=df_comp,
