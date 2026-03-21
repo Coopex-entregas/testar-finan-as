@@ -312,6 +312,56 @@
 
     .table tbody tr:hover{ background:#f8fbff !important; }
 
+    .taxa-adm-table th:last-child,
+    .taxa-adm-table td:last-child{
+      min-width:360px;
+    }
+
+    .taxa-adm-actions-cell{
+      vertical-align:middle !important;
+    }
+
+    .taxa-adm-inline-form{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:nowrap;
+      width:100%;
+      margin:0;
+    }
+
+    .taxa-adm-inline-form .form-select,
+    .taxa-adm-inline-form .form-control{
+      min-height:40px;
+      margin:0;
+    }
+
+    .taxa-adm-status{
+      width:120px;
+      min-width:120px;
+    }
+
+    .taxa-adm-valor{
+      width:92px;
+      min-width:92px;
+      text-align:center;
+    }
+
+    .taxa-adm-data{
+      width:136px;
+      min-width:136px;
+    }
+
+    .taxa-adm-save{
+      width:42px;
+      min-width:42px;
+      height:40px;
+      padding:0 !important;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
     .badge-soft{
       display:inline-flex;
       align-items:center;
@@ -1065,7 +1115,7 @@
               <div class="d-flex align-items-center justify-content-between">
                 <div>
                   <div class="text-uppercase text-muted small">Benefícios Rateados</div>
-                  <div id="kpiBeneficiosRateados" class="fw-bold fs-5">R$ {{ '%.2f'|format(beneficios_total_periodo|default(0)) }}</div>
+                  <div id="kpiBeneficiosRateados" class="fw-bold fs-5">R$ 0,00</div>
                   <div class="small text-muted">Total lançado no período</div>
                 </div>
                 <div class="kpi-icon"><i class="bi bi-heart-pulse"></i></div>
@@ -1103,23 +1153,7 @@
                 </thead>
 
                 <tbody>
-                  {% if resumo_coop_rows %}
-                    {% for r in resumo_coop_rows %}
-                    <tr>
-                      <td class="text-break">{{ r.nome or '—' }}</td>
-                      <td class="text-end">R$ {{ '%.2f'|format(r.prod|default(0)) }}</td>
-                      <td class="text-end">R$ {{ '%.2f'|format(r.inss4|default(0)) }}</td>
-                      <td class="text-end">R$ {{ '%.2f'|format(r.sest05|default(0)) }}</td>
-                      <td class="text-end text-success">R$ {{ '%.2f'|format(r.rec|default(0)) }}</td>
-                      <td class="text-end text-danger">R$ {{ '%.2f'|format(r.des|default(0)) }}</td>
-                      <td class="text-end text-danger">R$ {{ '%.2f'|format(r.adiant|default(0)) }}</td>
-                      <td class="text-end fw-bold">R$ {{ '%.2f'|format(r.a_receber|default(r.aReceber|default(0))) }}</td>
-                      <td class="text-end fw-bold text-warning">R$ {{ '%.2f'|format((r.saldo_pendente|default(r.saldoPendente|default(0))) + (r.pend_programado|default(r.pendProgramado|default(0)))) }}</td>
-                    </tr>
-                    {% endfor %}
-                  {% else %}
-                    <tr><td colspan="9" class="text-center text-muted">Sem dados no filtro.</td></tr>
-                  {% endif %}
+                  <tr><td colspan="9" class="text-center text-muted">Carregando…</td></tr>
                 </tbody>
 
                 <tfoot>
@@ -1140,6 +1174,28 @@
           </div>
         </div>
 
+        <!-- Gráficos -->
+        <div class="row g-2 mt-3">
+          <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+              <h6 class="mb-2 d-flex align-items-center gap-1">
+                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
+                <span>Evolução Mensal — Cooperativa</span>
+              </h6>
+              <canvas id="chartCoop"></canvas>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+              <h6 class="mb-2 d-flex align-items-center gap-1">
+                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
+                <span>Evolução Mensal — Cooperados</span>
+              </h6>
+              <canvas id="chartCooperados"></canvas>
+            </div>
+          </div>
+        </div>
+
         <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
@@ -1147,6 +1203,7 @@
                 <span class="resumo-pill-label"><i class="bi bi-shop"></i></span>
                 <span>Top Estabelecimentos (Produções no período)</span>
               </h6>
+              <canvas id="chartEstabs"></canvas>
               <div class="table-responsive mt-3">
                 <table class="table table-sm table-bordered table-hover align-middle" id="tblTopEstabsResumo">
                   <thead class="table-light">
@@ -1157,17 +1214,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {% if top_estabs_rows %}
-                      {% for item in top_estabs_rows %}
-                      <tr>
-                        <td>{{ item.rank }}</td>
-                        <td class="text-break">{{ item.nome }}</td>
-                        <td class="text-end fw-semibold">R$ {{ '%.2f'|format(item.valor|default(0)) }}</td>
-                      </tr>
-                      {% endfor %}
-                    {% else %}
-                      <tr><td colspan="3" class="text-center text-muted">Sem dados no período.</td></tr>
-                    {% endif %}
+                    <tr><td colspan="3" class="text-center text-muted">Carregando…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -1285,6 +1332,10 @@
           font-weight: 600;
         }
 
+        #resumo canvas {
+          max-height: 280px;
+        }
+
         @media (max-width: 576px) {
           #resumo .resumo-shell{
             border-radius: 1rem;
@@ -1301,11 +1352,380 @@
       </style>
     </section>
 
-    {% if _tab=='resumo' %}
+    <!-- Dados (seguros p/ JS) + Scripts (Chart.js + XLSX) -->
     <script>
     (function(){
+      // ---- Filtros atuais (mais seguro com tojson) ----
       const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
 
+      // ---- Bases compactas vindas do backend ----
+      const RESUMO_DATA = {{ resumo_frontend_data|default({}, true)|tojson|safe }};
+      const PRODUCOES = Array.isArray(RESUMO_DATA.producoes) ? RESUMO_DATA.producoes : [];
+      const REC_COOP = Array.isArray(RESUMO_DATA.receitas_coop) ? RESUMO_DATA.receitas_coop : [];
+      const DESP_COOP = Array.isArray(RESUMO_DATA.despesas_coop) ? RESUMO_DATA.despesas_coop : [];
+      const REC_COOP_CORP = Array.isArray(RESUMO_DATA.receitas_corp) ? RESUMO_DATA.receitas_corp : [];
+      const DESP_COOP_CORP = Array.isArray(RESUMO_DATA.despesas_corp) ? RESUMO_DATA.despesas_corp : [];
+      const BENEFICIOS_VIEW = Array.isArray(RESUMO_DATA.beneficios) ? RESUMO_DATA.beneficios : [];
+      const COOPS = Array.isArray(RESUMO_DATA.coops) ? RESUMO_DATA.coops : [];
+      const RESTS = Array.isArray(RESUMO_DATA.rests) ? RESUMO_DATA.rests : [];
+
+      // ---- Utils ----
+      const parseISO = s => (!s) ? null : new Date(s + 'T00:00:00');
+
+      const fmtBR = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+      const inRange = (d) => {
+        const di = parseISO(FILTER.ri);
+        const df = parseISO(FILTER.rf);
+        const x  = parseISO(d);
+        if (!x) return true;
+        if (di && x < di) return false;
+        if (df && x > df) return false;
+        return true;
+      };
+
+      const byMonthKey = d => {
+        if (!d) return '';
+        const dt = parseISO(d);
+        if (!dt || isNaN(dt)) return '';
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      };
+
+      const sumBy = (arr, fn) => arr.reduce((acc, cur) => acc + (+fn(cur) || 0), 0);
+
+      // ---- Filtro ----
+      const filteredPROD = PRODUCOES.filter(p =>
+        inRange(p.data) &&
+        (FILTER.cid == null || p.cooperado_id === FILTER.cid) &&
+        (FILTER.rid == null || p.restaurante_id === FILTER.rid)
+      );
+
+      const filteredRECp = REC_COOP.filter(r =>
+        inRange(r.data) &&
+        (FILTER.cid == null || r.cooperado_id === FILTER.cid)
+      );
+
+      const filteredDESp = DESP_COOP.filter(d => {
+        if (!inRange(d.data)) return false;
+        if (FILTER.cid == null) return true;
+
+        if (d.cooperado_id === FILTER.cid) return true;
+
+        const coop = COOPS.find(c => c.id === FILTER.cid);
+        if (coop && d.cooperado_nome) {
+          return d.cooperado_nome.trim().toUpperCase() === coop.nome.trim().toUpperCase();
+        }
+        return false;
+      });
+
+      const filteredRECc = REC_COOP_CORP.filter(r => inRange(r.data));
+      const filteredDESc = DESP_COOP_CORP.filter(d => inRange(d.data));
+      const filteredBEN  = BENEFICIOS_VIEW.filter(b => inRange(b.data_lancamento || b.data_final || b.data_inicial));
+
+      // ---- KPIs (front) ----
+      const qtdEntregasPeriodo   = filteredPROD.length;
+      const kpiProd         = sumBy(filteredPROD, x => x.valor);
+      const kpiINSS4        = kpiProd * 0.04;
+      const kpiSEST05       = kpiProd * 0.005;
+      const kpiEncargos45   = kpiINSS4 + kpiSEST05;
+
+      const kpiRecCoopCorp  = sumBy(filteredRECc, x => x.valor);
+      const kpiDespCoopCorp = sumBy(filteredDESc, x => x.valor);
+
+      const kpiRecCooperadosFull = kpiProd + sumBy(filteredRECp, x => x.valor);
+
+      const kpiDespCooperados = sumBy(filteredDESp.filter(x => !x.adiantamento), x => x.valor);
+      const kpiResultadoCoop      = kpiRecCoopCorp - kpiDespCoopCorp;
+      const kpiTotalReceitasGeral = kpiRecCoopCorp + kpiRecCooperadosFull;
+      const kpiBeneficiosRateados = sumBy(filteredBEN, x => x.valor_total);
+
+      // aplica KPIs na tela
+      document.getElementById('kpiTotalProds').textContent         = fmtBR(kpiProd);
+      document.getElementById('kpiINSS4').textContent              = fmtBR(kpiINSS4);
+      document.getElementById('kpiSEST05').textContent             = fmtBR(kpiSEST05);
+      document.getElementById('kpiRecCoopCorp').textContent        = fmtBR(kpiRecCoopCorp);
+      document.getElementById('kpiDespCoopCorp').textContent       = fmtBR(kpiDespCoopCorp);
+      document.getElementById('kpiRecCooperadosFull').textContent  = fmtBR(kpiRecCooperadosFull);
+      document.getElementById('kpiDespCooperados').textContent     = fmtBR(kpiDespCooperados);
+      document.getElementById('kpiTotalReceitasGeral').textContent = fmtBR(kpiTotalReceitasGeral);
+      const benEl = document.getElementById('kpiBeneficiosRateados');
+      if (benEl) benEl.textContent = fmtBR(kpiBeneficiosRateados);
+
+      const resEl = document.getElementById('kpiResultadoCoop');
+      if (resEl) {
+        resEl.textContent = fmtBR(kpiResultadoCoop);
+        resEl.classList.remove('text-success', 'text-danger');
+        resEl.classList.add(kpiResultadoCoop < 0 ? 'text-danger' : 'text-success');
+      }
+
+      // ---- chave segura para agrupar cooperado mesmo sem id ----
+      const coopKey = (id, nome) => {
+        if (id != null) return `id:${id}`;
+        if (nome && nome.trim()) return `nome:${nome.trim().toUpperCase()}`;
+        return 'nome:—';
+      };
+
+      // ---- Função de resumo (usada na tabela e no XLSX) ----
+      const RESUMO_COOP_ROWS = {{ resumo_coop_rows|default([])|tojson|safe }};
+      // ---- Tabela Resumo por Cooperado (render backend) ----
+      (function renderResumoCoopTable() {
+        const rows  = Array.isArray(RESUMO_COOP_ROWS) ? RESUMO_COOP_ROWS : [];
+        const tbody = document.querySelector('#tblResumoCoop tbody');
+        if (!tbody) return;
+
+        tbody.innerHTML = rows.length
+          ? ''
+          : '<tr><td colspan="9" class="text-center text-muted">Sem dados no filtro.</td></tr>';
+
+        let tProd = 0, tINSS4 = 0, tSEST05 = 0, tRec = 0, tDes = 0, tAdiant = 0, tReceber = 0, tPend = 0;
+
+        rows.forEach(r => {
+          const prod = Number(r.prod || 0);
+          const inss4 = Number(r.inss4 || 0);
+          const sest05 = Number(r.sest05 || 0);
+          const rec = Number(r.rec || 0);
+          const des = Number(r.des || 0);
+          const adiant = Number(r.adiant || 0);
+          const aReceber = Number(r.a_receber ?? r.aReceber ?? 0);
+          const saldoPend = Number(r.saldo_pendente ?? r.saldoPendente ?? 0);
+
+          tProd += prod;
+          tINSS4 += inss4;
+          tSEST05 += sest05;
+          tRec += rec;
+          tDes += des;
+          tAdiant += adiant;
+          tReceber += aReceber;
+          tPend += saldoPend;
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="text-break">${r.nome || '—'}</td>
+            <td class="text-end">${fmtBR(prod)}</td>
+            <td class="text-end">${fmtBR(inss4)}</td>
+            <td class="text-end">${fmtBR(sest05)}</td>
+            <td class="text-end text-success">${fmtBR(rec)}</td>
+            <td class="text-end text-danger">${fmtBR(des)}</td>
+            <td class="text-end text-danger">${fmtBR(adiant)}</td>
+            <td class="text-end fw-bold">${fmtBR(aReceber)}</td>
+            <td class="text-end fw-bold text-warning">${fmtBR(saldoPend)}</td>`;
+          tbody.appendChild(tr);
+        });
+
+        const setText = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = fmtBR(value);
+        };
+
+        setText('tProd', tProd);
+        setText('tINSS4', tINSS4);
+        setText('tSEST05', tSEST05);
+        setText('tRec', tRec);
+        setText('tDes', tDes);
+
+        const tAdEl = document.getElementById('tAdiant');
+        if (tAdEl) tAdEl.textContent = fmtBR(tAdiant);
+
+        const tLiqEl = document.getElementById('tLiq');
+        if (tLiqEl) tLiqEl.textContent = fmtBR(tReceber);
+
+        const tPendEl = document.getElementById('tPend');
+        if (tPendEl) tPendEl.textContent = fmtBR(tPend);
+
+        const adiantEl = document.getElementById('kpiQtdEntregasPeriodo');
+        if (adiantEl) adiantEl.textContent = fmtBR(tAdiant);
+
+        const pendEl = document.getElementById('kpiTicketMedioPeriodo');
+        if (pendEl) pendEl.textContent = fmtBR(tPend);
+      })();
+
+      // ---- Gráficos (Chart.js via CDN) ----
+      const ensureChart = () => new Promise(res => {
+        if (window.Chart) return res();
+        const s = document.createElement('script');
+        s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+        s.onload = () => res();
+        document.head.appendChild(s);
+      });
+
+      ensureChart().then(() => {
+        const moneyTick = (value) => 'R$ ' + Number(value || 0).toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+
+        const baseChartOptions = {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, padding: 18, boxWidth: 10, boxHeight: 10 }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: (ctx) => {
+                  const label = ctx.dataset.label || '';
+                  const v = ctx.parsed.y ?? ctx.parsed.x ?? 0;
+                  return `${label}: ${moneyTick(v)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(148,163,184,0.25)' },
+              ticks: { callback: (v) => moneyTick(v) }
+            }
+          }
+        };
+
+        // Cooperativa: Receitas vs Despesas por mês
+        (function () {
+          const byM = {};
+          filteredRECc.forEach(r => {
+            const k = byMonthKey(r.data) || '—';
+            (byM[k] ??= { r: 0, d: 0 }).r += r.valor;
+          });
+          filteredDESc.forEach(d => {
+            const k = byMonthKey(d.data) || '—';
+            (byM[k] ??= { r: 0, d: 0 }).d += d.valor;
+          });
+
+          const labels = Object.keys(byM).sort();
+          const rec    = labels.map(k => byM[k].r);
+          const des    = labels.map(k => byM[k].d);
+
+          const ctx = document.getElementById('chartCoop');
+          if (!ctx) return;
+
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Receitas', data: rec, backgroundColor: 'rgba(37, 99, 235, 0.75)', borderRadius: 6 },
+                { label: 'Despesas', data: des, backgroundColor: 'rgba(239, 68, 68, 0.75)', borderRadius: 6 }
+              ]
+            },
+            options: baseChartOptions
+          });
+        })();
+
+        // Cooperados: Produções + INSS 4% + SEST 0,5% por mês
+        (function () {
+          const byM = {};
+          filteredPROD.forEach(p => {
+            const k = byMonthKey(p.data) || '—';
+            (byM[k] ??= { prod: 0, inss4: 0, sest05: 0 }).prod += p.valor;
+            byM[k].inss4  += p.valor * 0.04;
+            byM[k].sest05 += p.valor * 0.005;
+          });
+
+          const labels = Object.keys(byM).sort();
+          const prod   = labels.map(k => byM[k].prod);
+          const inss4  = labels.map(k => byM[k].inss4);
+          const sest05 = labels.map(k => byM[k].sest05);
+
+          const ctx = document.getElementById('chartCooperados');
+          if (!ctx) return;
+
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Produções (bruto)',
+                  data: prod,
+                  borderColor: 'rgba(37, 99, 235, 1)',
+                  backgroundColor: 'rgba(37, 99, 235, 0.18)',
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                  pointHoverRadius: 4
+                },
+                {
+                  label: 'INSS (4,0%)',
+                  data: inss4,
+                  borderColor: 'rgba(56, 189, 248, 1)',
+                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                  pointHoverRadius: 4
+                },
+                {
+                  label: 'SEST/SENAT (0,5%)',
+                  data: sest05,
+                  borderColor: 'rgba(2, 132, 199, 1)',
+                  backgroundColor: 'rgba(2, 132, 199, 0.10)',
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                  pointHoverRadius: 4
+                }
+              ]
+            },
+            options: baseChartOptions
+          });
+        })();
+
+        // Estabelecimentos — barra horizontal + tabela real
+        (function () {
+          const byR = {};
+          filteredPROD.forEach(p => {
+            if (p.restaurante_id == null && !p.restaurante_nome) return;
+            const nome = (p.restaurante_nome || '—').trim() || '—';
+            byR[nome] = (byR[nome] || 0) + (+p.valor || 0);
+          });
+
+          const entries = Object.entries(byR)
+            .map(([nome, valor]) => ({ nome, valor: +(valor || 0) }))
+            .sort((a, b) => b.valor - a.valor)
+            .slice(0, 20);
+
+          const labels = entries.map(e => e.nome);
+          const vals   = entries.map(e => Number(e.valor.toFixed(2)));
+
+          const tbody = document.querySelector('#tblTopEstabsResumo tbody');
+          if (tbody) {
+            tbody.innerHTML = entries.length ? '' : '<tr><td colspan="3" class="text-center text-muted">Sem dados no período.</td></tr>';
+            entries.forEach((item, idx) => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td class="text-break">${item.nome}</td>
+                <td class="text-end fw-semibold">${fmtBR(item.valor)}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+
+          const ctx = document.getElementById('chartEstabs');
+          if (!ctx) return;
+
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [{ label: 'Produções por Estabelecimento', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
+            },
+            options: { ...baseChartOptions, plugins: { ...baseChartOptions.plugins, legend: { display: false } }, indexAxis: 'y' }
+          });
+        })();
+      });
+
+      // ---- Atalhos de filtro mensal / anual ----
       (function(){
         const form = document.querySelector('#resumo form[method="GET"]');
         if (!form) return;
@@ -1343,16 +1763,120 @@
         });
       })();
 
-      document.getElementById('btnExportXLSX')?.addEventListener('click', () => {
-        const url = new URL({{ url_for('admin_exportar_resumo_xlsx')|tojson }}, window.location.origin);
-        const current = new URLSearchParams(window.location.search);
-        current.set('tab', 'resumo');
-        url.search = current.toString();
-        window.location.href = url.toString();
+      // ---- Exportação XLSX ----
+      const ensureXLSX = () => new Promise(res => {
+        if (window.XLSX) return res();
+        const s = document.createElement('script');
+        s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        s.onload = () => res();
+        document.head.appendChild(s);
       });
+
+      function aoaToSheet(title, aoa, wb) {
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        XLSX.utils.book_append_sheet(wb, ws, title);
+      }
+
+      function safeSheetName(s) {
+        const cleaned = String(s || '').replace(/[:\\/?*\[\]]/g, ' ').slice(0, 31).trim();
+        return cleaned || 'Planilha';
+      }
+
+      async function exportXLSX() {
+        await ensureXLSX();
+        const wb = XLSX.utils.book_new();
+
+        const k1 = [
+          ['Dashboard Financeiro — Filtro'],
+          ['Período', FILTER.ri || 'início', '→', FILTER.rf || 'hoje'],
+          ['Estabelecimento', FILTER.rid == null ? 'Todos' : (RESTS.find(r => r.id === FILTER.rid)?.nome || FILTER.rid)],
+          ['Cooperado', FILTER.cid == null ? 'Todos' : (COOPS.find(c => c.id === FILTER.cid)?.nome || FILTER.cid)],
+          [],
+          ['KPIs'],
+          ['Total Produções', kpiProd],
+          ['INSS (4,0%)', kpiINSS4],
+          ['SEST/SENAT (0,5%)', kpiSEST05],
+          ['Encargos (4,5%)', kpiEncargos45],
+          ['Receitas Coop (período)', kpiRecCoopCorp],
+          ['Despesas Coop (período)', kpiDespCoopCorp],
+          ['Receitas Cooperados (Prod + Rec)', kpiRecCooperadosFull],
+          ['Despesas Cooperados (período)', kpiDespCooperados],
+          ['Total de Receitas (Geral)', kpiTotalReceitasGeral],
+          ['Resultado Cooperativa', kpiResultadoCoop],
+        ];
+        aoaToSheet('KPIs', k1, wb);
+
+        const prodAOA = [['Data', 'Cooperado', 'Estabelecimento', 'Valor', 'INSS(4,0%)', 'SEST/SENAT(0,5%)', 'Encargos(4,5%)', 'Líquido']];
+        filteredPROD.forEach(p => {
+          const inss4  = p.valor * 0.04;
+          const sest05 = p.valor * 0.005;
+          const enc    = inss4 + sest05;
+          const liq    = p.valor - enc;
+          prodAOA.push([p.data, p.cooperado_nome || '', p.restaurante_nome || '', p.valor, inss4, sest05, enc, liq]);
+        });
+        aoaToSheet('Producoes', prodAOA, wb);
+
+        const recCAOA = [['Data', 'Descrição', 'Valor']];
+        filteredRECc.forEach(r => recCAOA.push([r.data, r.descricao || '', r.valor]));
+        aoaToSheet('Receitas_Coop', recCAOA, wb);
+
+        const desCAOA = [['Data', 'Descrição', 'Valor']];
+        filteredDESc.forEach(d => desCAOA.push([d.data, d.descricao || '', d.valor]));
+        aoaToSheet('Despesas_Coop', desCAOA, wb);
+
+        const byR = {};
+        filteredPROD.forEach(p => {
+          if (p.restaurante_nome)
+            byR[p.restaurante_nome] = (byR[p.restaurante_nome] || 0) + p.valor;
+        });
+        const estAOA = [['Estabelecimento', 'Total Produções (R$)']];
+        Object.entries(byR).sort((a, b) => b[1] - a[1]).forEach(([nome, v]) => estAOA.push([nome, v]));
+        aoaToSheet('Estabelecimentos', estAOA, wb);
+
+        // >>> COM ADIANTAMENTOS no XLSX também
+        const resumoAOA = [['Cooperado', 'Produções', 'INSS (4,0%)', 'SEST/SENAT (0,5%)', 'Receitas', 'Despesas', 'Adiantamento', 'A Receber', 'Saldo Pendente']];
+        let tProd = 0, tINSS4 = 0, tSEST05 = 0, tRec = 0, tDes = 0, tAdi = 0, tLiq = 0, tPend = 0;
+
+        RESUMO_COOP_ROWS.forEach(r => {
+          tProd += r.prod; tINSS4 += r.inss4; tSEST05 += r.sest05; tRec += r.rec; tDes += r.des; tAdi += r.adiant; tLiq += r.aReceber; tPend += r.saldoPendente;
+          resumoAOA.push([r.nome || '—', r.prod, r.inss4, r.sest05, r.rec, r.des, r.adiant, r.aReceber, r.saldoPendente]);
+        });
+
+        resumoAOA.push(['TOTAIS', tProd, tINSS4, tSEST05, tRec, tDes, tAdi, tLiq, tPend]);
+        aoaToSheet('Resumo_Cooperados', resumoAOA, wb);
+
+        const byC_rec = {};
+        filteredRECp.forEach(r => {
+          const k = r.cooperado_nome || `ID ${r.cooperado_id}`;
+          (byC_rec[k] ||= []).push(r);
+        });
+        Object.keys(byC_rec).forEach(nome => {
+          const aoa = [['Data', 'Descrição', 'Valor']];
+          byC_rec[nome].forEach(r => aoa.push([r.data, r.descricao || '', r.valor]));
+          aoaToSheet(safeSheetName('Receita - ' + nome), aoa, wb);
+        });
+
+        const byC_des = {};
+        filteredDESp.forEach(d => {
+          const k = d.cooperado_nome || `ID ${d.cooperado_id}`;
+          (byC_des[k] ||= []).push(d);
+        });
+        Object.keys(byC_des).forEach(nome => {
+          const aoa = [['Data', 'Descrição', 'Valor']];
+          byC_des[nome].forEach(d => {
+            aoa.push([d.data, d.descricao || '', d.valor]);
+          });
+          aoaToSheet(safeSheetName('Despesa - ' + nome), aoa, wb);
+        });
+
+        const now = new Date();
+        const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        XLSX.writeFile(wb, `Dashboard_Coopex_${ymd}.xlsx`);
+      }
+
+      document.getElementById('btnExportXLSX')?.addEventListener('click', exportXLSX);
     })();
     </script>
-    {% endif %}
 </section>
 
 <!-- LANÇAMENTOS (versão moderna/compacta – drop-in) -->
@@ -1983,7 +2507,7 @@
         </div>
       </div>
 
-      <form method="POST" action="{{ url_for('atualizar_taxa_admin_lote') }}" class="mb-3" data-perm-form="can_receitas_editar">
+      <form method="POST" action="{{ url_for('atualizar_taxa_admin_lote') }}" class="mb-3" data-perm-form="can_receitas_editar" id="taxaAdmLoteForm">
         <div class="d-flex flex-wrap gap-2 align-items-end">
           <div>
             <label class="form-label">Ação em lote</label>
@@ -1994,72 +2518,64 @@
           </div>
           <div>
             <label class="form-label d-none d-md-block">&nbsp;</label>
-            <button class="btn btn-royal btn-sm"><i class="bi bi-check2-square"></i> Aplicar</button>
+            <button class="btn btn-royal btn-sm" type="submit"><i class="bi bi-check2-square"></i> Aplicar</button>
           </div>
         </div>
-
-        <div class="table-responsive mt-3">
-          <table class="table table-sm table-bordered table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th style="width:38px"><input type="checkbox" id="taxaAdmToggleAll"></th>
-                <th>Estabelecimento</th>
-                <th>Competência</th>
-                <th>Vencimento</th>
-                <th class="text-end">Principal</th>
-                <th class="text-end">Juros calc.</th>
-                <th class="text-end">Multa calc.</th>
-                <th class="text-end">Recebido</th>
-                <th class="text-end">Em aberto</th>
-                <th>Status</th>
-                <th style="width:320px">Atualizar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for tx in taxa_admin_rows %}
-              <tr>
-                <td><input type="checkbox" name="ids[]" value="{{ tx.id }}" class="taxaAdmItem"></td>
-                <td>{{ tx.restaurante_nome or '-' }}</td>
-                <td>{{ tx.competencia or '-' }}</td>
-                <td>{{ tx.data_vencimento.strftime('%d/%m/%Y') if tx.data_vencimento else '-' }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(tx.valor_previsto) }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(tx.valor_juros) }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(tx.valor_multa) }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(tx.valor_recebido) }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(tx.valor_em_aberto) }}</td>
-                <td>
-                  {% if tx.status == 'pago' %}<span class="badge bg-success">Pago</span>
-                  {% elif tx.status == 'parcial' %}<span class="badge bg-warning text-dark">Parcial</span>
-                  {% else %}<span class="badge bg-secondary">Não pago</span>{% endif %}
-                </td>
-                <td>
-                  <form method="POST" action="{{ url_for('atualizar_taxa_admin_status', id=tx.id) }}" class="row g-2 align-items-end">
-                    <div class="col-4">
-                      <select name="status_pagamento" class="form-select form-select-sm">
-                        <option value="nao_pago" {{ 'selected' if tx.status == 'nao_pago' else '' }}>Não pago</option>
-                        <option value="parcial" {{ 'selected' if tx.status == 'parcial' else '' }}>Parcial</option>
-                        <option value="pago" {{ 'selected' if tx.status == 'pago' else '' }}>Pago</option>
-                      </select>
-                    </div>
-                    <div class="col-3">
-                      <input type="number" step="0.01" name="valor_pago" class="form-control form-control-sm" value="{{ '%.2f'|format(tx.valor_pago) }}" placeholder="Pago">
-                    </div>
-                    <div class="col-3">
-                      <input type="date" name="data_pagamento" class="form-control form-control-sm" value="{{ tx.data_pagamento.strftime('%Y-%m-%d') if tx.data_pagamento else '' }}">
-                    </div>
-                    <div class="col-2 d-grid">
-                      <button class="btn btn-success btn-sm"><i class="bi bi-save"></i></button>
-                    </div>
-                  </form>
-                </td>
-              </tr>
-              {% else %}
-              <tr><td colspan="11" class="text-center text-muted">Nenhuma taxa administrativa encontrada no período.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
       </form>
+
+      <div class="table-responsive mt-3">
+        <table class="table table-sm table-bordered table-hover align-middle taxa-adm-table">
+          <thead class="table-light">
+            <tr>
+              <th style="width:38px"><input type="checkbox" id="taxaAdmToggleAll"></th>
+              <th>Estabelecimento</th>
+              <th>Competência</th>
+              <th>Vencimento</th>
+              <th class="text-end">Principal</th>
+              <th class="text-end">Juros calc.</th>
+              <th class="text-end">Multa calc.</th>
+              <th class="text-end">Recebido</th>
+              <th class="text-end">Em aberto</th>
+              <th>Status</th>
+              <th style="width:360px; min-width:360px;">Atualizar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in taxa_admin_rows %}
+            <tr>
+              <td><input type="checkbox" name="ids[]" value="{{ tx.id }}" class="taxaAdmItem" form="taxaAdmLoteForm"></td>
+              <td>{{ tx.restaurante_nome or '-' }}</td>
+              <td>{{ tx.competencia or '-' }}</td>
+              <td>{{ tx.data_vencimento.strftime('%d/%m/%Y') if tx.data_vencimento else '-' }}</td>
+              <td class="text-end">R$ {{ '%.2f'|format(tx.valor_previsto) }}</td>
+              <td class="text-end">R$ {{ '%.2f'|format(tx.valor_juros) }}</td>
+              <td class="text-end">R$ {{ '%.2f'|format(tx.valor_multa) }}</td>
+              <td class="text-end">R$ {{ '%.2f'|format(tx.valor_recebido) }}</td>
+              <td class="text-end">R$ {{ '%.2f'|format(tx.valor_em_aberto) }}</td>
+              <td>
+                {% if tx.status == 'pago' %}<span class="badge bg-success">Pago</span>
+                {% elif tx.status == 'parcial' %}<span class="badge bg-warning text-dark">Parcial</span>
+                {% else %}<span class="badge bg-secondary">Não pago</span>{% endif %}
+              </td>
+              <td class="taxa-adm-actions-cell">
+                <form method="POST" action="{{ url_for('atualizar_taxa_admin_status', id=tx.id) }}" class="taxa-adm-inline-form">
+                  <select name="status_pagamento" class="form-select form-select-sm taxa-adm-status">
+                    <option value="nao_pago" {{ 'selected' if tx.status == 'nao_pago' else '' }}>Não pago</option>
+                    <option value="parcial" {{ 'selected' if tx.status == 'parcial' else '' }}>Parcial</option>
+                    <option value="pago" {{ 'selected' if tx.status == 'pago' else '' }}>Pago</option>
+                  </select>
+                  <input type="number" step="0.01" name="valor_pago" class="form-control form-control-sm taxa-adm-valor" value="{{ '%.2f'|format(tx.valor_pago) }}" placeholder="Pago">
+                  <input type="date" name="data_pagamento" class="form-control form-control-sm taxa-adm-data" value="{{ tx.data_pagamento.strftime('%Y-%m-%d') if tx.data_pagamento else '' }}">
+                  <button class="btn btn-success btn-sm taxa-adm-save" type="submit"><i class="bi bi-save"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="11" class="text-center text-muted">Nenhuma taxa administrativa encontrada no período.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -3493,18 +4009,10 @@
       <form method="POST" action="{{ url_for('add_restaurante') }}" enctype="multipart/form-data" class="row g-3 align-items-end" data-perm-form="can_restaurantes_criar">
         <div class="col-md-3">
           <label class="form-label">Nome</label>
-          <input type="text" class="form-control form-control-sm" name="nome" placeholder="Ex.: Farmácia Centro" required>
+          <input type="text" class="form-control form-control-sm" name="nome" placeholder="Ex.: Restaurante Centro" required>
         </div>
 
-        <div class="col-md-2">
-          <label class="form-label">Tipo de acesso</label>
-          <select class="form-select form-select-sm" name="tipo_acesso" id="novoRestTipoAcesso">
-            <option value="restaurante">Restaurante</option>
-            <option value="farmacia">Farmácia</option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label class="form-label">Período</label>
           <select class="form-select form-select-sm" name="periodo" required>
             <option value="seg-dom">Seg a Dom</option>
@@ -3522,7 +4030,7 @@
           </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label">Senha</label>
           <div class="input-group input-group-sm">
             <input type="password" class="form-control" name="senha" id="restSenha" placeholder="********" required>
@@ -3547,24 +4055,14 @@
         </div>
 
         <div class="col-md-2">
-          <label class="form-label">Multa (%)</label>
-          <input type="number" step="0.01" class="form-control form-control-sm" name="taxa_admin_multa_percentual" value="2">
+          <label class="form-label">Multa / Juros</label>
+          <div class="input-group input-group-sm">
+            <input type="number" step="0.01" class="form-control" name="taxa_admin_multa_percentual" value="2">
+            <span class="input-group-text">% +</span>
+            <input type="number" step="0.01" class="form-control" name="taxa_admin_juros_dia_percentual" value="0.03">
+          </div>
         </div>
 
-        <div class="col-md-2">
-          <label class="form-label">Juros ao dia (%)</label>
-          <input type="number" step="0.01" class="form-control form-control-sm" name="taxa_admin_juros_dia_percentual" value="0.03">
-        </div>
-
-        <div class="col-md-2 farmacia-only-create" style="display:none;">
-          <label class="form-label">Salário mensal motoboy (R$)</label>
-          <input type="number" step="0.01" class="form-control form-control-sm" name="farmacia_salario_mensal" placeholder="0,00">
-        </div>
-
-        <div class="col-md-2 farmacia-only-create" style="display:none;">
-          <label class="form-label">Taxa da cooperativa (R$)</label>
-          <input type="number" step="0.01" class="form-control form-control-sm" name="farmacia_taxa_coop" placeholder="0,00">
-        </div>
 
         <div class="col-md-2">
           <label class="form-label">Status</label>
@@ -3574,7 +4072,7 @@
           </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label">Logo (opcional)</label>
           <input type="file" class="form-control form-control-sm" name="foto" id="restFoto" accept="image/*">
           <div class="d-flex align-items-center gap-2 mt-2">
@@ -3614,11 +4112,9 @@
               <th style="width:60px;">Logo</th>
               <th>Nome</th>
               <th>Usuário</th>
-              <th style="width:130px;">Tipo</th>
               <th style="width:140px;">Período</th>
               <th style="width:140px;">Taxa adm.</th>
               <th style="width:130px;">Data base</th>
-              <th style="width:140px;">Financeiro farmácia</th>
               <th style="width:120px;">Status</th>
               <th class="text-center" style="width:200px;">Ações</th>
             </tr>
@@ -3634,9 +4130,6 @@
                 <td class="fw-medium">{{ r.nome }}</td>
                 <td class="text-muted">{{ r.usuario_ref.usuario }}</td>
                 <td class="text-nowrap">
-                  <span class="badge {{ 'bg-primary' if (r.tipo_acesso|default('restaurante')) == 'farmacia' else 'bg-secondary' }}">{{ 'Farmácia' if (r.tipo_acesso|default('restaurante')) == 'farmacia' else 'Restaurante' }}</span>
-                </td>
-                <td class="text-nowrap">
                   <span class="badge bg-light text-dark">
                     {% if r.periodo == 'seg-dom' %}Seg–Dom
                     {% elif r.periodo == 'sab-sex' %}Sáb–Sex
@@ -3646,14 +4139,6 @@
                 </td>
                 <td class="text-nowrap">R$ {{ "%.2f"|format(r.taxa_admin_valor|default(0)) }}</td>
                 <td class="text-nowrap">{{ r.taxa_admin_data_base.strftime('%d/%m/%Y') if r.taxa_admin_data_base else '-' }}</td>
-                <td class="small">
-                  {% if (r.tipo_acesso|default('restaurante')) == 'farmacia' %}
-                    <div>Salário: <b>R$ {{ '%.2f'|format(r.farmacia_salario_mensal|default(0)) }}</b></div>
-                    <div>Taxa coop: <b>R$ {{ '%.2f'|format(r.farmacia_taxa_coop|default(0)) }}</b></div>
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
                 <td class="text-nowrap">
                   {% set rest_ativo = (r.usuario_ref.ativo if (r.usuario_ref is defined and r.usuario_ref and r.usuario_ref.ativo is not none) else r.ativo) %}
                   <span class="badge {{ 'bg-success' if rest_ativo else 'bg-secondary' }}">{{ 'Ativo' if rest_ativo else 'Inativo' }}</span>
@@ -3661,7 +4146,7 @@
                 <td class="text-center">
                   <div class="btn-group btn-group-sm" role="group">
                     {% if can_restaurantes_editar %}<button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditRestaurante"
-                            data-id="{{ r.id }}" data-nome="{{ r.nome }}" data-usuario="{{ r.usuario_ref.usuario }}" data-periodo="{{ r.periodo }}" data-tipo-acesso="{{ r.tipo_acesso|default('restaurante') }}" data-farmacia-salario-mensal="{{ '%.2f'|format(r.farmacia_salario_mensal|default(0)) }}" data-farmacia-taxa-coop="{{ '%.2f'|format(r.farmacia_taxa_coop|default(0)) }}" data-taxa-admin-valor="{{ '%.2f'|format(r.taxa_admin_valor|default(0)) }}" data-taxa-admin-data-base="{{ r.taxa_admin_data_base.strftime('%Y-%m-%d') if r.taxa_admin_data_base else '' }}" data-taxa-admin-multa="{{ '%.2f'|format(r.taxa_admin_multa_percentual|default(2)) }}" data-taxa-admin-juros-dia="{{ '%.2f'|format(r.taxa_admin_juros_dia_percentual|default(0.03)) }}"
+                            data-id="{{ r.id }}" data-nome="{{ r.nome }}" data-usuario="{{ r.usuario_ref.usuario }}" data-periodo="{{ r.periodo }}" data-taxa-admin-valor="{{ '%.2f'|format(r.taxa_admin_valor|default(0)) }}" data-taxa-admin-data-base="{{ r.taxa_admin_data_base.strftime('%Y-%m-%d') if r.taxa_admin_data_base else '' }}" data-taxa-admin-multa="{{ '%.2f'|format(r.taxa_admin_multa_percentual|default(2)) }}" data-taxa-admin-juros-dia="{{ '%.2f'|format(r.taxa_admin_juros_dia_percentual|default(0.03)) }}"
                             data-ativo="{{ '1' if ((r.usuario_ref.ativo if (r.usuario_ref is defined and r.usuario_ref and r.usuario_ref.ativo is not none) else r.ativo)|default(true)) else '0' }}"
                             data-url="{{ url_for('edit_restaurante', id=r.id) }}" title="Editar">
                       <i class="bi bi-pencil"></i>
@@ -3687,7 +4172,7 @@
                 </td>
               </tr>
             {% else %}
-              <tr><td colspan="10" class="text-center text-muted">Nenhum estabelecimento</td></tr>
+              <tr><td colspan="8" class="text-center text-muted">Nenhum estabelecimento</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -3748,41 +4233,13 @@
         const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v || ''; };
         set('editRestNome', btn.dataset.nome);
         set('editRestUsuario', btn.dataset.usuario);
-        set('editRestTipoAcesso', btn.dataset.tipoAcesso || 'restaurante');
         set('editRestPeriodo', btn.dataset.periodo);
         set('editRestTaxaAdminValor', btn.dataset.taxaAdminValor);
         set('editRestTaxaAdminDataBase', btn.dataset.taxaAdminDataBase);
         set('editRestTaxaAdminMulta', btn.dataset.taxaAdminMulta);
         set('editRestTaxaAdminJurosDia', btn.dataset.taxaAdminJurosDia);
-        set('editRestFarmaciaSalarioMensal', btn.dataset.farmaciaSalarioMensal || '0');
-        set('editRestFarmaciaTaxaCoop', btn.dataset.farmaciaTaxaCoop || '0');
         set('editRestAtivo', btn.dataset.ativo || '1');
-        const toggleFarmacia = (tipo, selector) => {
-          document.querySelectorAll(selector).forEach(el => {
-            el.style.display = (tipo === 'farmacia') ? '' : 'none';
-          });
-        };
-        toggleFarmacia(btn.dataset.tipoAcesso || 'restaurante', '.farmacia-only-edit');
       });
-    })();
-
-    // mostra/oculta campos específicos de farmácia no cadastro
-    (function(){
-      const tipo = document.getElementById('novoRestTipoAcesso');
-      const refresh = () => {
-        const isFarm = (tipo?.value || 'restaurante') === 'farmacia';
-        document.querySelectorAll('.farmacia-only-create').forEach(el => el.style.display = isFarm ? '' : 'none');
-      };
-      tipo?.addEventListener('change', refresh);
-      refresh();
-
-      const editTipo = document.getElementById('editRestTipoAcesso');
-      const refreshEdit = () => {
-        const isFarm = (editTipo?.value || 'restaurante') === 'farmacia';
-        document.querySelectorAll('.farmacia-only-edit').forEach(el => el.style.display = isFarm ? '' : 'none');
-      };
-      editTipo?.addEventListener('change', refreshEdit);
-      refreshEdit();
     })();
 
     // confirmação de exclusão (somente dentro desta aba)
@@ -5456,13 +5913,6 @@
           <input type="hidden" name="id">
           <div class="col-12"><label class="form-label">Nome</label><input type="text" class="form-control" name="nome" required></div>
           <div class="col-md-6">
-            <label class="form-label">Tipo de acesso</label>
-            <select class="form-select" name="tipo_acesso" id="editRestTipoAcesso">
-              <option value="restaurante">Restaurante</option>
-              <option value="farmacia">Farmácia</option>
-            </select>
-          </div>
-          <div class="col-md-6">
             <label class="form-label">Período</label>
             <select class="form-select" name="periodo" required>
               <option value="seg-dom">Seg a Dom</option>
@@ -5475,8 +5925,6 @@
           <div class="col-md-6"><label class="form-label">Data base da taxa</label><input type="date" class="form-control" name="taxa_admin_data_base"></div>
           <div class="col-md-6"><label class="form-label">Multa (%)</label><input type="number" step="0.01" class="form-control" name="taxa_admin_multa_percentual"></div>
           <div class="col-md-6"><label class="form-label">Juros ao dia (%)</label><input type="number" step="0.01" class="form-control" name="taxa_admin_juros_dia_percentual"></div>
-          <div class="col-md-6 farmacia-only-edit" style="display:none;"><label class="form-label">Salário mensal motoboy (R$)</label><input type="number" step="0.01" class="form-control" name="farmacia_salario_mensal" id="editRestFarmaciaSalarioMensal"></div>
-          <div class="col-md-6 farmacia-only-edit" style="display:none;"><label class="form-label">Taxa da cooperativa (R$)</label><input type="number" step="0.01" class="form-control" name="farmacia_taxa_coop" id="editRestFarmaciaTaxaCoop"></div>
           <div class="col-md-6"><label class="form-label">Status</label><select class="form-select" name="ativo" id="editRestAtivo"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
           <div class="col-md-6"><label class="form-label">Logo</label><input type="file" class="form-control" name="foto"></div>
         </div>
@@ -5545,7 +5993,7 @@
   bindModal('modalEditDespesaCoop',  { id:'id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data', competencia:'competencia_desconto' });
   bindModal('modalEditCooperado',    { id:'id', nome:'nome', usuario:'usuario' });
   bindModal('modalResetSenhaCooperado', { id:'id' });
-  bindModal('modalEditRestaurante',  { id:'id', nome:'nome', periodo:'periodo', usuario:'usuario', tipoAcesso:'tipo_acesso', farmaciaSalarioMensal:'farmacia_salario_mensal', farmaciaTaxaCoop:'farmacia_taxa_coop', taxaAdminValor:'taxa_admin_valor', taxaAdminDataBase:'taxa_admin_data_base', taxaAdminMulta:'taxa_admin_multa_percentual', taxaAdminJurosDia:'taxa_admin_juros_dia_percentual', ativo:'ativo' });
+  bindModal('modalEditRestaurante',  { id:'id', nome:'nome', periodo:'periodo', usuario:'usuario' });
   bindModal('modalResetSenhaRestaurante', { id:'id' });
 
   (function(){
