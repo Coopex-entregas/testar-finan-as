@@ -4267,25 +4267,21 @@ def admin_dashboard():
         rec = sum((r.valor or 0.0) for r in receitas_coop if getattr(r, "cooperado_id", None) == coop.id)
         inss4 = sum((l.valor or 0.0) * INSS_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
         sest05 = sum((l.valor or 0.0) * SEST_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
-        des = round(snap.get("descontado_despesa", 0.0), 2)
-        adiant = round(sum((d.valor or 0.0) for d in despesas_coop if getattr(d, "cooperado_id", None) == coop.id and bool(getattr(d, "eh_adiantamento", False))), 2)
-        pendencias_resumo = [
-            {
-                "descricao": (it.get("descricao") or "Despesa"),
-                "restante": round(float(it.get("restante") or 0.0), 2),
-                "status": it.get("status") or "",
-                "eh_adiantamento": bool(it.get("eh_adiantamento", False)),
-            }
-            for it in snap.get("itens", [])
-            if float(it.get("restante") or 0.0) > 0 and not bool(it.get("eh_adiantamento", False))
-        ]
-        pendencias_resumo.sort(key=lambda x: x["restante"], reverse=True)
-        _despesas_abertas_total = round(sum(p["restante"] for p in pendencias_resumo), 2)
-        if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"] or _despesas_abertas_total:
+        snap_itens = snap.get("itens", []) or []
+        des = round(sum((item.get("valor_total", 0.0) or 0.0) for item in snap_itens if not item.get("eh_adiantamento")), 2)
+        adiant = round(sum((item.get("valor_total", 0.0) or 0.0) for item in snap_itens if item.get("eh_adiantamento")), 2)
+        pendencias = []
+        for item in snap_itens:
+            restante = round(float(item.get("restante", 0.0) or 0.0), 2)
+            if restante <= 0:
+                continue
+            desc = (item.get("descricao") or ("Adiantamento" if item.get("eh_adiantamento") else "Despesa")).strip()
+            pendencias.append(f"{desc}: R$ {restante:.2f}")
+        pendencia_texto = " | ".join(pendencias)
+        if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"]:
             _a_receber = round(max(0.0, snap["disponivel_auto_restante"]), 2)
-            _saldo_pendente = round(snap["saldo_devedor"], 2)
+            _saldo_pendente = round((snap["saldo_devedor"] or 0.0) + (snap["a_descontar"] or 0.0), 2)
             _pend_programado = round(snap["a_descontar"], 2)
-            _total_pendente = round(_saldo_pendente + _pend_programado, 2)
             resumo_coop_rows.append({
                 "id": coop.id,
                 "nome": coop.nome,
@@ -4301,9 +4297,8 @@ def admin_dashboard():
                 "saldoPendente": _saldo_pendente,
                 "pend_programado": _pend_programado,
                 "pendProgramado": _pend_programado,
-                "total_pendente": _total_pendente,
-                "totalPendente": _total_pendente,
-                "pendencias": pendencias_resumo[:6],
+                "pendencia_texto": pendencia_texto,
+                "pendenciaTexto": pendencia_texto,
             })
             resumo_totais["prod"] += prod
             resumo_totais["inss4"] += inss4
@@ -4312,7 +4307,7 @@ def admin_dashboard():
             resumo_totais["des"] += des
             resumo_totais["adiant"] += adiant
             resumo_totais["a_receber"] += max(0.0, snap["disponivel_auto_restante"])
-            resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
+            resumo_totais["saldo_pendente"] += ((snap["saldo_devedor"] or 0.0) + (snap["a_descontar"] or 0.0))
             resumo_totais["pend_programado"] += snap["a_descontar"]
 
     return render_template(
