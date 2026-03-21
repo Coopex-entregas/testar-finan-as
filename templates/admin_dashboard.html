@@ -1173,29 +1173,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Gráficos -->
-        <div class="row g-2 mt-3">
-          <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3">
-              <h6 class="mb-2 d-flex align-items-center gap-1">
-                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
-                <span>Evolução Mensal — Cooperativa</span>
-              </h6>
-              <canvas id="chartCoop"></canvas>
-            </div>
-          </div>
-          <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3">
-              <h6 class="mb-2 d-flex align-items-center gap-1">
-                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
-                <span>Evolução Mensal — Cooperados</span>
-              </h6>
-              <canvas id="chartCooperados"></canvas>
-            </div>
-          </div>
-        </div>
-
         <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
@@ -1203,7 +1180,6 @@
                 <span class="resumo-pill-label"><i class="bi bi-shop"></i></span>
                 <span>Top Estabelecimentos (Produções no período)</span>
               </h6>
-              <canvas id="chartEstabs"></canvas>
               <div class="table-responsive mt-3">
                 <table class="table table-sm table-bordered table-hover align-middle" id="tblTopEstabsResumo">
                   <thead class="table-light">
@@ -1332,10 +1308,6 @@
           font-weight: 600;
         }
 
-        #resumo canvas {
-          max-height: 280px;
-        }
-
         @media (max-width: 576px) {
           #resumo .resumo-shell{
             border-radius: 1rem;
@@ -1351,107 +1323,19 @@
         }
       </style>
     </section>
-
-    <!-- Dados (seguros p/ JS) + Scripts (Chart.js + XLSX) -->
+    <!-- Dados prontos vindos do backend -->
     <script>
     (function(){
-      // ---- Filtros atuais (mais seguro com tojson) ----
-      const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
-
-      // ---- Bases compactas ----
-      const PRODUCOES = [
-        {% for l in _producoes %}
-          {
-            id: {{ l.id }},
-            data: "{{ ymd(l.data) }}",
-            valor: {{ (l.valor or 0)|float }},
-            cooperado_id: {{ l.cooperado.id if l.cooperado else 'null' }},
-            cooperado_nome: "{{ (l.cooperado.nome if l.cooperado else '')|e }}",
-            restaurante_id: {{ l.restaurante.id if l.restaurante else 'null' }},
-            restaurante_nome: "{{ (l.restaurante.nome if l.restaurante else '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const REC_COOP = [
-        {% for r in receitas_coop %}
-          {
-            id: {{ r.id }},
-            data: "{{ ymd(r.data) }}",
-            valor: {{ (r.valor or 0)|float }},
-            cooperado_id: {{ r.cooperado.id if r.cooperado else 'null' }},
-            cooperado_nome: "{{ (r.cooperado.nome if r.cooperado else '')|e }}",
-            descricao: "{{ (r.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      // Adiantamento deve aparecer na coluna própria do resumo e no total do rodapé.
-      const DESP_COOP = [
-        {% for d in despesas_coop %}
-          {% set _is_ad_js = 1 if (d.eh_adiantamento if d.eh_adiantamento is defined else (d.adiantamento in [True, 1, '1', 'true', 'True', 'on'])) else 0 %}
-          {% set _abat_manual = namespace(v=0) %}{% if d.abatimentos is defined %}{% for ab in d.abatimentos %}{% set _abat_manual.v = _abat_manual.v + (ab.valor or 0) %}{% endfor %}{% endif %}
-          {
-            id: {{ d.id }},
-            data: "{{ ymd(d.data) }}",
-            valor: {{ (d.valor or 0)|float }},
-            cooperado_id: {{ d.cooperado.id if d.cooperado else 'null' }},
-            cooperado_nome: "{{ (d.cooperado.nome if d.cooperado else (d.cooperado_nome if d.cooperado_nome is defined else ''))|e }}",
-            descricao: "{{ (d.descricao or '')|e }}",
-            adiantamento: {{ _is_ad_js }},
-            competencia_desconto: "{{ (d.competencia_desconto if d.competencia_desconto is defined else 'esta_semana')|e }}",
-            valor_pago_manual: {{ _abat_manual.v|float }}
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      // Receitas e Despesas da COOPERATIVA
-      const REC_COOP_CORP = [
-        {% for r in _rec_coop_corp %}
-          {
-            id: {{ r.id }},
-            data: "{{ ymd(r.data or r.data_lancamento) }}",
-            valor: {{ (r.valor|default(r.valor_total, true)|default(0, true))|float }},
-            descricao: "{{ (r.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const DESP_COOP_CORP = [
-        {% for d in _desp_coop_corp %}
-          {
-            id: {{ d.id }},
-            data: "{{ ymd(d.data or d.data_lancamento) }}",
-            valor: {{ (d.valor|default(d.valor_total, true)|default(0, true))|float }},
-            descricao: "{{ (d.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const BENEFICIOS_VIEW = [
-        {% for b in beneficios_view %}
-          {
-            id: {{ b.id }},
-            data_inicial: "{{ ymd(b.data_inicial) }}",
-            data_final: "{{ ymd(b.data_final) }}",
-            data_lancamento: "{{ ymd(b.data_lancamento) }}",
-            tipo: "{{ (b.tipo or '')|e }}",
-            valor_total: {{ (b.valor_total or 0)|float }}
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const COOPS = [
-        {% for c in cooperados %}
-          { id: {{ c.id }}, nome: "{{ c.nome|e }}" }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const RESTS = [
-        {% for r in rest_list %}
-          { id: {{ r.id }}, nome: "{{ r.nome|e }}" }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
+      const RESUMO_DATA = {{ resumo_frontend_data|default({})|tojson }};
+      const FILTER = RESUMO_DATA.filter || {ri:"", rf:"", rid:null, cid:null};
+      const PRODUCOES = RESUMO_DATA.producoes || [];
+      const REC_COOP = RESUMO_DATA.rec_coop || [];
+      const DESP_COOP = RESUMO_DATA.desp_coop || [];
+      const REC_COOP_CORP = RESUMO_DATA.rec_coop_corp || [];
+      const DESP_COOP_CORP = RESUMO_DATA.desp_coop_corp || [];
+      const BENEFICIOS_VIEW = RESUMO_DATA.beneficios_view || [];
+      const COOPS = RESUMO_DATA.coops || [];
+      const RESTS = RESUMO_DATA.rests || [];
 
       // ---- Utils ----
       const parseISO = s => (!s) ? null : new Date(s + 'T00:00:00');
@@ -1625,192 +1509,6 @@
         const pendEl = document.getElementById('kpiTicketMedioPeriodo');
         if (pendEl) pendEl.textContent = fmtBR(tPend);
       })();
-
-      // ---- Gráficos (Chart.js via CDN) ----
-      const ensureChart = () => new Promise(res => {
-        if (window.Chart) return res();
-        const s = document.createElement('script');
-        s.src = "https://cdn.jsdelivr.net/npm/chart.js";
-        s.onload = () => res();
-        document.head.appendChild(s);
-      });
-
-      ensureChart().then(() => {
-        const moneyTick = (value) => 'R$ ' + Number(value || 0).toLocaleString('pt-BR', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-
-        const baseChartOptions = {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { usePointStyle: true, padding: 18, boxWidth: 10, boxHeight: 10 }
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: (ctx) => {
-                  const label = ctx.dataset.label || '';
-                  const v = ctx.parsed.y ?? ctx.parsed.x ?? 0;
-                  return `${label}: ${moneyTick(v)}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { display: false } },
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(148,163,184,0.25)' },
-              ticks: { callback: (v) => moneyTick(v) }
-            }
-          }
-        };
-
-        // Cooperativa: Receitas vs Despesas por mês
-        (function () {
-          const byM = {};
-          filteredRECc.forEach(r => {
-            const k = byMonthKey(r.data) || '—';
-            (byM[k] ??= { r: 0, d: 0 }).r += r.valor;
-          });
-          filteredDESc.forEach(d => {
-            const k = byMonthKey(d.data) || '—';
-            (byM[k] ??= { r: 0, d: 0 }).d += d.valor;
-          });
-
-          const labels = Object.keys(byM).sort();
-          const rec    = labels.map(k => byM[k].r);
-          const des    = labels.map(k => byM[k].d);
-
-          const ctx = document.getElementById('chartCoop');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels,
-              datasets: [
-                { label: 'Receitas', data: rec, backgroundColor: 'rgba(37, 99, 235, 0.75)', borderRadius: 6 },
-                { label: 'Despesas', data: des, backgroundColor: 'rgba(239, 68, 68, 0.75)', borderRadius: 6 }
-              ]
-            },
-            options: baseChartOptions
-          });
-        })();
-
-        // Cooperados: Produções + INSS 4% + SEST 0,5% por mês
-        (function () {
-          const byM = {};
-          filteredPROD.forEach(p => {
-            const k = byMonthKey(p.data) || '—';
-            (byM[k] ??= { prod: 0, inss4: 0, sest05: 0 }).prod += p.valor;
-            byM[k].inss4  += p.valor * 0.04;
-            byM[k].sest05 += p.valor * 0.005;
-          });
-
-          const labels = Object.keys(byM).sort();
-          const prod   = labels.map(k => byM[k].prod);
-          const inss4  = labels.map(k => byM[k].inss4);
-          const sest05 = labels.map(k => byM[k].sest05);
-
-          const ctx = document.getElementById('chartCooperados');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: 'Produções (bruto)',
-                  data: prod,
-                  borderColor: 'rgba(37, 99, 235, 1)',
-                  backgroundColor: 'rgba(37, 99, 235, 0.18)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                },
-                {
-                  label: 'INSS (4,0%)',
-                  data: inss4,
-                  borderColor: 'rgba(56, 189, 248, 1)',
-                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                },
-                {
-                  label: 'SEST/SENAT (0,5%)',
-                  data: sest05,
-                  borderColor: 'rgba(2, 132, 199, 1)',
-                  backgroundColor: 'rgba(2, 132, 199, 0.10)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                }
-              ]
-            },
-            options: baseChartOptions
-          });
-        })();
-
-        // Estabelecimentos — barra horizontal + tabela real
-        (function () {
-          const byR = {};
-          filteredPROD.forEach(p => {
-            if (p.restaurante_id == null && !p.restaurante_nome) return;
-            const nome = (p.restaurante_nome || '—').trim() || '—';
-            byR[nome] = (byR[nome] || 0) + (+p.valor || 0);
-          });
-
-          const entries = Object.entries(byR)
-            .map(([nome, valor]) => ({ nome, valor: +(valor || 0) }))
-            .sort((a, b) => b.valor - a.valor)
-            .slice(0, 20);
-
-          const labels = entries.map(e => e.nome);
-          const vals   = entries.map(e => Number(e.valor.toFixed(2)));
-
-          const tbody = document.querySelector('#tblTopEstabsResumo tbody');
-          if (tbody) {
-            tbody.innerHTML = entries.length ? '' : '<tr><td colspan="3" class="text-center text-muted">Sem dados no período.</td></tr>';
-            entries.forEach((item, idx) => {
-              const tr = document.createElement('tr');
-              tr.innerHTML = `
-                <td>${idx + 1}</td>
-                <td class="text-break">${item.nome}</td>
-                <td class="text-end fw-semibold">${fmtBR(item.valor)}</td>
-              `;
-              tbody.appendChild(tr);
-            });
-          }
-
-          const ctx = document.getElementById('chartEstabs');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels,
-              datasets: [{ label: 'Produções por Estabelecimento', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
-            },
-            options: { ...baseChartOptions, plugins: { ...baseChartOptions.plugins, legend: { display: false } }, indexAxis: 'y' }
-          });
-        })();
-      });
-
-      // ---- Atalhos de filtro mensal / anual ----
-      (function(){
         const form = document.querySelector('#resumo form[method="GET"]');
         if (!form) return;
         const diInput = form.querySelector('input[name="data_inicio"]');
@@ -6091,61 +5789,6 @@
     });
   })();
 
-  // ===== Gráficos =====
-  const rawLancCoop   = {{ (chart_data_lancamentos_coop or {'labels':[], 'values':[]}) | tojson }};
-  const rawLancCooper = {{ (chart_data_lancamentos_cooperados or {'labels':[], 'values':[]}) | tojson }};
-
-  const totalProducoesFallback = parseFloat('{{ total_producoes|default(0) }}') || 0;
-
-  const fallbackLancCoop   = { labels: ['Total'], values: [totalProducoesFallback] };
-  const fallbackLancCooper = { labels: ['Total'], values: [totalProducoesFallback] };
-
-  const dataLancCoop = (rawLancCoop?.labels?.length && rawLancCoop?.values?.length) ? rawLancCoop : fallbackLancCoop;
-  const dataLancCooperados = (rawLancCooper?.labels?.length && rawLancCooper?.values?.length) ? rawLancCooper : fallbackLancCooper;
-
-  function buildLineChart(canvasId, labels, values, label) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-
-    new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: label,
-          data: values,
-          tension: .25,
-          borderWidth: 2,
-          pointRadius: 3,
-          fill: false
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (v) => 'R$ ' + Number(v).toLocaleString('pt-BR')
-            }
-          }
-        },
-        plugins: {
-          legend: { display: true },
-          tooltip: {
-            callbacks: {
-              label: (c) => 'R$ ' + Number(c.parsed.y).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-            }
-          }
-        }
-      }
-    });
-  }
-
-  buildLineChart('chartLancCoop', dataLancCoop.labels, dataLancCoop.values, 'Lançamentos/Produções');
-  buildLineChart('chartLancCooperados', dataLancCooperados.labels, dataLancCooperados.values, 'Lançamentos/Produções');
-
   // ===== Preservar aba ativa via ?tab= =====
   document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(location.search);
@@ -6922,60 +6565,97 @@ document.addEventListener('DOMContentLoaded', function(){ const cAll=document.ge
 
 
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  const keyTab = 'admin_dashboard_active_tab';
-  const keyScroll = 'admin_dashboard_scroll_y';
+(function(){
+  const mainSel = '.main';
+  const activeTab = () => {
+    const el = document.querySelector('.sidebar .nav-link-main.active, .sidebar .nav-link.active');
+    const href = el?.getAttribute('href') || '';
+    return href.startsWith('#') ? href.slice(1) : (new URL(location.href).searchParams.get('tab') || 'lancamentos');
+  };
 
-  try {
-    const savedScroll = sessionStorage.getItem(keyScroll);
-    if (savedScroll !== null) {
-      requestAnimationFrame(() => window.scrollTo(0, Number(savedScroll || 0)));
-      sessionStorage.removeItem(keyScroll);
-    }
-  } catch(e) {}
-
-  document.querySelectorAll('.sidebar .nav-link[data-bs-toggle="tab"], .sidebar .nav-link-main[data-bs-toggle="tab"]').forEach(function(a){
-    a.addEventListener('shown.bs.tab', function(e){
-      const href = e.target.getAttribute('href') || '';
-      if (href) sessionStorage.setItem(keyTab, href.replace('#',''));
-    });
-  });
-
-  document.querySelectorAll('form').forEach(function(form){
-    form.addEventListener('submit', function(){
-      try {
-        const activePane = document.querySelector('.tab-pane.active');
-        const activeId = activePane ? activePane.id : (sessionStorage.getItem(keyTab) || 'lancamentos');
-        sessionStorage.setItem(keyTab, activeId);
-        sessionStorage.setItem(keyScroll, String(window.scrollY || window.pageYOffset || 0));
-        if (!form.querySelector('input[name="tab"]')) {
-          const hidden = document.createElement('input');
-          hidden.type = 'hidden';
-          hidden.name = 'tab';
-          hidden.value = activeId;
-          form.appendChild(hidden);
-        } else {
-          form.querySelector('input[name="tab"]').value = activeId;
-        }
-      } catch(e) {}
-    }, {passive:true});
-  });
-
-  document.querySelectorAll('a[href*="/admin/"]').forEach(function(a){
-    a.addEventListener('click', function(){
-      try { sessionStorage.setItem(keyScroll, String(window.scrollY || window.pageYOffset || 0)); } catch(e) {}
-    }, {passive:true});
-  });
-
-  const savedTab = sessionStorage.getItem(keyTab);
-  if (savedTab) {
-    const link = document.querySelector(`.sidebar [href="#${savedTab}"]`);
-    if (link && window.bootstrap && bootstrap.Tab) {
-      try { new bootstrap.Tab(link).show(); } catch(e) {}
+  async function fetchAndSwap(url, push=true){
+    const res = await fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const nextMain = doc.querySelector(mainSel);
+    const curMain = document.querySelector(mainSel);
+    if (nextMain && curMain){
+      const sy = window.scrollY;
+      curMain.innerHTML = nextMain.innerHTML;
+      if (push) history.pushState({}, '', url);
+      window.scrollTo({top: sy});
+      bindAdminFast();
+    } else if (push) {
+      location.href = url;
     }
   }
-});
+
+  async function submitViaFetch(form){
+    const method = (form.getAttribute('method') || 'GET').toUpperCase();
+    const action = form.getAttribute('action') || location.href;
+    const currentTab = activeTab();
+    const u = new URL(action, location.origin);
+    const fd = new FormData(form);
+    if (!fd.get('tab')) fd.set('tab', currentTab);
+    u.searchParams.set('tab', currentTab);
+    if (method === 'GET'){
+      for (const [k,v] of fd.entries()) u.searchParams.set(k, v);
+      return fetchAndSwap(u.toString());
+    }
+    const res = await fetch(u.toString(), {method:'POST', body: fd, headers:{'X-Requested-With':'XMLHttpRequest'}});
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const nextMain = doc.querySelector(mainSel);
+    const curMain = document.querySelector(mainSel);
+    if (nextMain && curMain){
+      const sy = window.scrollY;
+      curMain.innerHTML = nextMain.innerHTML;
+      const finalUrl = res.url || u.toString();
+      history.replaceState({}, '', finalUrl);
+      window.scrollTo({top: sy});
+      bindAdminFast();
+    } else {
+      location.reload();
+    }
+  }
+
+  window.bindAdminFast = function(){
+    document.querySelectorAll('.sidebar [data-bs-toggle="tab"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const href = a.getAttribute('href') || '';
+        if (!href.startsWith('#')) return;
+        e.preventDefault();
+        const tab = href.slice(1);
+        const u = new URL(location.href);
+        u.searchParams.set('tab', tab);
+        fetchAndSwap(u.toString());
+      }, {once:true});
+    });
+
+    document.querySelectorAll('form[method="POST"], form[method="GET"]').forEach(f => {
+      if (f.closest('.sidebar')) return;
+      f.addEventListener('submit', (e) => {
+        if (f.target === '_blank') return;
+        e.preventDefault();
+        submitViaFetch(f);
+      }, {once:true});
+    });
+
+    document.querySelectorAll('a[href*="/delete"], a[href*="/excluir"], a[data-fast-nav="1"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const href = a.getAttribute('href');
+        if (!href || href.startsWith('#')) return;
+        e.preventDefault();
+        fetchAndSwap(new URL(href, location.origin).toString());
+      }, {once:true});
+    });
+  }
+
+  window.addEventListener('popstate', () => fetchAndSwap(location.href, false));
+  document.addEventListener('DOMContentLoaded', bindAdminFast);
+})();
 </script>
+
 </body>
 </html>
 
