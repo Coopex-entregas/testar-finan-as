@@ -1174,6 +1174,7 @@
           </div>
         </div>
 
+        <!-- Gráfico único do resumo -->
         <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
@@ -1551,8 +1552,10 @@
           const rec = Number(r.rec || 0);
           const des = Number(r.des || 0);
           const adiant = Number(r.adiant || 0);
-          const aReceber = Number(r.a_receber ?? r.aReceber ?? 0);
           const saldoPend = Number(r.saldo_pendente ?? r.saldoPendente ?? 0);
+          const pendProgramado = Number(r.pend_programado ?? r.pendProgramado ?? 0);
+          const totalPendente = Number(r.total_pendente ?? r.totalPendente ?? (saldoPend + pendProgramado) ?? 0);
+          const pendencias = Array.isArray(r.pendencias) ? r.pendencias : [];
 
           tProd += prod;
           tINSS4 += inss4;
@@ -1561,11 +1564,15 @@
           tDes += des;
           tAdiant += adiant;
           tReceber += aReceber;
-          tPend += saldoPend;
+          tPend += totalPendente;
+
+          const detalheHtml = pendencias.length
+            ? `<div class="small text-muted mt-1">${pendencias.map(p => `${p.descricao || 'Despesa'}: ${fmtBR(Number(p.restante || 0))}`).join('<br>')}</div>`
+            : '';
 
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="text-break">${r.nome || '—'}</td>
+            <td class="text-break"><div>${r.nome || '—'}</div>${detalheHtml}</td>
             <td class="text-end">${fmtBR(prod)}</td>
             <td class="text-end">${fmtBR(inss4)}</td>
             <td class="text-end">${fmtBR(sest05)}</td>
@@ -1573,7 +1580,7 @@
             <td class="text-end text-danger">${fmtBR(des)}</td>
             <td class="text-end text-danger">${fmtBR(adiant)}</td>
             <td class="text-end fw-bold">${fmtBR(aReceber)}</td>
-            <td class="text-end fw-bold text-warning">${fmtBR(saldoPend)}</td>`;
+            <td class="text-end fw-bold text-warning">${fmtBR(totalPendente)}</td>`;
           tbody.appendChild(tr);
         });
 
@@ -1604,7 +1611,7 @@
         if (pendEl) pendEl.textContent = fmtBR(tPend);
       })();
 
-      // ---- Gráfico do resumo: somente Top Estabelecimentos ----
+      // ---- Gráfico único do resumo (Chart.js via CDN) ----
       const ensureChart = () => new Promise(res => {
         if (window.Chart) return res();
         const s = document.createElement('script');
@@ -1619,32 +1626,6 @@
           maximumFractionDigits: 2
         });
 
-        const baseChartOptions = {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: (ctx) => {
-                  const v = ctx.parsed.y ?? ctx.parsed.x ?? 0;
-                  return `Produções: ${moneyTick(v)}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { display: false } },
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(148,163,184,0.25)' },
-              ticks: { callback: (v) => moneyTick(v) }
-            }
-          }
-        };
-
-// Estabelecimentos — barra horizontal + tabela real
         (function () {
           const byR = {};
           filteredPROD.forEach(p => {
@@ -1684,7 +1665,29 @@
               labels,
               datasets: [{ label: 'Produções por Estabelecimento', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
             },
-            options: { ...baseChartOptions, plugins: { ...baseChartOptions.plugins, legend: { display: false } }, indexAxis: 'y' }
+            options: {
+              responsive: true,
+              indexAxis: 'y',
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => `Produções: ${moneyTick(ctx.parsed.x ?? 0)}`
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  beginAtZero: true,
+                  grid: { color: 'rgba(148,163,184,0.25)' },
+                  ticks: { callback: (v) => moneyTick(v) }
+                },
+                y: {
+                  grid: { display: false },
+                  ticks: { autoSkip: false }
+                }
+              }
+            }
           });
         })();
       });
@@ -2873,7 +2876,7 @@
           </tbody>
           <tfoot>
             <tr class="table-light">
-              <th colspan="6" class="text-end">Total</th>
+              <th colspan="3" class="text-end">Total</th>
               <th class="text-end">R$ {{ '%.2f'|format(total_receitas_coop_table) }}</th>
               <th></th>
             </tr>
@@ -4252,7 +4255,7 @@
       </div>
       <div class="d-flex gap-2 align-items-center flex-wrap">
         <span class="badge-soft" id="escalaAlertasCount">{{ escala_alertas_1h|length if escala_alertas_1h is defined else 0 }} alerta(s)</span>
-        <span class="badge-soft" id="escalaAlertasClock">Atualização manual</span>
+        <span class="badge-soft" id="escalaAlertasClock">Atualizando…</span>
       </div>
     </div>
 
@@ -6790,7 +6793,7 @@ document.addEventListener('DOMContentLoaded', function(){
     renderAlertas(initial || []);
   } catch(_) {}
   pollAlertas();
-  // polling automático desativado para evitar recargas/oscilações no admin.
+  setInterval(pollAlertas, 60000);
 });
 </script>
 
