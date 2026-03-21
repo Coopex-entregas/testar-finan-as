@@ -1639,7 +1639,7 @@ def admin_perm_required(aba: str, acao: str = "ver"):
                 flash("Você não tem permissão para essa ação.", "danger")
 
                 if getattr(u, "is_master", False):
-                    return _admin_redirect_back("lancamentos")
+                    return _admin_redirect("lancamentos")
 
                 abas_liberadas = [
                     nome_aba
@@ -3427,13 +3427,13 @@ def toggle_status_cooperado(id):
 def admin_toggle_admin_status(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode alterar o status de administradores.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("O administrador master não pode ser desativado por esta tela.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     admin.ativo = not bool(admin.ativo)
     db.session.commit()
@@ -3443,27 +3443,27 @@ def admin_toggle_admin_status(usuario_id):
     else:
         flash("Administrador desativado com sucesso.", "success")
 
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 @app.route("/admin/admins/<int:usuario_id>/delete", methods=["POST"])
 @admin_perm_required("config", "editar")
 def admin_delete_admin(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode excluir administradores.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("O administrador master não pode ser excluído.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     AdminPermissao.query.filter_by(usuario_id=admin.id).delete()
     db.session.delete(admin)
     db.session.commit()
 
     flash("Administrador excluído com sucesso.", "success")
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
     
 
 @app.route("/admin", methods=["GET"])
@@ -3485,16 +3485,6 @@ def admin_dashboard():
 
     if active_tab not in ADMIN_ABAS:
         active_tab = "lancamentos"
-
-    tab_finance = {"resumo", "lancamentos", "receitas", "despesas", "coop_receitas", "coop_despesas"}
-    need_lancamentos = active_tab in {"resumo", "lancamentos"}
-    need_receitas_corp = active_tab in {"resumo", "receitas", "despesas"}
-    need_receitas_coop = active_tab in {"resumo", "coop_receitas", "coop_despesas"}
-    need_beneficios = active_tab == "beneficios"
-    need_escalas = active_tab == "escalas"
-    need_trocas = active_tab in {"escalas", "trocas"}
-    need_config = active_tab == "config"
-    need_docs = active_tab in {"cooperados", "documentos", "restaurantes", "resumo", "lancamentos", "receitas", "despesas", "coop_receitas", "coop_despesas", "beneficios", "escalas"}
 
     # monta o mapa de permissões logo no início
     if getattr(admin_logado, "is_master", False):
@@ -3572,27 +3562,25 @@ def admin_dashboard():
     total_sest = 0.0
     total_encargos = 0.0
 
-    q = Lancamento.query if need_lancamentos else None
+    q = Lancamento.query
 
-    if need_lancamentos and restaurante_id:
+    if restaurante_id:
         q = q.filter(Lancamento.restaurante_id == restaurante_id)
-    if need_lancamentos and cooperado_id:
+    if cooperado_id:
         q = q.filter(Lancamento.cooperado_id == cooperado_id)
-    if need_lancamentos and data_inicio:
+    if data_inicio:
         q = q.filter(Lancamento.data >= data_inicio)
-    if need_lancamentos and data_fim:
+    if data_fim:
         q = q.filter(Lancamento.data <= data_fim)
 
-    if need_lancamentos:
-        lanc_base = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
-        if dows:
-            lancamentos = [l for l in lanc_base if l.data and _dow(l.data) in dows]
-        else:
-            lancamentos = lanc_base
-    else:
-        lanc_base = []
+    lanc_base = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
 
-    if need_lancamentos and considerar_periodo and restaurante_id:
+    if dows:
+        lancamentos = [l for l in lanc_base if l.data and _dow(l.data) in dows]
+    else:
+        lancamentos = lanc_base
+
+    if considerar_periodo and restaurante_id:
         rest = Restaurante.query.get(restaurante_id)
         if rest:
             mapa = {
@@ -3616,7 +3604,7 @@ def admin_dashboard():
     total_receitas = 0.0
     total_despesas = 0.0
 
-    if need_receitas_corp:
+    if True:
         rq = ReceitaCooperativa.query
         dq = DespesaCooperativa.query
 
@@ -3648,9 +3636,9 @@ def admin_dashboard():
     total_receitas_coop = 0.0
     total_despesas_coop = 0.0
     total_adiantamentos_coop = 0.0
-
     despesa_snapshot_map = {}
-    if need_receitas_coop:
+
+    if True:
         rq2 = ReceitaCooperado.query
         dq2 = DespesaCooperado.query
 
@@ -3719,52 +3707,49 @@ def admin_dashboard():
     restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
     _ensure_taxas_admin_receitas(restaurantes, months_back=0)
 
-    # Recarrega apenas quando a aba precisa de receitas/despesas da cooperativa.
-    if need_receitas_corp:
-        rq = ReceitaCooperativa.query
-        dq = DespesaCooperativa.query
-        if data_inicio:
-            rq = rq.filter(ReceitaCooperativa.data >= data_inicio)
-            dq = dq.filter(DespesaCooperativa.data >= data_inicio)
-        if data_fim:
-            rq = rq.filter(ReceitaCooperativa.data <= data_fim)
-            dq = dq.filter(DespesaCooperativa.data <= data_fim)
+    # Recarrega SEMPRE as receitas/despesas após gerar taxas automáticas.
+    # Assim, sem filtro manual, a aba de receitas já abre mostrando o mês atual,
+    # e com filtro continua respeitando o período informado.
+    rq = ReceitaCooperativa.query
+    dq = DespesaCooperativa.query
+    if data_inicio:
+        rq = rq.filter(ReceitaCooperativa.data >= data_inicio)
+        dq = dq.filter(DespesaCooperativa.data >= data_inicio)
+    if data_fim:
+        rq = rq.filter(ReceitaCooperativa.data <= data_fim)
+        dq = dq.filter(DespesaCooperativa.data <= data_fim)
 
-        receitas = rq.order_by(
-            ReceitaCooperativa.data.desc().nullslast(),
-            ReceitaCooperativa.id.desc(),
-        ).all()
-        despesas = dq.order_by(
-            DespesaCooperativa.data.desc(),
-            DespesaCooperativa.id.desc(),
-        ).all()
-        total_receitas = sum(_receita_total_real(r) for r in receitas)
-        total_despesas = sum((d.valor or 0.0) for d in despesas)
-        taxa_admin_rows, taxa_admin_totais = _build_taxa_admin_rows(receitas)
-        juros_arrecadados_total = round(sum((r['valor_multa'] + r['valor_juros']) for r in taxa_admin_rows if r['status'] == 'pago'), 2)
-    else:
-        taxa_admin_rows, taxa_admin_totais, juros_arrecadados_total = [], {}, 0.0
+    receitas = rq.order_by(
+        ReceitaCooperativa.data.desc().nullslast(),
+        ReceitaCooperativa.id.desc(),
+    ).all()
+    despesas = dq.order_by(
+        DespesaCooperativa.data.desc(),
+        DespesaCooperativa.id.desc(),
+    ).all()
+    total_receitas = sum(_receita_total_real(r) for r in receitas)
+    total_despesas = sum((d.valor or 0.0) for d in despesas)
+    taxa_admin_rows, taxa_admin_totais = _build_taxa_admin_rows(receitas)
+    juros_arrecadados_total = round(sum((r['valor_multa'] + r['valor_juros']) for r in taxa_admin_rows if r['status'] == 'pago'), 2)
     cooperados_map = {c.id: c for c in cooperados}
 
     # =========================
     # Documentos / status
     # =========================
-    docinfo_map = {c.id: _build_docinfo(c) for c in cooperados} if need_docs else {}
+    docinfo_map = {c.id: _build_docinfo(c) for c in cooperados}
     status_doc_por_coop = {
         c.id: {
             "cnh_ok": docinfo_map[c.id]["cnh"]["ok"],
             "placa_ok": docinfo_map[c.id]["placa"]["ok"],
         }
         for c in cooperados
-    } if need_docs else {}
+    }
 
     # =========================
     # Escalas
     # =========================
-    escalas_all = []
-    if need_escalas:
-        escalas_all = (
-            db.session.query(Escala)
+    escalas_all = (
+        db.session.query(Escala)
         .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
         .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
         .filter(
@@ -3837,6 +3822,10 @@ def admin_dashboard():
         })
 
     escala_alertas_1h = _build_escala_alertas_1h(escalas_all, cooperados_map)
+
+    # =========================
+    # Gráficos removidos para deixar o admin mais leve
+    # =========================
     chart_data_lancamentos_coop = {"labels": [], "values": []}
     chart_data_lancamentos_cooperados = {"labels": [], "values": []}
 
@@ -3973,7 +3962,7 @@ def admin_dashboard():
     historico_beneficios = []
     beneficios_view = []
 
-    if need_beneficios:
+    if True:
         if b_ini and not b_fim:
             b_fim = b_ini
         elif b_fim and not b_ini:
@@ -4050,7 +4039,7 @@ def admin_dashboard():
             "entrou": entrou,
         }
 
-    trocas_all = TrocaSolicitacao.query.order_by(TrocaSolicitacao.id.desc()).all() if need_trocas else []
+    trocas_all = TrocaSolicitacao.query.order_by(TrocaSolicitacao.id.desc()).all()
     trocas_pendentes = []
     trocas_historico = []
     trocas_historico_flat = []
@@ -4174,23 +4163,19 @@ def admin_dashboard():
         else:
             trocas_historico.append(item)
 
-    if need_config:
-        admins = (
-            Usuario.query
-            .filter_by(tipo="admin", is_master=False)
-            .order_by(Usuario.id.asc())
-            .all()
-        )
-        admin_permissions_map = {}
-        for adm in admins:
-            admin_permissions_map[adm.id] = get_admin_permissions_map(adm.id)
-        admins_secundarios = admins
-        admins_permissoes = admin_permissions_map
-    else:
-        admins = []
-        admin_permissions_map = {}
-        admins_secundarios = []
-        admins_permissoes = {}
+    admins = (
+        Usuario.query
+        .filter_by(tipo="admin", is_master=False)
+        .order_by(Usuario.id.asc())
+        .all()
+    )
+
+    admin_permissions_map = {}
+    for adm in admins:
+        admin_permissions_map[adm.id] = get_admin_permissions_map(adm.id)
+
+    admins_secundarios = admins
+    admins_permissoes = admin_permissions_map
 
     current_date = date.today()
     data_limite = date(current_date.year, 12, 31)
@@ -4297,18 +4282,6 @@ def admin_dashboard():
             resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
             resumo_totais["pend_programado"] += snap["a_descontar"]
 
-    resumo_frontend_data = {
-        "filter": {"ri": (data_inicio.isoformat() if data_inicio else ""), "rf": (data_fim.isoformat() if data_fim else ""), "rid": restaurante_id, "cid": cooperado_id},
-        "producoes": [{"id": l.id, "data": (l.data.isoformat() if getattr(l, "data", None) else ""), "valor": float(l.valor or 0), "cooperado_id": getattr(l, "cooperado_id", None), "cooperado_nome": ((l.cooperado.nome if getattr(l, "cooperado", None) else "") or ""), "restaurante_id": getattr(l, "restaurante_id", None), "restaurante_nome": ((l.restaurante.nome if getattr(l, "restaurante", None) else "") or "")} for l in lancamentos],
-        "rec_coop": [{"id": r.id, "data": (r.data.isoformat() if getattr(r, "data", None) else ""), "valor": float(r.valor or 0), "cooperado_id": getattr(r, "cooperado_id", None), "cooperado_nome": ((r.cooperado.nome if getattr(r, "cooperado", None) else "") or ""), "descricao": (r.descricao or "")} for r in receitas_coop],
-        "desp_coop": [{"id": d.id, "data": ((getattr(d, "data", None).isoformat()) if getattr(d, "data", None) else ""), "valor": float(d.valor or 0), "cooperado_id": getattr(d, "cooperado_id", None), "cooperado_nome": ((d.cooperado.nome if getattr(d, "cooperado", None) else getattr(d, "cooperado_nome", "")) or ""), "descricao": (d.descricao or ""), "adiantamento": bool(getattr(d, "eh_adiantamento", False)), "competencia_desconto": getattr(d, "competencia_desconto", "esta_semana") or "esta_semana", "valor_pago_manual": 0.0} for d in despesas_coop],
-        "rec_coop_corp": [{"id": r.id, "data": (((getattr(r, "data", None) or getattr(r, "data_lancamento", None)).isoformat()) if (getattr(r, "data", None) or getattr(r, "data_lancamento", None)) else ""), "valor": float((getattr(r, "valor", None) or getattr(r, "valor_total", None) or 0)), "descricao": (r.descricao or "")} for r in receitas],
-        "desp_coop_corp": [{"id": d.id, "data": (((getattr(d, "data", None) or getattr(d, "data_lancamento", None)).isoformat()) if (getattr(d, "data", None) or getattr(d, "data_lancamento", None)) else ""), "valor": float((getattr(d, "valor", None) or getattr(d, "valor_total", None) or 0)), "descricao": (d.descricao or "")} for d in despesas],
-        "beneficios_view": [{"id": b.get("id"), "data_inicial": (b.get("data_inicial").isoformat() if b.get("data_inicial") else ""), "data_final": (b.get("data_final").isoformat() if b.get("data_final") else ""), "data_lancamento": (b.get("data_lancamento").isoformat() if b.get("data_lancamento") else ""), "tipo": (b.get("tipo") or ""), "valor_total": float(b.get("valor_total") or 0)} for b in beneficios_view],
-        "coops": [{"id": c.id, "nome": c.nome} for c in cooperados],
-        "rests": [{"id": r.id, "nome": r.nome} for r in restaurantes],
-    }
-
     return render_template(
         "admin_dashboard.html",
         tab=active_tab,
@@ -4373,38 +4346,30 @@ def admin_dashboard():
         taxa_admin_rows=taxa_admin_rows,
         taxa_admin_totais=taxa_admin_totais,
         juros_arrecadados_total=juros_arrecadados_total,
-        resumo_frontend_data=resumo_frontend_data,
     )
     
-
-def _admin_redirect_back(default_tab="lancamentos", **extra):
-    src = request.form if request.method == "POST" else request.args
-    keep_keys = [
-        "tab", "data_inicio", "data_fim", "restaurante_id", "cooperado_id",
-        "considerar_periodo", "somente_pendentes", "escala_dia",
-        "escala_hist_inicio", "escala_hist_fim", "trocas_hist_inicio",
-        "trocas_hist_fim", "tipo", "page", "per_page"
-    ]
-    args = {}
-    for k in keep_keys:
-        v = src.get(k)
-        if v is not None and str(v) != "":
-            args[k] = v
-    if args.get("tab") not in ADMIN_ABAS:
-        args["tab"] = default_tab
-    for k, v in extra.items():
-        if v is not None and str(v) != "":
-            args[k] = v
-    return redirect(url_for("admin_dashboard", **args))
-
-
 # =========================
 # Navegação/Export util
 # =========================
 @app.route("/filtrar_lancamentos")
 @admin_required
 def filtrar_lancamentos():
-    return _admin_redirect_back("lancamentos")
+    qs = request.query_string.decode("utf-8")
+    base = url_for("admin_dashboard", tab="lancamentos")
+    joiner = "&" if qs else ""
+    return redirect(f"{base}{joiner}{qs}")
+
+
+def _admin_redirect(tab: str | None = None, **extra):
+    args = {}
+    for key in ("tab", "data_inicio", "data_fim", "restaurante_id", "cooperado_id", "escala_dia", "historico_inicio", "historico_fim"):
+        value = request.values.get(key)
+        if value not in (None, ""):
+            args[key] = value
+    if tab:
+        args["tab"] = tab
+    args.update({k: v for k, v in extra.items() if v not in (None, "")})
+    return redirect(url_for("admin_dashboard", **args))
 
 
 from datetime import datetime, date
@@ -4457,11 +4422,11 @@ def exportar_lancamentos():
     q = Lancamento.query
     if restaurante_id:
         q = q.filter(Lancamento.restaurante_id == restaurante_id)
-    if need_lancamentos and cooperado_id:
+    if cooperado_id:
         q = q.filter(Lancamento.cooperado_id == cooperado_id)
-    if need_lancamentos and data_inicio:
+    if data_inicio:
         q = q.filter(Lancamento.data >= data_inicio)
-    if need_lancamentos and data_fim:
+    if data_fim:
         q = q.filter(Lancamento.data <= data_fim)
 
     lancs = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
@@ -4864,7 +4829,7 @@ def admin_add_lancamento():
     db.session.add(l)
     db.session.commit()
     flash("Lançamento inserido.", "success")
-    return _admin_redirect_back("lancamentos")
+    return _admin_redirect("lancamentos")
 
 
 @app.route("/admin/lancamentos/<int:id>/edit", methods=["POST"])
@@ -4884,7 +4849,7 @@ def admin_edit_lancamento(id):
 
     db.session.commit()
     flash("Lançamento atualizado.", "success")
-    return _admin_redirect_back("lancamentos")
+    return _admin_redirect("lancamentos")
 
 
 @app.route("/admin/lancamentos/<int:id>/delete", methods=["GET", "POST"])
@@ -4902,7 +4867,7 @@ def admin_delete_lancamento(id):
     db.session.delete(l)
     db.session.commit()
     flash("Lançamento excluído.", "success")
-    return _admin_redirect_back("lancamentos")
+    return _admin_redirect("lancamentos")
 
 
 # =========================
@@ -5321,7 +5286,7 @@ def add_receita():
     db.session.add(r)
     db.session.commit()
     flash("Receita adicionada.", "success")
-    return _admin_redirect_back("receitas")
+    return _admin_redirect("receitas")
 
 
 @app.route("/receitas/<int:id>/edit", methods=["POST"])
@@ -5336,7 +5301,7 @@ def edit_receita(id):
 
     db.session.commit()
     flash("Receita atualizada.", "success")
-    return _admin_redirect_back("receitas")
+    return _admin_redirect("receitas")
 
 
 @app.route("/receitas/<int:id>/delete", methods=["GET", "POST"])
@@ -5346,7 +5311,7 @@ def delete_receita(id):
     db.session.delete(r)
     db.session.commit()
     flash("Receita excluída.", "success")
-    return _admin_redirect_back("receitas")
+    return _admin_redirect("receitas")
 
 
 @app.route("/receitas/taxas-admin/<int:id>/status", methods=["POST"])
@@ -5355,7 +5320,7 @@ def atualizar_taxa_admin_status(id):
     r = ReceitaCooperativa.query.get_or_404(id)
     if not getattr(r, 'auto_taxa_adm', False):
         flash("Registro não é taxa administrativa automática.", "warning")
-        return _admin_redirect_back("receitas")
+        return _admin_redirect("receitas")
 
     f = request.form
     status = (f.get("status_pagamento") or "nao_pago").strip().lower()
@@ -5394,7 +5359,7 @@ def atualizar_taxa_admin_status(id):
 
     db.session.commit()
     flash("Taxa administrativa atualizada.", "success")
-    return _admin_redirect_back("receitas")
+    return _admin_redirect("receitas")
 
 
 @app.route("/receitas/taxas-admin/lote", methods=["POST"])
@@ -5410,7 +5375,7 @@ def atualizar_taxa_admin_lote():
             pass
     if not ids_int:
         flash("Selecione pelo menos uma taxa administrativa.", "warning")
-        return _admin_redirect_back("receitas")
+        return _admin_redirect("receitas")
     regs = ReceitaCooperativa.query.filter(ReceitaCooperativa.id.in_(ids_int), ReceitaCooperativa.auto_taxa_adm.is_(True)).all()
     hoje = date.today()
     for r in regs:
@@ -5438,7 +5403,7 @@ def atualizar_taxa_admin_lote():
             r.data = getattr(r, 'data_vencimento', None) or r.data
     db.session.commit()
     flash("Taxas administrativas atualizadas em lote.", "success")
-    return _admin_redirect_back("receitas")
+    return _admin_redirect("receitas")
 
 
 @app.route("/despesas/add", methods=["POST"])
@@ -5455,7 +5420,7 @@ def add_despesa():
     db.session.add(d)
     db.session.commit()
     flash("Despesa adicionada.", "success")
-    return _admin_redirect_back("despesas")
+    return _admin_redirect("despesas")
 
 
 @app.route("/despesas/<int:id>/edit", methods=["POST"])
@@ -5470,7 +5435,7 @@ def edit_despesa(id):
 
     db.session.commit()
     flash("Despesa atualizada.", "success")
-    return _admin_redirect_back("despesas")
+    return _admin_redirect("despesas")
 
 
 @app.route("/despesas/<int:id>/delete", methods=["GET", "POST"])
@@ -5480,7 +5445,7 @@ def delete_despesa(id):
     db.session.delete(d)
     db.session.commit()
     flash("Despesa excluída.", "success")
-    return _admin_redirect_back("despesas")
+    return _admin_redirect("despesas")
 
 
 # =========================
@@ -5824,7 +5789,7 @@ def add_cooperado():
 
     if Usuario.query.filter_by(usuario=usuario_login).first():
         flash("Usuário já existente.", "warning")
-        return _admin_redirect_back("cooperados")
+        return _admin_redirect("cooperados")
 
     u = Usuario(usuario=usuario_login, tipo="cooperado", senha_hash="")
     u.set_password(senha)
@@ -5845,7 +5810,7 @@ def add_cooperado():
 
     db.session.commit()
     flash("Cooperado cadastrado.", "success")
-    return _admin_redirect_back("cooperados")
+    return _admin_redirect("cooperados")
 
 
 @app.route("/cooperados/<int:id>/edit", methods=["POST"])
@@ -5865,7 +5830,7 @@ def edit_cooperado(id):
     c.ultima_atualizacao = datetime.now()
     db.session.commit()
     flash("Cooperado atualizado.", "success")
-    return _admin_redirect_back("cooperados")
+    return _admin_redirect("cooperados")
 
 
 @app.route("/cooperados/<int:id>/delete", methods=["POST"])
@@ -5930,7 +5895,7 @@ def delete_cooperado(id):
         current_app.logger.exception(e)
         flash("Não foi possível excluir: existem vínculos ativos.", "danger")
 
-    return _admin_redirect_back("cooperados")
+    return _admin_redirect("cooperados")
 
 
 @app.route("/cooperados/<int:id>/reset_senha", methods=["POST"])
@@ -5942,12 +5907,12 @@ def reset_senha_cooperado(id):
 
     if ns != cs:
         flash("As senhas não conferem.", "warning")
-        return _admin_redirect_back("cooperados")
+        return _admin_redirect("cooperados")
 
     c.usuario_ref.set_password(ns)
     db.session.commit()
     flash("Senha do cooperado atualizada.", "success")
-    return _admin_redirect_back("cooperados")
+    return _admin_redirect("cooperados")
 
 
 @app.route("/restaurantes/add", methods=["POST"])
@@ -5969,7 +5934,7 @@ def add_restaurante():
 
     if Usuario.query.filter_by(usuario=usuario_login).first():
         flash("Usuário já existente.", "warning")
-        return _admin_redirect_back("restaurantes")
+        return _admin_redirect("restaurantes")
 
     u = Usuario(usuario=usuario_login, tipo="restaurante", senha_hash="")
     u.set_password(senha)
@@ -5995,7 +5960,7 @@ def add_restaurante():
     db.session.commit()
     _ensure_taxas_admin_receitas([r], months_back=0)
     flash("Estabelecimento cadastrado.", "success")
-    return _admin_redirect_back("restaurantes")
+    return _admin_redirect("restaurantes")
 
 
 @app.route("/restaurantes/<int:id>/edit", methods=["POST"])
@@ -6025,7 +5990,7 @@ def edit_restaurante(id):
     db.session.commit()
     _ensure_taxas_admin_receitas([r], months_back=0)
     flash("Estabelecimento atualizado.", "success")
-    return _admin_redirect_back("restaurantes")
+    return _admin_redirect("restaurantes")
 
 
 @app.route("/restaurantes/<int:id>/delete", methods=["POST"])
@@ -6067,7 +6032,7 @@ def delete_restaurante(id):
         current_app.logger.exception(e)
         flash("Não foi possível excluir: existem vínculos ativos.", "danger")
 
-    return _admin_redirect_back("restaurantes")
+    return _admin_redirect("restaurantes")
 
 
 @app.route("/restaurantes/<int:id>/reset_senha", methods=["POST"])
@@ -6079,12 +6044,12 @@ def reset_senha_restaurante(id):
 
     if ns != cs:
         flash("As senhas não conferem.", "warning")
-        return _admin_redirect_back("restaurantes")
+        return _admin_redirect("restaurantes")
 
     r.usuario_ref.set_password(ns)
     db.session.commit()
     flash("Senha do restaurante atualizada.", "success")
-    return _admin_redirect_back("restaurantes")
+    return _admin_redirect("restaurantes")
 
 
 @app.route("/rest/alterar-senha", methods=["POST"], endpoint="rest_alterar_senha")
@@ -6402,7 +6367,7 @@ def _import_backup_workbook(file_storage):
 def exportar_backup_admin_xlsx():
     if not is_admin_master():
         flash("Apenas o administrador master pode exportar o backup completo.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     arquivo = _backup_workbook_bytes()
     nome = f"backup_coopex_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
@@ -6418,16 +6383,16 @@ def exportar_backup_admin_xlsx():
 def importar_backup_admin_xlsx():
     if not is_admin_master():
         flash("Apenas o administrador master pode importar backup completo.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     arquivo = request.files.get("arquivo_backup")
     if not arquivo or not getattr(arquivo, "filename", ""):
         flash("Selecione um arquivo XLSX para importar.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     if not arquivo.filename.lower().endswith(".xlsx"):
         flash("Envie um arquivo no formato .xlsx.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     try:
         _import_backup_workbook(arquivo)
@@ -6441,7 +6406,7 @@ def importar_backup_admin_xlsx():
             pass
         flash(f"Falha ao importar backup: {e}", "danger")
 
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 # =========================
 # Configurações / Admins
@@ -6453,7 +6418,7 @@ def update_config():
     cfg.salario_minimo = request.form.get("salario_minimo", type=float) or 0.0
     db.session.commit()
     flash("Configuração atualizada.", "success")
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 
 @app.route("/admin/alterar_admin", methods=["POST"])
@@ -6463,7 +6428,7 @@ def alterar_admin():
 
     if not admin:
         flash("Administrador master não encontrado.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     novo_usuario = (request.form.get("usuario") or "").strip()
     nova = (request.form.get("nova_senha") or "").strip()
@@ -6471,7 +6436,7 @@ def alterar_admin():
 
     if not novo_usuario:
         flash("Informe o usuário do administrador.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     existente = Usuario.query.filter(
         Usuario.usuario == novo_usuario,
@@ -6479,19 +6444,19 @@ def alterar_admin():
     ).first()
     if existente:
         flash("Já existe outro usuário com esse login.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     admin.usuario = novo_usuario
 
     if nova or confirmar:
         if nova != confirmar:
             flash("As senhas não conferem.", "warning")
-            return _admin_redirect_back("config")
+            return _admin_redirect("config")
         admin.set_password(nova)
 
     db.session.commit()
     flash("Conta do administrador atualizada.", "success")
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 
 @app.route("/admin/admins/add", methods=["POST"])
@@ -6499,7 +6464,7 @@ def alterar_admin():
 def add_admin_secundario():
     if not is_admin_master():
         flash("Apenas o administrador master pode criar outros administradores.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     nome = (request.form.get("nome") or "").strip()
     usuario = (request.form.get("usuario") or "").strip()
@@ -6509,15 +6474,15 @@ def add_admin_secundario():
 
     if not nome or not usuario or not senha or not confirmar_senha:
         flash("Preencha nome, usuário, senha e confirmação.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     if senha != confirmar_senha:
         flash("As senhas não conferem.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     if Usuario.query.filter_by(usuario=usuario).first():
         flash("Já existe um usuário com esse login.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     u = Usuario(
         nome=nome,
@@ -6546,7 +6511,7 @@ def add_admin_secundario():
 
     db.session.commit()
     flash("Administrador criado com sucesso.", "success")
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 
 @app.route("/admin/admins/<int:usuario_id>/reset-password", methods=["POST"])
@@ -6554,30 +6519,30 @@ def add_admin_secundario():
 def admin_reset_admin_password(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode redefinir senhas de administradores.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("A senha do administrador master não pode ser redefinida por esta tela.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     nova_senha = (request.form.get("nova_senha") or "").strip()
     confirmar_senha = (request.form.get("confirmar_senha") or "").strip()
 
     if not nova_senha or not confirmar_senha:
         flash("Preencha a nova senha e a confirmação.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     if nova_senha != confirmar_senha:
         flash("As senhas não conferem.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     admin.set_password(nova_senha)
     db.session.commit()
 
     flash("Senha do administrador redefinida com sucesso.", "success")
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 
 @app.route(
@@ -6589,13 +6554,13 @@ def admin_reset_admin_password(usuario_id):
 def salvar_permissoes_admin(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode alterar permissões.", "danger")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("As permissões do administrador master não podem ser limitadas por esta tela.", "warning")
-        return _admin_redirect_back("config")
+        return _admin_redirect("config")
 
     for aba in ADMIN_ABAS.keys():
         perm = AdminPermissao.query.filter_by(usuario_id=admin.id, aba=aba).first()
@@ -6618,7 +6583,7 @@ def salvar_permissoes_admin(usuario_id):
 
     db.session.commit()
     flash("Permissões atualizadas com sucesso.", "success")
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 
 # =========================
@@ -6639,7 +6604,7 @@ def add_receita_coop():
     db.session.add(rc)
     db.session.commit()
     flash("Receita do cooperado adicionada.", "success")
-    return _admin_redirect_back("coop_receitas")
+    return _admin_redirect("coop_receitas")
 
 
 @app.route("/coop/receitas/<int:id>/edit", methods=["POST"])
@@ -6655,7 +6620,7 @@ def edit_receita_coop(id):
 
     db.session.commit()
     flash("Receita do cooperado atualizada.", "success")
-    return _admin_redirect_back("coop_receitas")
+    return _admin_redirect("coop_receitas")
 
 
 @app.route("/coop/receitas/<int:id>/delete", methods=["GET", "POST"])
@@ -6665,7 +6630,7 @@ def delete_receita_coop(id):
     db.session.delete(rc)
     db.session.commit()
     flash("Receita do cooperado excluída.", "success")
-    return _admin_redirect_back("coop_receitas")
+    return _admin_redirect("coop_receitas")
 
 
 def _competencia_ref(data_base, competencia_semana):
@@ -7019,7 +6984,7 @@ def edit_beneficio(id):
             b.valor_total = float(str(val_raw).replace(",", "."))
         except ValueError:
             flash("Valor total inválido.", "warning")
-            return _admin_redirect_back("beneficios")
+            return _admin_redirect("beneficios")
 
     # --- Recebedores ---
     ids_list   = _split_field(f, "recebedores_ids[]",   "recebedores_ids")
@@ -7047,7 +7012,7 @@ def edit_beneficio(id):
 
     db.session.commit()
     flash("Benefício atualizado.", "success")
-    return _admin_redirect_back("beneficios")
+    return _admin_redirect("beneficios")
 
 
 # 1) Excluir 1 (via modal, com hidden)
@@ -7057,12 +7022,12 @@ def excluir_beneficio_one():
     bid = request.form.get("beneficio_id", type=int)
     if not bid:
         flash("ID inválido.", "warning")
-        return _admin_redirect_back("beneficios")
+        return _admin_redirect("beneficios")
     b = BeneficioRegistro.query.get_or_404(bid)
     db.session.delete(b)
     db.session.commit()
     flash("Registro de benefício excluído.", "info")
-    return _admin_redirect_back("beneficios")
+    return _admin_redirect("beneficios")
 
 # 2) Excluir vários (bulk)
 @app.post("/beneficios/delete-bulk", endpoint="excluir_beneficio_bulk")
@@ -7071,13 +7036,13 @@ def excluir_beneficio_bulk():
     ids = {int(x) for x in request.form.getlist("ids[]") if str(x).isdigit()}
     if not ids:
         flash("Selecione ao menos um benefício.", "warning")
-        return _admin_redirect_back("beneficios")
+        return _admin_redirect("beneficios")
     qs = BeneficioRegistro.query.filter(BeneficioRegistro.id.in_(ids)).all()
     for b in qs:
         db.session.delete(b)
     db.session.commit()
     flash(f"{len(qs)} registro(s) excluído(s).", "info")
-    return _admin_redirect_back("beneficios")
+    return _admin_redirect("beneficios")
 
 # =========================
 # Benefícios — Criar/Ratear (Admin)
@@ -7388,7 +7353,7 @@ def upload_escala():
     file = request.files.get("file")
     if not file or not file.filename.lower().endswith(".xlsx"):
         flash("Envie um arquivo .xlsx válido.", "warning")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     # salva o arquivo (o nome não influencia a lógica)
     path = os.path.join(UPLOAD_DIR, secure_filename(file.filename))
@@ -7399,14 +7364,14 @@ def upload_escala():
         import openpyxl
     except Exception:
         flash("Arquivo salvo, mas falta a biblioteca 'openpyxl' (pip install openpyxl).", "warning")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     try:
         wb = openpyxl.load_workbook(path, data_only=True)
         ws = wb.active
     except Exception as e:
         flash(f"Erro ao abrir a planilha: {e}", "danger")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     # ------- helpers -------
     def _norm_local(s: str) -> str:
@@ -7513,7 +7478,7 @@ def upload_escala():
     if not col_login and not col_nome:
         flash("Não encontrei a coluna de LOGIN nem a de NOME do cooperado na planilha.", "danger")
         app.logger.warning(f"[ESCALAS] Falha header: headers_norm={headers_norm} (linha {header_row_idx})")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     # ------- cache entidades -------
     restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
@@ -7599,7 +7564,7 @@ def upload_escala():
     if not linhas_novas:
         app.logger.warning(f"[ESCALAS] Nenhuma linha importada. header_row={header_row_idx} headers_norm={headers_norm}")
         flash("Nada importado: nenhum registro válido encontrado. Verifique a linha dos cabeçalhos e os nomes das colunas.", "warning")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     # ------- SUBSTITUIÇÃO TOTAL -------
     try:
@@ -7647,7 +7612,7 @@ def upload_escala():
         app.logger.exception("Erro ao importar a escala")
         flash(f"Erro ao importar a escala: {e}", "danger")
 
-    return _admin_redirect_back("escalas")
+    return _admin_redirect("escalas")
 
 
 # =========================
@@ -7668,13 +7633,13 @@ def admin_escala_salvar(escala_id):
         if is_ajax:
             return jsonify({"ok": True, "message": message})
         flash(message, "success")
-        return _admin_redirect_back("escalas", escala_dia=redirect_day)
+        return _admin_redirect("escalas", escala_dia=redirect_day)
 
     def _reply_error(message, code=400):
         if is_ajax:
             return jsonify({"ok": False, "message": message}), code
         flash(message, "danger")
-        return _admin_redirect_back("escalas", escala_dia=redirect_day)
+        return _admin_redirect("escalas", escala_dia=redirect_day)
 
     try:
         before_nome = _safe_coop_nome_by_id(e.cooperado_id) or (e.cooperado_nome or "")
@@ -7753,10 +7718,8 @@ def admin_api_escala_alertas_1h():
     if not admin_logado or (admin_logado.tipo or "").strip().lower() != "admin":
         return jsonify({"ok": False, "message": "Não autorizado."}), 403
 
-    escalas_all = []
-    if need_escalas:
-        escalas_all = (
-            db.session.query(Escala)
+    escalas_all = (
+        db.session.query(Escala)
         .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
         .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
         .filter(
@@ -7795,7 +7758,7 @@ def escalas_purge_all():
     res = db.session.execute(sa_delete(Escala))
     db.session.commit()
     flash(f"Todas as escalas foram excluídas ({res.rowcount or 0}).", "info")
-    return _admin_redirect_back("escalas")
+    return _admin_redirect("escalas")
 
 @app.post("/escalas/purge_cooperado/<int:coop_id>")
 @admin_perm_required("escalas", "excluir")
@@ -7803,7 +7766,7 @@ def escalas_purge_cooperado(coop_id):
     res = db.session.execute(sa_delete(Escala).where(Escala.cooperado_id == coop_id))
     db.session.commit()
     flash(f"Escalas do cooperado removidas ({res.rowcount or 0}).", "info")
-    return _admin_redirect_back("escalas")
+    return _admin_redirect("escalas")
 
 @app.post("/escalas/purge_restaurante/<int:rest_id>")
 @admin_perm_required("escalas", "excluir")
@@ -7811,7 +7774,7 @@ def escalas_purge_restaurante(rest_id):
     res = db.session.execute(sa_delete(Escala).where(Escala.restaurante_id == rest_id))
     db.session.commit()
     flash(f"Escalas do restaurante #{rest_id} excluídas ({res.rowcount or 0}).", "info")
-    return _admin_redirect_back("escalas")
+    return _admin_redirect("escalas")
 
 # =========================
 # Trocas (Admin aprovar/recusar)
@@ -7822,18 +7785,18 @@ def admin_aprovar_troca(id):
     t = TrocaSolicitacao.query.get_or_404(id)
     if t.status != "pendente":
         flash("Esta solicitação já foi tratada.", "warning")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     orig_e = Escala.query.get(t.origem_escala_id)
     if not orig_e:
         flash("Plantão de origem inválido.", "danger")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     solicitante = Cooperado.query.get(t.solicitante_id)
     destinatario = Cooperado.query.get(t.destino_id)
     if not solicitante or not destinatario:
         flash("Cooperado(s) inválido(s) na solicitação.", "danger")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     wd_o = _weekday_from_data_str(orig_e.data)
     buck_o = _turno_bucket(orig_e.turno, orig_e.horario)
@@ -7849,7 +7812,7 @@ def admin_aprovar_troca(id):
             flash("Destino não possui plantões compatíveis (mesmo dia da semana e mesmo turno).", "danger")
         else:
             flash("Mais de um plantão compatível encontrado para o destino. Aprove pelo portal do cooperado (onde é possível escolher).", "warning")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     dest_e = candidatas[0]
 
@@ -7904,7 +7867,7 @@ def admin_aprovar_troca(id):
         )
     db.session.commit()
     flash("Troca aprovada e aplicada com sucesso!", "success")
-    return _admin_redirect_back("escalas")
+    return _admin_redirect("escalas")
 
 @app.post("/admin/trocas/<int:id>/recusar")
 @admin_perm_required("escalas", "editar")
@@ -7912,11 +7875,11 @@ def admin_recusar_troca(id):
     t = TrocaSolicitacao.query.get_or_404(id)
     if t.status != "pendente":
         flash("Esta solicitação já foi tratada.", "warning")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
     t.status = "recusada"
     db.session.commit()
     flash("Solicitação recusada.", "info")
-    return _admin_redirect_back("escalas")
+    return _admin_redirect("escalas")
 
 
 # --- Admin tool: aplicar ON DELETE CASCADE nas FKs (Postgres) ---
@@ -8029,7 +7992,7 @@ COMMIT;
     try:
         if _is_sqlite():
             flash("SQLite local: esta operação é específica de Postgres (sem efeito aqui).", "warning")
-            return _admin_redirect_back("config")
+            return _admin_redirect("config")
 
         db.session.execute(sa_text(sql))
         db.session.commit()
@@ -8037,7 +8000,7 @@ COMMIT;
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao aplicar FKs: {e}", "danger")
-    return _admin_redirect_back("config")
+    return _admin_redirect("config")
 
 
 # =========================
@@ -8062,7 +8025,7 @@ def editar_documentos(coop_id):
         c.ultima_atualizacao = datetime.now()
         db.session.commit()
         flash("Documentos atualizados.", "success")
-        return _admin_redirect_back("escalas")
+        return _admin_redirect("escalas")
 
     tpl = os.path.join("templates", "editar_documentos.html")
     hoje = date.today()
@@ -9003,10 +8966,8 @@ def portal_restaurante():
         semana_inicio = ref - timedelta(days=ref.weekday())
         dias_list = [semana_inicio + timedelta(days=i) for i in range(7)]
 
-    escalas_all = []
-    if need_escalas:
-        escalas_all = (
-            db.session.query(Escala)
+    escalas_all = (
+        db.session.query(Escala)
         .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
         .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
         .filter(
