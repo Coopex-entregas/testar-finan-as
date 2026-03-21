@@ -1639,7 +1639,7 @@ def admin_perm_required(aba: str, acao: str = "ver"):
                 flash("Você não tem permissão para essa ação.", "danger")
 
                 if getattr(u, "is_master", False):
-                    return redirect(url_for("admin_dashboard", tab="lancamentos"))
+                    return _admin_redirect_back("lancamentos")
 
                 abas_liberadas = [
                     nome_aba
@@ -3427,13 +3427,13 @@ def toggle_status_cooperado(id):
 def admin_toggle_admin_status(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode alterar o status de administradores.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("O administrador master não pode ser desativado por esta tela.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     admin.ativo = not bool(admin.ativo)
     db.session.commit()
@@ -3443,27 +3443,27 @@ def admin_toggle_admin_status(usuario_id):
     else:
         flash("Administrador desativado com sucesso.", "success")
 
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 @app.route("/admin/admins/<int:usuario_id>/delete", methods=["POST"])
 @admin_perm_required("config", "editar")
 def admin_delete_admin(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode excluir administradores.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("O administrador master não pode ser excluído.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     AdminPermissao.query.filter_by(usuario_id=admin.id).delete()
     db.session.delete(admin)
     db.session.commit()
 
     flash("Administrador excluído com sucesso.", "success")
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
     
 
 @app.route("/admin", methods=["GET"])
@@ -4376,16 +4376,35 @@ def admin_dashboard():
         resumo_frontend_data=resumo_frontend_data,
     )
     
+
+def _admin_redirect_back(default_tab="lancamentos", **extra):
+    src = request.form if request.method == "POST" else request.args
+    keep_keys = [
+        "tab", "data_inicio", "data_fim", "restaurante_id", "cooperado_id",
+        "considerar_periodo", "somente_pendentes", "escala_dia",
+        "escala_hist_inicio", "escala_hist_fim", "trocas_hist_inicio",
+        "trocas_hist_fim", "tipo", "page", "per_page"
+    ]
+    args = {}
+    for k in keep_keys:
+        v = src.get(k)
+        if v is not None and str(v) != "":
+            args[k] = v
+    if args.get("tab") not in ADMIN_ABAS:
+        args["tab"] = default_tab
+    for k, v in extra.items():
+        if v is not None and str(v) != "":
+            args[k] = v
+    return redirect(url_for("admin_dashboard", **args))
+
+
 # =========================
 # Navegação/Export util
 # =========================
 @app.route("/filtrar_lancamentos")
 @admin_required
 def filtrar_lancamentos():
-    qs = request.query_string.decode("utf-8")
-    base = url_for("admin_dashboard", tab="lancamentos")
-    joiner = "&" if qs else ""
-    return redirect(f"{base}{joiner}{qs}")
+    return _admin_redirect_back("lancamentos")
 
 
 from datetime import datetime, date
@@ -4845,7 +4864,7 @@ def admin_add_lancamento():
     db.session.add(l)
     db.session.commit()
     flash("Lançamento inserido.", "success")
-    return redirect(url_for("admin_dashboard", tab="lancamentos"))
+    return _admin_redirect_back("lancamentos")
 
 
 @app.route("/admin/lancamentos/<int:id>/edit", methods=["POST"])
@@ -4865,7 +4884,7 @@ def admin_edit_lancamento(id):
 
     db.session.commit()
     flash("Lançamento atualizado.", "success")
-    return redirect(url_for("admin_dashboard", tab="lancamentos"))
+    return _admin_redirect_back("lancamentos")
 
 
 @app.route("/admin/lancamentos/<int:id>/delete", methods=["GET", "POST"])
@@ -4883,7 +4902,7 @@ def admin_delete_lancamento(id):
     db.session.delete(l)
     db.session.commit()
     flash("Lançamento excluído.", "success")
-    return redirect(url_for("admin_dashboard", tab="lancamentos"))
+    return _admin_redirect_back("lancamentos")
 
 
 # =========================
@@ -5302,7 +5321,7 @@ def add_receita():
     db.session.add(r)
     db.session.commit()
     flash("Receita adicionada.", "success")
-    return redirect(url_for("admin_dashboard", tab="receitas"))
+    return _admin_redirect_back("receitas")
 
 
 @app.route("/receitas/<int:id>/edit", methods=["POST"])
@@ -5317,7 +5336,7 @@ def edit_receita(id):
 
     db.session.commit()
     flash("Receita atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="receitas"))
+    return _admin_redirect_back("receitas")
 
 
 @app.route("/receitas/<int:id>/delete", methods=["GET", "POST"])
@@ -5327,7 +5346,7 @@ def delete_receita(id):
     db.session.delete(r)
     db.session.commit()
     flash("Receita excluída.", "success")
-    return redirect(url_for("admin_dashboard", tab="receitas"))
+    return _admin_redirect_back("receitas")
 
 
 @app.route("/receitas/taxas-admin/<int:id>/status", methods=["POST"])
@@ -5336,7 +5355,7 @@ def atualizar_taxa_admin_status(id):
     r = ReceitaCooperativa.query.get_or_404(id)
     if not getattr(r, 'auto_taxa_adm', False):
         flash("Registro não é taxa administrativa automática.", "warning")
-        return redirect(url_for("admin_dashboard", tab="receitas"))
+        return _admin_redirect_back("receitas")
 
     f = request.form
     status = (f.get("status_pagamento") or "nao_pago").strip().lower()
@@ -5375,7 +5394,7 @@ def atualizar_taxa_admin_status(id):
 
     db.session.commit()
     flash("Taxa administrativa atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="receitas"))
+    return _admin_redirect_back("receitas")
 
 
 @app.route("/receitas/taxas-admin/lote", methods=["POST"])
@@ -5391,7 +5410,7 @@ def atualizar_taxa_admin_lote():
             pass
     if not ids_int:
         flash("Selecione pelo menos uma taxa administrativa.", "warning")
-        return redirect(url_for("admin_dashboard", tab="receitas"))
+        return _admin_redirect_back("receitas")
     regs = ReceitaCooperativa.query.filter(ReceitaCooperativa.id.in_(ids_int), ReceitaCooperativa.auto_taxa_adm.is_(True)).all()
     hoje = date.today()
     for r in regs:
@@ -5419,7 +5438,7 @@ def atualizar_taxa_admin_lote():
             r.data = getattr(r, 'data_vencimento', None) or r.data
     db.session.commit()
     flash("Taxas administrativas atualizadas em lote.", "success")
-    return redirect(url_for("admin_dashboard", tab="receitas"))
+    return _admin_redirect_back("receitas")
 
 
 @app.route("/despesas/add", methods=["POST"])
@@ -5436,7 +5455,7 @@ def add_despesa():
     db.session.add(d)
     db.session.commit()
     flash("Despesa adicionada.", "success")
-    return redirect(url_for("admin_dashboard", tab="despesas"))
+    return _admin_redirect_back("despesas")
 
 
 @app.route("/despesas/<int:id>/edit", methods=["POST"])
@@ -5451,7 +5470,7 @@ def edit_despesa(id):
 
     db.session.commit()
     flash("Despesa atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="despesas"))
+    return _admin_redirect_back("despesas")
 
 
 @app.route("/despesas/<int:id>/delete", methods=["GET", "POST"])
@@ -5461,7 +5480,7 @@ def delete_despesa(id):
     db.session.delete(d)
     db.session.commit()
     flash("Despesa excluída.", "success")
-    return redirect(url_for("admin_dashboard", tab="despesas"))
+    return _admin_redirect_back("despesas")
 
 
 # =========================
@@ -5805,7 +5824,7 @@ def add_cooperado():
 
     if Usuario.query.filter_by(usuario=usuario_login).first():
         flash("Usuário já existente.", "warning")
-        return redirect(url_for("admin_dashboard", tab="cooperados"))
+        return _admin_redirect_back("cooperados")
 
     u = Usuario(usuario=usuario_login, tipo="cooperado", senha_hash="")
     u.set_password(senha)
@@ -5826,7 +5845,7 @@ def add_cooperado():
 
     db.session.commit()
     flash("Cooperado cadastrado.", "success")
-    return redirect(url_for("admin_dashboard", tab="cooperados"))
+    return _admin_redirect_back("cooperados")
 
 
 @app.route("/cooperados/<int:id>/edit", methods=["POST"])
@@ -5846,7 +5865,7 @@ def edit_cooperado(id):
     c.ultima_atualizacao = datetime.now()
     db.session.commit()
     flash("Cooperado atualizado.", "success")
-    return redirect(url_for("admin_dashboard", tab="cooperados"))
+    return _admin_redirect_back("cooperados")
 
 
 @app.route("/cooperados/<int:id>/delete", methods=["POST"])
@@ -5911,7 +5930,7 @@ def delete_cooperado(id):
         current_app.logger.exception(e)
         flash("Não foi possível excluir: existem vínculos ativos.", "danger")
 
-    return redirect(url_for("admin_dashboard", tab="cooperados"))
+    return _admin_redirect_back("cooperados")
 
 
 @app.route("/cooperados/<int:id>/reset_senha", methods=["POST"])
@@ -5923,12 +5942,12 @@ def reset_senha_cooperado(id):
 
     if ns != cs:
         flash("As senhas não conferem.", "warning")
-        return redirect(url_for("admin_dashboard", tab="cooperados"))
+        return _admin_redirect_back("cooperados")
 
     c.usuario_ref.set_password(ns)
     db.session.commit()
     flash("Senha do cooperado atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="cooperados"))
+    return _admin_redirect_back("cooperados")
 
 
 @app.route("/restaurantes/add", methods=["POST"])
@@ -5950,7 +5969,7 @@ def add_restaurante():
 
     if Usuario.query.filter_by(usuario=usuario_login).first():
         flash("Usuário já existente.", "warning")
-        return redirect(url_for("admin_dashboard", tab="restaurantes"))
+        return _admin_redirect_back("restaurantes")
 
     u = Usuario(usuario=usuario_login, tipo="restaurante", senha_hash="")
     u.set_password(senha)
@@ -5976,7 +5995,7 @@ def add_restaurante():
     db.session.commit()
     _ensure_taxas_admin_receitas([r], months_back=0)
     flash("Estabelecimento cadastrado.", "success")
-    return redirect(url_for("admin_dashboard", tab="restaurantes"))
+    return _admin_redirect_back("restaurantes")
 
 
 @app.route("/restaurantes/<int:id>/edit", methods=["POST"])
@@ -6006,7 +6025,7 @@ def edit_restaurante(id):
     db.session.commit()
     _ensure_taxas_admin_receitas([r], months_back=0)
     flash("Estabelecimento atualizado.", "success")
-    return redirect(url_for("admin_dashboard", tab="restaurantes"))
+    return _admin_redirect_back("restaurantes")
 
 
 @app.route("/restaurantes/<int:id>/delete", methods=["POST"])
@@ -6048,7 +6067,7 @@ def delete_restaurante(id):
         current_app.logger.exception(e)
         flash("Não foi possível excluir: existem vínculos ativos.", "danger")
 
-    return redirect(url_for("admin_dashboard", tab="restaurantes"))
+    return _admin_redirect_back("restaurantes")
 
 
 @app.route("/restaurantes/<int:id>/reset_senha", methods=["POST"])
@@ -6060,12 +6079,12 @@ def reset_senha_restaurante(id):
 
     if ns != cs:
         flash("As senhas não conferem.", "warning")
-        return redirect(url_for("admin_dashboard", tab="restaurantes"))
+        return _admin_redirect_back("restaurantes")
 
     r.usuario_ref.set_password(ns)
     db.session.commit()
     flash("Senha do restaurante atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="restaurantes"))
+    return _admin_redirect_back("restaurantes")
 
 
 @app.route("/rest/alterar-senha", methods=["POST"], endpoint="rest_alterar_senha")
@@ -6383,7 +6402,7 @@ def _import_backup_workbook(file_storage):
 def exportar_backup_admin_xlsx():
     if not is_admin_master():
         flash("Apenas o administrador master pode exportar o backup completo.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     arquivo = _backup_workbook_bytes()
     nome = f"backup_coopex_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
@@ -6399,16 +6418,16 @@ def exportar_backup_admin_xlsx():
 def importar_backup_admin_xlsx():
     if not is_admin_master():
         flash("Apenas o administrador master pode importar backup completo.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     arquivo = request.files.get("arquivo_backup")
     if not arquivo or not getattr(arquivo, "filename", ""):
         flash("Selecione um arquivo XLSX para importar.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     if not arquivo.filename.lower().endswith(".xlsx"):
         flash("Envie um arquivo no formato .xlsx.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     try:
         _import_backup_workbook(arquivo)
@@ -6422,7 +6441,7 @@ def importar_backup_admin_xlsx():
             pass
         flash(f"Falha ao importar backup: {e}", "danger")
 
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 # =========================
 # Configurações / Admins
@@ -6434,7 +6453,7 @@ def update_config():
     cfg.salario_minimo = request.form.get("salario_minimo", type=float) or 0.0
     db.session.commit()
     flash("Configuração atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 
 @app.route("/admin/alterar_admin", methods=["POST"])
@@ -6444,7 +6463,7 @@ def alterar_admin():
 
     if not admin:
         flash("Administrador master não encontrado.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     novo_usuario = (request.form.get("usuario") or "").strip()
     nova = (request.form.get("nova_senha") or "").strip()
@@ -6452,7 +6471,7 @@ def alterar_admin():
 
     if not novo_usuario:
         flash("Informe o usuário do administrador.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     existente = Usuario.query.filter(
         Usuario.usuario == novo_usuario,
@@ -6460,19 +6479,19 @@ def alterar_admin():
     ).first()
     if existente:
         flash("Já existe outro usuário com esse login.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     admin.usuario = novo_usuario
 
     if nova or confirmar:
         if nova != confirmar:
             flash("As senhas não conferem.", "warning")
-            return redirect(url_for("admin_dashboard", tab="config"))
+            return _admin_redirect_back("config")
         admin.set_password(nova)
 
     db.session.commit()
     flash("Conta do administrador atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 
 @app.route("/admin/admins/add", methods=["POST"])
@@ -6480,7 +6499,7 @@ def alterar_admin():
 def add_admin_secundario():
     if not is_admin_master():
         flash("Apenas o administrador master pode criar outros administradores.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     nome = (request.form.get("nome") or "").strip()
     usuario = (request.form.get("usuario") or "").strip()
@@ -6490,15 +6509,15 @@ def add_admin_secundario():
 
     if not nome or not usuario or not senha or not confirmar_senha:
         flash("Preencha nome, usuário, senha e confirmação.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     if senha != confirmar_senha:
         flash("As senhas não conferem.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     if Usuario.query.filter_by(usuario=usuario).first():
         flash("Já existe um usuário com esse login.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     u = Usuario(
         nome=nome,
@@ -6527,7 +6546,7 @@ def add_admin_secundario():
 
     db.session.commit()
     flash("Administrador criado com sucesso.", "success")
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 
 @app.route("/admin/admins/<int:usuario_id>/reset-password", methods=["POST"])
@@ -6535,30 +6554,30 @@ def add_admin_secundario():
 def admin_reset_admin_password(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode redefinir senhas de administradores.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("A senha do administrador master não pode ser redefinida por esta tela.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     nova_senha = (request.form.get("nova_senha") or "").strip()
     confirmar_senha = (request.form.get("confirmar_senha") or "").strip()
 
     if not nova_senha or not confirmar_senha:
         flash("Preencha a nova senha e a confirmação.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     if nova_senha != confirmar_senha:
         flash("As senhas não conferem.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     admin.set_password(nova_senha)
     db.session.commit()
 
     flash("Senha do administrador redefinida com sucesso.", "success")
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 
 @app.route(
@@ -6570,13 +6589,13 @@ def admin_reset_admin_password(usuario_id):
 def salvar_permissoes_admin(usuario_id):
     if not is_admin_master():
         flash("Apenas o administrador master pode alterar permissões.", "danger")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     admin = Usuario.query.filter_by(id=usuario_id, tipo="admin").first_or_404()
 
     if admin.is_master:
         flash("As permissões do administrador master não podem ser limitadas por esta tela.", "warning")
-        return redirect(url_for("admin_dashboard", tab="config"))
+        return _admin_redirect_back("config")
 
     for aba in ADMIN_ABAS.keys():
         perm = AdminPermissao.query.filter_by(usuario_id=admin.id, aba=aba).first()
@@ -6599,7 +6618,7 @@ def salvar_permissoes_admin(usuario_id):
 
     db.session.commit()
     flash("Permissões atualizadas com sucesso.", "success")
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 
 # =========================
@@ -6620,7 +6639,7 @@ def add_receita_coop():
     db.session.add(rc)
     db.session.commit()
     flash("Receita do cooperado adicionada.", "success")
-    return redirect(url_for("admin_dashboard", tab="coop_receitas"))
+    return _admin_redirect_back("coop_receitas")
 
 
 @app.route("/coop/receitas/<int:id>/edit", methods=["POST"])
@@ -6636,7 +6655,7 @@ def edit_receita_coop(id):
 
     db.session.commit()
     flash("Receita do cooperado atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="coop_receitas"))
+    return _admin_redirect_back("coop_receitas")
 
 
 @app.route("/coop/receitas/<int:id>/delete", methods=["GET", "POST"])
@@ -6646,7 +6665,7 @@ def delete_receita_coop(id):
     db.session.delete(rc)
     db.session.commit()
     flash("Receita do cooperado excluída.", "success")
-    return redirect(url_for("admin_dashboard", tab="coop_receitas"))
+    return _admin_redirect_back("coop_receitas")
 
 
 def _competencia_ref(data_base, competencia_semana):
@@ -7000,7 +7019,7 @@ def edit_beneficio(id):
             b.valor_total = float(str(val_raw).replace(",", "."))
         except ValueError:
             flash("Valor total inválido.", "warning")
-            return redirect(url_for("admin_dashboard", tab="beneficios"))
+            return _admin_redirect_back("beneficios")
 
     # --- Recebedores ---
     ids_list   = _split_field(f, "recebedores_ids[]",   "recebedores_ids")
@@ -7028,7 +7047,7 @@ def edit_beneficio(id):
 
     db.session.commit()
     flash("Benefício atualizado.", "success")
-    return redirect(url_for("admin_dashboard", tab="beneficios"))
+    return _admin_redirect_back("beneficios")
 
 
 # 1) Excluir 1 (via modal, com hidden)
@@ -7038,12 +7057,12 @@ def excluir_beneficio_one():
     bid = request.form.get("beneficio_id", type=int)
     if not bid:
         flash("ID inválido.", "warning")
-        return redirect(url_for("admin_dashboard", tab="beneficios"))
+        return _admin_redirect_back("beneficios")
     b = BeneficioRegistro.query.get_or_404(bid)
     db.session.delete(b)
     db.session.commit()
     flash("Registro de benefício excluído.", "info")
-    return redirect(url_for("admin_dashboard", tab="beneficios"))
+    return _admin_redirect_back("beneficios")
 
 # 2) Excluir vários (bulk)
 @app.post("/beneficios/delete-bulk", endpoint="excluir_beneficio_bulk")
@@ -7052,13 +7071,13 @@ def excluir_beneficio_bulk():
     ids = {int(x) for x in request.form.getlist("ids[]") if str(x).isdigit()}
     if not ids:
         flash("Selecione ao menos um benefício.", "warning")
-        return redirect(url_for("admin_dashboard", tab="beneficios"))
+        return _admin_redirect_back("beneficios")
     qs = BeneficioRegistro.query.filter(BeneficioRegistro.id.in_(ids)).all()
     for b in qs:
         db.session.delete(b)
     db.session.commit()
     flash(f"{len(qs)} registro(s) excluído(s).", "info")
-    return redirect(url_for("admin_dashboard", tab="beneficios"))
+    return _admin_redirect_back("beneficios")
 
 # =========================
 # Benefícios — Criar/Ratear (Admin)
@@ -7369,7 +7388,7 @@ def upload_escala():
     file = request.files.get("file")
     if not file or not file.filename.lower().endswith(".xlsx"):
         flash("Envie um arquivo .xlsx válido.", "warning")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     # salva o arquivo (o nome não influencia a lógica)
     path = os.path.join(UPLOAD_DIR, secure_filename(file.filename))
@@ -7380,14 +7399,14 @@ def upload_escala():
         import openpyxl
     except Exception:
         flash("Arquivo salvo, mas falta a biblioteca 'openpyxl' (pip install openpyxl).", "warning")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     try:
         wb = openpyxl.load_workbook(path, data_only=True)
         ws = wb.active
     except Exception as e:
         flash(f"Erro ao abrir a planilha: {e}", "danger")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     # ------- helpers -------
     def _norm_local(s: str) -> str:
@@ -7494,7 +7513,7 @@ def upload_escala():
     if not col_login and not col_nome:
         flash("Não encontrei a coluna de LOGIN nem a de NOME do cooperado na planilha.", "danger")
         app.logger.warning(f"[ESCALAS] Falha header: headers_norm={headers_norm} (linha {header_row_idx})")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     # ------- cache entidades -------
     restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
@@ -7580,7 +7599,7 @@ def upload_escala():
     if not linhas_novas:
         app.logger.warning(f"[ESCALAS] Nenhuma linha importada. header_row={header_row_idx} headers_norm={headers_norm}")
         flash("Nada importado: nenhum registro válido encontrado. Verifique a linha dos cabeçalhos e os nomes das colunas.", "warning")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     # ------- SUBSTITUIÇÃO TOTAL -------
     try:
@@ -7628,7 +7647,7 @@ def upload_escala():
         app.logger.exception("Erro ao importar a escala")
         flash(f"Erro ao importar a escala: {e}", "danger")
 
-    return redirect(url_for("admin_dashboard", tab="escalas"))
+    return _admin_redirect_back("escalas")
 
 
 # =========================
@@ -7649,13 +7668,13 @@ def admin_escala_salvar(escala_id):
         if is_ajax:
             return jsonify({"ok": True, "message": message})
         flash(message, "success")
-        return redirect(url_for("admin_dashboard", tab="escalas", escala_dia=redirect_day))
+        return _admin_redirect_back("escalas", escala_dia=redirect_day)
 
     def _reply_error(message, code=400):
         if is_ajax:
             return jsonify({"ok": False, "message": message}), code
         flash(message, "danger")
-        return redirect(url_for("admin_dashboard", tab="escalas", escala_dia=redirect_day))
+        return _admin_redirect_back("escalas", escala_dia=redirect_day)
 
     try:
         before_nome = _safe_coop_nome_by_id(e.cooperado_id) or (e.cooperado_nome or "")
@@ -7776,7 +7795,7 @@ def escalas_purge_all():
     res = db.session.execute(sa_delete(Escala))
     db.session.commit()
     flash(f"Todas as escalas foram excluídas ({res.rowcount or 0}).", "info")
-    return redirect(url_for("admin_dashboard", tab="escalas"))
+    return _admin_redirect_back("escalas")
 
 @app.post("/escalas/purge_cooperado/<int:coop_id>")
 @admin_perm_required("escalas", "excluir")
@@ -7784,7 +7803,7 @@ def escalas_purge_cooperado(coop_id):
     res = db.session.execute(sa_delete(Escala).where(Escala.cooperado_id == coop_id))
     db.session.commit()
     flash(f"Escalas do cooperado removidas ({res.rowcount or 0}).", "info")
-    return redirect(url_for("admin_dashboard", tab="escalas"))
+    return _admin_redirect_back("escalas")
 
 @app.post("/escalas/purge_restaurante/<int:rest_id>")
 @admin_perm_required("escalas", "excluir")
@@ -7792,7 +7811,7 @@ def escalas_purge_restaurante(rest_id):
     res = db.session.execute(sa_delete(Escala).where(Escala.restaurante_id == rest_id))
     db.session.commit()
     flash(f"Escalas do restaurante #{rest_id} excluídas ({res.rowcount or 0}).", "info")
-    return redirect(url_for("admin_dashboard", tab="escalas"))
+    return _admin_redirect_back("escalas")
 
 # =========================
 # Trocas (Admin aprovar/recusar)
@@ -7803,18 +7822,18 @@ def admin_aprovar_troca(id):
     t = TrocaSolicitacao.query.get_or_404(id)
     if t.status != "pendente":
         flash("Esta solicitação já foi tratada.", "warning")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     orig_e = Escala.query.get(t.origem_escala_id)
     if not orig_e:
         flash("Plantão de origem inválido.", "danger")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     solicitante = Cooperado.query.get(t.solicitante_id)
     destinatario = Cooperado.query.get(t.destino_id)
     if not solicitante or not destinatario:
         flash("Cooperado(s) inválido(s) na solicitação.", "danger")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     wd_o = _weekday_from_data_str(orig_e.data)
     buck_o = _turno_bucket(orig_e.turno, orig_e.horario)
@@ -7830,7 +7849,7 @@ def admin_aprovar_troca(id):
             flash("Destino não possui plantões compatíveis (mesmo dia da semana e mesmo turno).", "danger")
         else:
             flash("Mais de um plantão compatível encontrado para o destino. Aprove pelo portal do cooperado (onde é possível escolher).", "warning")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     dest_e = candidatas[0]
 
@@ -7885,7 +7904,7 @@ def admin_aprovar_troca(id):
         )
     db.session.commit()
     flash("Troca aprovada e aplicada com sucesso!", "success")
-    return redirect(url_for("admin_dashboard", tab="escalas"))
+    return _admin_redirect_back("escalas")
 
 @app.post("/admin/trocas/<int:id>/recusar")
 @admin_perm_required("escalas", "editar")
@@ -7893,11 +7912,11 @@ def admin_recusar_troca(id):
     t = TrocaSolicitacao.query.get_or_404(id)
     if t.status != "pendente":
         flash("Esta solicitação já foi tratada.", "warning")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
     t.status = "recusada"
     db.session.commit()
     flash("Solicitação recusada.", "info")
-    return redirect(url_for("admin_dashboard", tab="escalas"))
+    return _admin_redirect_back("escalas")
 
 
 # --- Admin tool: aplicar ON DELETE CASCADE nas FKs (Postgres) ---
@@ -8010,7 +8029,7 @@ COMMIT;
     try:
         if _is_sqlite():
             flash("SQLite local: esta operação é específica de Postgres (sem efeito aqui).", "warning")
-            return redirect(url_for("admin_dashboard", tab="config"))
+            return _admin_redirect_back("config")
 
         db.session.execute(sa_text(sql))
         db.session.commit()
@@ -8018,7 +8037,7 @@ COMMIT;
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao aplicar FKs: {e}", "danger")
-    return redirect(url_for("admin_dashboard", tab="config"))
+    return _admin_redirect_back("config")
 
 
 # =========================
@@ -8043,7 +8062,7 @@ def editar_documentos(coop_id):
         c.ultima_atualizacao = datetime.now()
         db.session.commit()
         flash("Documentos atualizados.", "success")
-        return redirect(url_for("admin_dashboard", tab="escalas"))
+        return _admin_redirect_back("escalas")
 
     tpl = os.path.join("templates", "editar_documentos.html")
     hoje = date.today()
