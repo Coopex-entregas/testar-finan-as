@@ -2388,18 +2388,6 @@ def avisos_list():
     avisos_nao_lidos_count = sum(1 for a in avisos if not getattr(a, "lido", False))
     current_year = datetime.now().year
 
-    resumo_frontend_data = {
-        "filter": {"ri": ri if "ri" in locals() else (data_inicio.isoformat() if data_inicio else ""), "rf": rf if "rf" in locals() else (data_fim.isoformat() if data_fim else ""), "rid": restaurante_id, "cid": cooperado_id},
-        "producoes": [{"id": l.id, "data": (l.data.isoformat() if getattr(l, "data", None) else ""), "valor": float(l.valor or 0), "cooperado_id": getattr(l, "cooperado_id", None), "cooperado_nome": ((l.cooperado.nome if getattr(l, "cooperado", None) else "") or ""), "restaurante_id": getattr(l, "restaurante_id", None), "restaurante_nome": ((l.restaurante.nome if getattr(l, "restaurante", None) else "") or "")} for l in lancamentos],
-        "rec_coop": [{"id": r.id, "data": (r.data.isoformat() if getattr(r, "data", None) else ""), "valor": float(r.valor or 0), "cooperado_id": getattr(r, "cooperado_id", None), "cooperado_nome": ((r.cooperado.nome if getattr(r, "cooperado", None) else "") or ""), "descricao": (r.descricao or "")} for r in receitas_coop],
-        "desp_coop": [{"id": d.id, "data": ((getattr(d, "data", None).isoformat()) if getattr(d, "data", None) else ""), "valor": float(d.valor or 0), "cooperado_id": getattr(d, "cooperado_id", None), "cooperado_nome": ((d.cooperado.nome if getattr(d, "cooperado", None) else getattr(d, "cooperado_nome", "")) or ""), "descricao": (d.descricao or ""), "adiantamento": bool(getattr(d, "eh_adiantamento", False)), "competencia_desconto": getattr(d, "competencia_desconto", "esta_semana") or "esta_semana", "valor_pago_manual": 0.0} for d in despesas_coop],
-        "rec_coop_corp": [{"id": r.id, "data": (((getattr(r, "data", None) or getattr(r, "data_lancamento", None)).isoformat()) if (getattr(r, "data", None) or getattr(r, "data_lancamento", None)) else ""), "valor": float((getattr(r, "valor", None) or getattr(r, "valor_total", None) or 0)), "descricao": (r.descricao or "")} for r in receitas],
-        "desp_coop_corp": [{"id": d.id, "data": (((getattr(d, "data", None) or getattr(d, "data_lancamento", None)).isoformat()) if (getattr(d, "data", None) or getattr(d, "data_lancamento", None)) else ""), "valor": float((getattr(d, "valor", None) or getattr(d, "valor_total", None) or 0)), "descricao": (d.descricao or "")} for d in despesas],
-        "beneficios_view": [{"id": b.get("id"), "data_inicial": (b.get("data_inicial").isoformat() if b.get("data_inicial") else ""), "data_final": (b.get("data_final").isoformat() if b.get("data_final") else ""), "data_lancamento": (b.get("data_lancamento").isoformat() if b.get("data_lancamento") else ""), "tipo": (b.get("tipo") or ""), "valor_total": float(b.get("valor_total") or 0)} for b in beneficios_view],
-        "coops": [{"id": c.id, "nome": c.nome} for c in cooperados],
-        "rests": [{"id": r.id, "nome": r.nome} for r in restaurantes],
-    }
-
     return render_template(
         "portal_cooperado_avisos.html",
         avisos=avisos,
@@ -4308,6 +4296,18 @@ def admin_dashboard():
             resumo_totais["a_receber"] += max(0.0, snap["disponivel_auto_restante"])
             resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
             resumo_totais["pend_programado"] += snap["a_descontar"]
+
+    resumo_frontend_data = {
+        "filter": {"ri": (data_inicio.isoformat() if data_inicio else ""), "rf": (data_fim.isoformat() if data_fim else ""), "rid": restaurante_id, "cid": cooperado_id},
+        "producoes": [{"id": l.id, "data": (l.data.isoformat() if getattr(l, "data", None) else ""), "valor": float(l.valor or 0), "cooperado_id": getattr(l, "cooperado_id", None), "cooperado_nome": ((l.cooperado.nome if getattr(l, "cooperado", None) else "") or ""), "restaurante_id": getattr(l, "restaurante_id", None), "restaurante_nome": ((l.restaurante.nome if getattr(l, "restaurante", None) else "") or "")} for l in lancamentos],
+        "rec_coop": [{"id": r.id, "data": (r.data.isoformat() if getattr(r, "data", None) else ""), "valor": float(r.valor or 0), "cooperado_id": getattr(r, "cooperado_id", None), "cooperado_nome": ((r.cooperado.nome if getattr(r, "cooperado", None) else "") or ""), "descricao": (r.descricao or "")} for r in receitas_coop],
+        "desp_coop": [{"id": d.id, "data": ((getattr(d, "data", None).isoformat()) if getattr(d, "data", None) else ""), "valor": float(d.valor or 0), "cooperado_id": getattr(d, "cooperado_id", None), "cooperado_nome": ((d.cooperado.nome if getattr(d, "cooperado", None) else getattr(d, "cooperado_nome", "")) or ""), "descricao": (d.descricao or ""), "adiantamento": bool(getattr(d, "eh_adiantamento", False)), "competencia_desconto": getattr(d, "competencia_desconto", "esta_semana") or "esta_semana", "valor_pago_manual": 0.0} for d in despesas_coop],
+        "rec_coop_corp": [{"id": r.id, "data": (((getattr(r, "data", None) or getattr(r, "data_lancamento", None)).isoformat()) if (getattr(r, "data", None) or getattr(r, "data_lancamento", None)) else ""), "valor": float((getattr(r, "valor", None) or getattr(r, "valor_total", None) or 0)), "descricao": (r.descricao or "")} for r in receitas],
+        "desp_coop_corp": [{"id": d.id, "data": (((getattr(d, "data", None) or getattr(d, "data_lancamento", None)).isoformat()) if (getattr(d, "data", None) or getattr(d, "data_lancamento", None)) else ""), "valor": float((getattr(d, "valor", None) or getattr(d, "valor_total", None) or 0)), "descricao": (d.descricao or "")} for d in despesas],
+        "beneficios_view": [{"id": b.get("id"), "data_inicial": (b.get("data_inicial").isoformat() if b.get("data_inicial") else ""), "data_final": (b.get("data_final").isoformat() if b.get("data_final") else ""), "data_lancamento": (b.get("data_lancamento").isoformat() if b.get("data_lancamento") else ""), "tipo": (b.get("tipo") or ""), "valor_total": float(b.get("valor_total") or 0)} for b in beneficios_view],
+        "coops": [{"id": c.id, "nome": c.nome} for c in cooperados],
+        "rests": [{"id": r.id, "nome": r.nome} for r in restaurantes],
+    }
 
     return render_template(
         "admin_dashboard.html",
