@@ -1103,7 +1103,23 @@
                 </thead>
 
                 <tbody>
-                  <tr><td colspan="9" class="text-center text-muted">Carregando…</td></tr>
+                  {% if resumo_coop_rows %}
+                    {% for r in resumo_coop_rows %}
+                    <tr>
+                      <td class="text-break">{{ r.nome or '—' }}</td>
+                      <td class="text-end">R$ {{ '%.2f'|format(r.prod|default(0)) }}</td>
+                      <td class="text-end">R$ {{ '%.2f'|format(r.inss4|default(0)) }}</td>
+                      <td class="text-end">R$ {{ '%.2f'|format(r.sest05|default(0)) }}</td>
+                      <td class="text-end text-success">R$ {{ '%.2f'|format(r.rec|default(0)) }}</td>
+                      <td class="text-end text-danger">R$ {{ '%.2f'|format(r.des|default(0)) }}</td>
+                      <td class="text-end text-danger">R$ {{ '%.2f'|format(r.adiant|default(0)) }}</td>
+                      <td class="text-end fw-bold">R$ {{ '%.2f'|format(r.a_receber|default(r.aReceber|default(0))) }}</td>
+                      <td class="text-end fw-bold text-warning">R$ {{ '%.2f'|format((r.saldo_pendente|default(r.saldoPendente|default(0))) + (r.pend_programado|default(r.pendProgramado|default(0)))) }}</td>
+                    </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr><td colspan="9" class="text-center text-muted">Sem dados no filtro.</td></tr>
+                  {% endif %}
                 </tbody>
 
                 <tfoot>
@@ -1124,28 +1140,6 @@
           </div>
         </div>
 
-        <!-- Gráficos -->
-        <div class="row g-2 mt-3">
-          <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3">
-              <h6 class="mb-2 d-flex align-items-center gap-1">
-                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
-                <span>Evolução Mensal — Cooperativa</span>
-              </h6>
-              <canvas id="chartCoop"></canvas>
-            </div>
-          </div>
-          <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3">
-              <h6 class="mb-2 d-flex align-items-center gap-1">
-                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
-                <span>Evolução Mensal — Cooperados</span>
-              </h6>
-              <canvas id="chartCooperados"></canvas>
-            </div>
-          </div>
-        </div>
-
         <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
@@ -1153,7 +1147,6 @@
                 <span class="resumo-pill-label"><i class="bi bi-shop"></i></span>
                 <span>Top Estabelecimentos (Produções no período)</span>
               </h6>
-              <canvas id="chartEstabs"></canvas>
               <div class="table-responsive mt-3">
                 <table class="table table-sm table-bordered table-hover align-middle" id="tblTopEstabsResumo">
                   <thead class="table-light">
@@ -1164,7 +1157,17 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><td colspan="3" class="text-center text-muted">Carregando…</td></tr>
+                    {% if top_estabs_rows %}
+                      {% for item in top_estabs_rows %}
+                      <tr>
+                        <td>{{ item.rank }}</td>
+                        <td class="text-break">{{ item.nome }}</td>
+                        <td class="text-end fw-semibold">R$ {{ '%.2f'|format(item.valor|default(0)) }}</td>
+                      </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr><td colspan="3" class="text-center text-muted">Sem dados no período.</td></tr>
+                    {% endif %}
                   </tbody>
                 </table>
               </div>
@@ -1282,10 +1285,6 @@
           font-weight: 600;
         }
 
-        #resumo canvas {
-          max-height: 280px;
-        }
-
         @media (max-width: 576px) {
           #resumo .resumo-shell{
             border-radius: 1rem;
@@ -1302,464 +1301,10 @@
       </style>
     </section>
 
-    <!-- Dados (seguros p/ JS) + Scripts (Chart.js + XLSX) -->
     <script>
     (function(){
-      // ---- Filtros atuais (mais seguro com tojson) ----
       const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
 
-      // ---- Bases compactas ----
-      const PRODUCOES = [
-        {% for l in _producoes %}
-          {
-            id: {{ l.id }},
-            data: "{{ ymd(l.data) }}",
-            valor: {{ (l.valor or 0)|float }},
-            cooperado_id: {{ l.cooperado.id if l.cooperado else 'null' }},
-            cooperado_nome: "{{ (l.cooperado.nome if l.cooperado else '')|e }}",
-            restaurante_id: {{ l.restaurante.id if l.restaurante else 'null' }},
-            restaurante_nome: "{{ (l.restaurante.nome if l.restaurante else '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const REC_COOP = [
-        {% for r in receitas_coop %}
-          {
-            id: {{ r.id }},
-            data: "{{ ymd(r.data) }}",
-            valor: {{ (r.valor or 0)|float }},
-            cooperado_id: {{ r.cooperado.id if r.cooperado else 'null' }},
-            cooperado_nome: "{{ (r.cooperado.nome if r.cooperado else '')|e }}",
-            descricao: "{{ (r.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      // Adiantamento deve aparecer na coluna própria do resumo e no total do rodapé.
-      const DESP_COOP = [
-        {% for d in despesas_coop %}
-          {% set _is_ad_js = 1 if (d.eh_adiantamento if d.eh_adiantamento is defined else (d.adiantamento in [True, 1, '1', 'true', 'True', 'on'])) else 0 %}
-          {% set _abat_manual = namespace(v=0) %}{% if d.abatimentos is defined %}{% for ab in d.abatimentos %}{% set _abat_manual.v = _abat_manual.v + (ab.valor or 0) %}{% endfor %}{% endif %}
-          {
-            id: {{ d.id }},
-            data: "{{ ymd(d.data) }}",
-            valor: {{ (d.valor or 0)|float }},
-            cooperado_id: {{ d.cooperado.id if d.cooperado else 'null' }},
-            cooperado_nome: "{{ (d.cooperado.nome if d.cooperado else (d.cooperado_nome if d.cooperado_nome is defined else ''))|e }}",
-            descricao: "{{ (d.descricao or '')|e }}",
-            adiantamento: {{ _is_ad_js }},
-            competencia_desconto: "{{ (d.competencia_desconto if d.competencia_desconto is defined else 'esta_semana')|e }}",
-            valor_pago_manual: {{ _abat_manual.v|float }}
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      // Receitas e Despesas da COOPERATIVA
-      const REC_COOP_CORP = [
-        {% for r in _rec_coop_corp %}
-          {
-            id: {{ r.id }},
-            data: "{{ ymd(r.data or r.data_lancamento) }}",
-            valor: {{ (r.valor|default(r.valor_total, true)|default(0, true))|float }},
-            descricao: "{{ (r.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const DESP_COOP_CORP = [
-        {% for d in _desp_coop_corp %}
-          {
-            id: {{ d.id }},
-            data: "{{ ymd(d.data or d.data_lancamento) }}",
-            valor: {{ (d.valor|default(d.valor_total, true)|default(0, true))|float }},
-            descricao: "{{ (d.descricao or '')|e }}"
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const BENEFICIOS_VIEW = [
-        {% for b in beneficios_view %}
-          {
-            id: {{ b.id }},
-            data_inicial: "{{ ymd(b.data_inicial) }}",
-            data_final: "{{ ymd(b.data_final) }}",
-            data_lancamento: "{{ ymd(b.data_lancamento) }}",
-            tipo: "{{ (b.tipo or '')|e }}",
-            valor_total: {{ (b.valor_total or 0)|float }}
-          }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const COOPS = [
-        {% for c in cooperados %}
-          { id: {{ c.id }}, nome: "{{ c.nome|e }}" }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      const RESTS = [
-        {% for r in rest_list %}
-          { id: {{ r.id }}, nome: "{{ r.nome|e }}" }{{ "," if not loop.last }}
-        {% endfor %}
-      ];
-
-      // ---- Utils ----
-      const parseISO = s => (!s) ? null : new Date(s + 'T00:00:00');
-
-      const fmtBR = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-
-      const inRange = (d) => {
-        const di = parseISO(FILTER.ri);
-        const df = parseISO(FILTER.rf);
-        const x  = parseISO(d);
-        if (!x) return true;
-        if (di && x < di) return false;
-        if (df && x > df) return false;
-        return true;
-      };
-
-      const byMonthKey = d => {
-        if (!d) return '';
-        const dt = parseISO(d);
-        if (!dt || isNaN(dt)) return '';
-        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
-      };
-
-      const sumBy = (arr, fn) => arr.reduce((acc, cur) => acc + (+fn(cur) || 0), 0);
-
-      // ---- Filtro ----
-      const filteredPROD = PRODUCOES.filter(p =>
-        inRange(p.data) &&
-        (FILTER.cid == null || p.cooperado_id === FILTER.cid) &&
-        (FILTER.rid == null || p.restaurante_id === FILTER.rid)
-      );
-
-      const filteredRECp = REC_COOP.filter(r =>
-        inRange(r.data) &&
-        (FILTER.cid == null || r.cooperado_id === FILTER.cid)
-      );
-
-      const filteredDESp = DESP_COOP.filter(d => {
-        if (!inRange(d.data)) return false;
-        if (FILTER.cid == null) return true;
-
-        if (d.cooperado_id === FILTER.cid) return true;
-
-        const coop = COOPS.find(c => c.id === FILTER.cid);
-        if (coop && d.cooperado_nome) {
-          return d.cooperado_nome.trim().toUpperCase() === coop.nome.trim().toUpperCase();
-        }
-        return false;
-      });
-
-      const filteredRECc = REC_COOP_CORP.filter(r => inRange(r.data));
-      const filteredDESc = DESP_COOP_CORP.filter(d => inRange(d.data));
-      const filteredBEN  = BENEFICIOS_VIEW.filter(b => inRange(b.data_lancamento || b.data_final || b.data_inicial));
-
-      // ---- KPIs (front) ----
-      const qtdEntregasPeriodo   = filteredPROD.length;
-      const kpiProd         = sumBy(filteredPROD, x => x.valor);
-      const kpiINSS4        = kpiProd * 0.04;
-      const kpiSEST05       = kpiProd * 0.005;
-      const kpiEncargos45   = kpiINSS4 + kpiSEST05;
-
-      const kpiRecCoopCorp  = sumBy(filteredRECc, x => x.valor);
-      const kpiDespCoopCorp = sumBy(filteredDESc, x => x.valor);
-
-      const kpiRecCooperadosFull = kpiProd + sumBy(filteredRECp, x => x.valor);
-
-      const kpiDespCooperados = sumBy(filteredDESp.filter(x => !x.adiantamento), x => x.valor);
-      const kpiResultadoCoop      = kpiRecCoopCorp - kpiDespCoopCorp;
-      const kpiTotalReceitasGeral = kpiRecCoopCorp + kpiRecCooperadosFull;
-      const kpiBeneficiosRateados = sumBy(filteredBEN, x => x.valor_total);
-
-      // aplica KPIs na tela
-      document.getElementById('kpiTotalProds').textContent         = fmtBR(kpiProd);
-      document.getElementById('kpiINSS4').textContent              = fmtBR(kpiINSS4);
-      document.getElementById('kpiSEST05').textContent             = fmtBR(kpiSEST05);
-      document.getElementById('kpiRecCoopCorp').textContent        = fmtBR(kpiRecCoopCorp);
-      document.getElementById('kpiDespCoopCorp').textContent       = fmtBR(kpiDespCoopCorp);
-      document.getElementById('kpiRecCooperadosFull').textContent  = fmtBR(kpiRecCooperadosFull);
-      document.getElementById('kpiDespCooperados').textContent     = fmtBR(kpiDespCooperados);
-      document.getElementById('kpiTotalReceitasGeral').textContent = fmtBR(kpiTotalReceitasGeral);
-      const benEl = document.getElementById('kpiBeneficiosRateados');
-      if (benEl) benEl.textContent = fmtBR(kpiBeneficiosRateados);
-
-      const resEl = document.getElementById('kpiResultadoCoop');
-      if (resEl) {
-        resEl.textContent = fmtBR(kpiResultadoCoop);
-        resEl.classList.remove('text-success', 'text-danger');
-        resEl.classList.add(kpiResultadoCoop < 0 ? 'text-danger' : 'text-success');
-      }
-
-      // ---- chave segura para agrupar cooperado mesmo sem id ----
-      const coopKey = (id, nome) => {
-        if (id != null) return `id:${id}`;
-        if (nome && nome.trim()) return `nome:${nome.trim().toUpperCase()}`;
-        return 'nome:—';
-      };
-
-      // ---- Função de resumo (usada na tabela e no XLSX) ----
-      const RESUMO_COOP_ROWS = {{ resumo_coop_rows|default([])|tojson|safe }};
-      // ---- Tabela Resumo por Cooperado (render backend) ----
-      (function renderResumoCoopTable() {
-        const rows  = Array.isArray(RESUMO_COOP_ROWS) ? RESUMO_COOP_ROWS : [];
-        const tbody = document.querySelector('#tblResumoCoop tbody');
-        if (!tbody) return;
-
-        tbody.innerHTML = rows.length
-          ? ''
-          : '<tr><td colspan="9" class="text-center text-muted">Sem dados no filtro.</td></tr>';
-
-        let tProd = 0, tINSS4 = 0, tSEST05 = 0, tRec = 0, tDes = 0, tAdiant = 0, tReceber = 0, tPend = 0;
-
-        rows.forEach(r => {
-          const prod = Number(r.prod || 0);
-          const inss4 = Number(r.inss4 || 0);
-          const sest05 = Number(r.sest05 || 0);
-          const rec = Number(r.rec || 0);
-          const des = Number(r.des || 0);
-          const adiant = Number(r.adiant || 0);
-          const aReceber = Number(r.a_receber ?? r.aReceber ?? 0);
-          const saldoPend = Number(r.saldo_pendente ?? r.saldoPendente ?? 0);
-
-          tProd += prod;
-          tINSS4 += inss4;
-          tSEST05 += sest05;
-          tRec += rec;
-          tDes += des;
-          tAdiant += adiant;
-          tReceber += aReceber;
-          tPend += saldoPend;
-
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="text-break">${r.nome || '—'}</td>
-            <td class="text-end">${fmtBR(prod)}</td>
-            <td class="text-end">${fmtBR(inss4)}</td>
-            <td class="text-end">${fmtBR(sest05)}</td>
-            <td class="text-end text-success">${fmtBR(rec)}</td>
-            <td class="text-end text-danger">${fmtBR(des)}</td>
-            <td class="text-end text-danger">${fmtBR(adiant)}</td>
-            <td class="text-end fw-bold">${fmtBR(aReceber)}</td>
-            <td class="text-end fw-bold text-warning">${fmtBR(saldoPend)}</td>`;
-          tbody.appendChild(tr);
-        });
-
-        const setText = (id, value) => {
-          const el = document.getElementById(id);
-          if (el) el.textContent = fmtBR(value);
-        };
-
-        setText('tProd', tProd);
-        setText('tINSS4', tINSS4);
-        setText('tSEST05', tSEST05);
-        setText('tRec', tRec);
-        setText('tDes', tDes);
-
-        const tAdEl = document.getElementById('tAdiant');
-        if (tAdEl) tAdEl.textContent = fmtBR(tAdiant);
-
-        const tLiqEl = document.getElementById('tLiq');
-        if (tLiqEl) tLiqEl.textContent = fmtBR(tReceber);
-
-        const tPendEl = document.getElementById('tPend');
-        if (tPendEl) tPendEl.textContent = fmtBR(tPend);
-
-        const adiantEl = document.getElementById('kpiQtdEntregasPeriodo');
-        if (adiantEl) adiantEl.textContent = fmtBR(tAdiant);
-
-        const pendEl = document.getElementById('kpiTicketMedioPeriodo');
-        if (pendEl) pendEl.textContent = fmtBR(tPend);
-      })();
-
-      // ---- Gráficos (Chart.js via CDN) ----
-      const ensureChart = () => new Promise(res => {
-        if (window.Chart) return res();
-        const s = document.createElement('script');
-        s.src = "https://cdn.jsdelivr.net/npm/chart.js";
-        s.onload = () => res();
-        document.head.appendChild(s);
-      });
-
-      ensureChart().then(() => {
-        const moneyTick = (value) => 'R$ ' + Number(value || 0).toLocaleString('pt-BR', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-
-        const baseChartOptions = {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { usePointStyle: true, padding: 18, boxWidth: 10, boxHeight: 10 }
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: (ctx) => {
-                  const label = ctx.dataset.label || '';
-                  const v = ctx.parsed.y ?? ctx.parsed.x ?? 0;
-                  return `${label}: ${moneyTick(v)}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { display: false } },
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(148,163,184,0.25)' },
-              ticks: { callback: (v) => moneyTick(v) }
-            }
-          }
-        };
-
-        // Cooperativa: Receitas vs Despesas por mês
-        (function () {
-          const byM = {};
-          filteredRECc.forEach(r => {
-            const k = byMonthKey(r.data) || '—';
-            (byM[k] ??= { r: 0, d: 0 }).r += r.valor;
-          });
-          filteredDESc.forEach(d => {
-            const k = byMonthKey(d.data) || '—';
-            (byM[k] ??= { r: 0, d: 0 }).d += d.valor;
-          });
-
-          const labels = Object.keys(byM).sort();
-          const rec    = labels.map(k => byM[k].r);
-          const des    = labels.map(k => byM[k].d);
-
-          const ctx = document.getElementById('chartCoop');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels,
-              datasets: [
-                { label: 'Receitas', data: rec, backgroundColor: 'rgba(37, 99, 235, 0.75)', borderRadius: 6 },
-                { label: 'Despesas', data: des, backgroundColor: 'rgba(239, 68, 68, 0.75)', borderRadius: 6 }
-              ]
-            },
-            options: baseChartOptions
-          });
-        })();
-
-        // Cooperados: Produções + INSS 4% + SEST 0,5% por mês
-        (function () {
-          const byM = {};
-          filteredPROD.forEach(p => {
-            const k = byMonthKey(p.data) || '—';
-            (byM[k] ??= { prod: 0, inss4: 0, sest05: 0 }).prod += p.valor;
-            byM[k].inss4  += p.valor * 0.04;
-            byM[k].sest05 += p.valor * 0.005;
-          });
-
-          const labels = Object.keys(byM).sort();
-          const prod   = labels.map(k => byM[k].prod);
-          const inss4  = labels.map(k => byM[k].inss4);
-          const sest05 = labels.map(k => byM[k].sest05);
-
-          const ctx = document.getElementById('chartCooperados');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: 'Produções (bruto)',
-                  data: prod,
-                  borderColor: 'rgba(37, 99, 235, 1)',
-                  backgroundColor: 'rgba(37, 99, 235, 0.18)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                },
-                {
-                  label: 'INSS (4,0%)',
-                  data: inss4,
-                  borderColor: 'rgba(56, 189, 248, 1)',
-                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                },
-                {
-                  label: 'SEST/SENAT (0,5%)',
-                  data: sest05,
-                  borderColor: 'rgba(2, 132, 199, 1)',
-                  backgroundColor: 'rgba(2, 132, 199, 0.10)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                }
-              ]
-            },
-            options: baseChartOptions
-          });
-        })();
-
-        // Estabelecimentos — barra horizontal + tabela real
-        (function () {
-          const byR = {};
-          filteredPROD.forEach(p => {
-            if (p.restaurante_id == null && !p.restaurante_nome) return;
-            const nome = (p.restaurante_nome || '—').trim() || '—';
-            byR[nome] = (byR[nome] || 0) + (+p.valor || 0);
-          });
-
-          const entries = Object.entries(byR)
-            .map(([nome, valor]) => ({ nome, valor: +(valor || 0) }))
-            .sort((a, b) => b.valor - a.valor)
-            .slice(0, 20);
-
-          const labels = entries.map(e => e.nome);
-          const vals   = entries.map(e => Number(e.valor.toFixed(2)));
-
-          const tbody = document.querySelector('#tblTopEstabsResumo tbody');
-          if (tbody) {
-            tbody.innerHTML = entries.length ? '' : '<tr><td colspan="3" class="text-center text-muted">Sem dados no período.</td></tr>';
-            entries.forEach((item, idx) => {
-              const tr = document.createElement('tr');
-              tr.innerHTML = `
-                <td>${idx + 1}</td>
-                <td class="text-break">${item.nome}</td>
-                <td class="text-end fw-semibold">${fmtBR(item.valor)}</td>
-              `;
-              tbody.appendChild(tr);
-            });
-          }
-
-          const ctx = document.getElementById('chartEstabs');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels,
-              datasets: [{ label: 'Produções por Estabelecimento', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
-            },
-            options: { ...baseChartOptions, plugins: { ...baseChartOptions.plugins, legend: { display: false } }, indexAxis: 'y' }
-          });
-        })();
-      });
-
-      // ---- Atalhos de filtro mensal / anual ----
       (function(){
         const form = document.querySelector('#resumo form[method="GET"]');
         if (!form) return;
@@ -1797,118 +1342,13 @@
         });
       })();
 
-      // ---- Exportação XLSX ----
-      const ensureXLSX = () => new Promise(res => {
-        if (window.XLSX) return res();
-        const s = document.createElement('script');
-        s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-        s.onload = () => res();
-        document.head.appendChild(s);
+      document.getElementById('btnExportXLSX')?.addEventListener('click', () => {
+        const url = new URL({{ url_for('admin_exportar_resumo_xlsx')|tojson }}, window.location.origin);
+        const current = new URLSearchParams(window.location.search);
+        current.set('tab', 'resumo');
+        url.search = current.toString();
+        window.location.href = url.toString();
       });
-
-      function aoaToSheet(title, aoa, wb) {
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        XLSX.utils.book_append_sheet(wb, ws, title);
-      }
-
-      function safeSheetName(s) {
-        const cleaned = String(s || '').replace(/[:\\/?*\[\]]/g, ' ').slice(0, 31).trim();
-        return cleaned || 'Planilha';
-      }
-
-      async function exportXLSX() {
-        await ensureXLSX();
-        const wb = XLSX.utils.book_new();
-
-        const k1 = [
-          ['Dashboard Financeiro — Filtro'],
-          ['Período', FILTER.ri || 'início', '→', FILTER.rf || 'hoje'],
-          ['Estabelecimento', FILTER.rid == null ? 'Todos' : (RESTS.find(r => r.id === FILTER.rid)?.nome || FILTER.rid)],
-          ['Cooperado', FILTER.cid == null ? 'Todos' : (COOPS.find(c => c.id === FILTER.cid)?.nome || FILTER.cid)],
-          [],
-          ['KPIs'],
-          ['Total Produções', kpiProd],
-          ['INSS (4,0%)', kpiINSS4],
-          ['SEST/SENAT (0,5%)', kpiSEST05],
-          ['Encargos (4,5%)', kpiEncargos45],
-          ['Receitas Coop (período)', kpiRecCoopCorp],
-          ['Despesas Coop (período)', kpiDespCoopCorp],
-          ['Receitas Cooperados (Prod + Rec)', kpiRecCooperadosFull],
-          ['Despesas Cooperados (período)', kpiDespCooperados],
-          ['Total de Receitas (Geral)', kpiTotalReceitasGeral],
-          ['Resultado Cooperativa', kpiResultadoCoop],
-        ];
-        aoaToSheet('KPIs', k1, wb);
-
-        const prodAOA = [['Data', 'Cooperado', 'Estabelecimento', 'Valor', 'INSS(4,0%)', 'SEST/SENAT(0,5%)', 'Encargos(4,5%)', 'Líquido']];
-        filteredPROD.forEach(p => {
-          const inss4  = p.valor * 0.04;
-          const sest05 = p.valor * 0.005;
-          const enc    = inss4 + sest05;
-          const liq    = p.valor - enc;
-          prodAOA.push([p.data, p.cooperado_nome || '', p.restaurante_nome || '', p.valor, inss4, sest05, enc, liq]);
-        });
-        aoaToSheet('Producoes', prodAOA, wb);
-
-        const recCAOA = [['Data', 'Descrição', 'Valor']];
-        filteredRECc.forEach(r => recCAOA.push([r.data, r.descricao || '', r.valor]));
-        aoaToSheet('Receitas_Coop', recCAOA, wb);
-
-        const desCAOA = [['Data', 'Descrição', 'Valor']];
-        filteredDESc.forEach(d => desCAOA.push([d.data, d.descricao || '', d.valor]));
-        aoaToSheet('Despesas_Coop', desCAOA, wb);
-
-        const byR = {};
-        filteredPROD.forEach(p => {
-          if (p.restaurante_nome)
-            byR[p.restaurante_nome] = (byR[p.restaurante_nome] || 0) + p.valor;
-        });
-        const estAOA = [['Estabelecimento', 'Total Produções (R$)']];
-        Object.entries(byR).sort((a, b) => b[1] - a[1]).forEach(([nome, v]) => estAOA.push([nome, v]));
-        aoaToSheet('Estabelecimentos', estAOA, wb);
-
-        // >>> COM ADIANTAMENTOS no XLSX também
-        const resumoAOA = [['Cooperado', 'Produções', 'INSS (4,0%)', 'SEST/SENAT (0,5%)', 'Receitas', 'Despesas', 'Adiantamento', 'A Receber', 'Saldo Pendente']];
-        let tProd = 0, tINSS4 = 0, tSEST05 = 0, tRec = 0, tDes = 0, tAdi = 0, tLiq = 0, tPend = 0;
-
-        RESUMO_COOP_ROWS.forEach(r => {
-          tProd += r.prod; tINSS4 += r.inss4; tSEST05 += r.sest05; tRec += r.rec; tDes += r.des; tAdi += r.adiant; tLiq += r.aReceber; tPend += r.saldoPendente;
-          resumoAOA.push([r.nome || '—', r.prod, r.inss4, r.sest05, r.rec, r.des, r.adiant, r.aReceber, r.saldoPendente]);
-        });
-
-        resumoAOA.push(['TOTAIS', tProd, tINSS4, tSEST05, tRec, tDes, tAdi, tLiq, tPend]);
-        aoaToSheet('Resumo_Cooperados', resumoAOA, wb);
-
-        const byC_rec = {};
-        filteredRECp.forEach(r => {
-          const k = r.cooperado_nome || `ID ${r.cooperado_id}`;
-          (byC_rec[k] ||= []).push(r);
-        });
-        Object.keys(byC_rec).forEach(nome => {
-          const aoa = [['Data', 'Descrição', 'Valor']];
-          byC_rec[nome].forEach(r => aoa.push([r.data, r.descricao || '', r.valor]));
-          aoaToSheet(safeSheetName('Receita - ' + nome), aoa, wb);
-        });
-
-        const byC_des = {};
-        filteredDESp.forEach(d => {
-          const k = d.cooperado_nome || `ID ${d.cooperado_id}`;
-          (byC_des[k] ||= []).push(d);
-        });
-        Object.keys(byC_des).forEach(nome => {
-          const aoa = [['Data', 'Descrição', 'Valor']];
-          byC_des[nome].forEach(d => {
-            aoa.push([d.data, d.descricao || '', d.valor]);
-          });
-          aoaToSheet(safeSheetName('Despesa - ' + nome), aoa, wb);
-        });
-
-        const now = new Date();
-        const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        XLSX.writeFile(wb, `Dashboard_Coopex_${ymd}.xlsx`);
-      }
-
-      document.getElementById('btnExportXLSX')?.addEventListener('click', exportXLSX);
     })();
     </script>
 </section>
