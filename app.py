@@ -3466,8 +3466,6 @@ def admin_delete_admin(usuario_id):
     return redirect(url_for("admin_dashboard", tab="config"))
     
 
-@app.route("/admin", methods=["GET"])
-@admin_required
 def _is_cooperado_ativo(coop) -> bool:
     try:
         u = getattr(coop, "usuario_ref", None)
@@ -3498,6 +3496,8 @@ def _restaurantes_todos_ordenados() -> list[Restaurante]:
 def _restaurantes_ativos_ordenados() -> list[Restaurante]:
     return [r for r in _restaurantes_todos_ordenados() if _is_restaurante_ativo(r)]
 
+@app.route("/admin", methods=["GET"])
+@admin_required
 def admin_dashboard():
     args = request.args
     active_tab = (args.get("tab") or "lancamentos").strip().lower()
