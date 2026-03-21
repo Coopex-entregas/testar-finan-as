@@ -1176,27 +1176,6 @@
 
         <!-- Gráficos -->
         <div class="row g-2 mt-3">
-          <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3">
-              <h6 class="mb-2 d-flex align-items-center gap-1">
-                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
-                <span>Evolução Mensal — Cooperativa</span>
-              </h6>
-              <canvas id="chartCoop"></canvas>
-            </div>
-          </div>
-          <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3">
-              <h6 class="mb-2 d-flex align-items-center gap-1">
-                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
-                <span>Evolução Mensal — Cooperados</span>
-              </h6>
-              <canvas id="chartCooperados"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
               <h6 class="mb-2 d-flex align-items-center gap-1">
@@ -1669,101 +1648,6 @@
             }
           }
         };
-
-        // Cooperativa: Receitas vs Despesas por mês
-        (function () {
-          const byM = {};
-          filteredRECc.forEach(r => {
-            const k = byMonthKey(r.data) || '—';
-            (byM[k] ??= { r: 0, d: 0 }).r += r.valor;
-          });
-          filteredDESc.forEach(d => {
-            const k = byMonthKey(d.data) || '—';
-            (byM[k] ??= { r: 0, d: 0 }).d += d.valor;
-          });
-
-          const labels = Object.keys(byM).sort();
-          const rec    = labels.map(k => byM[k].r);
-          const des    = labels.map(k => byM[k].d);
-
-          const ctx = document.getElementById('chartCoop');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels,
-              datasets: [
-                { label: 'Receitas', data: rec, backgroundColor: 'rgba(37, 99, 235, 0.75)', borderRadius: 6 },
-                { label: 'Despesas', data: des, backgroundColor: 'rgba(239, 68, 68, 0.75)', borderRadius: 6 }
-              ]
-            },
-            options: baseChartOptions
-          });
-        })();
-
-        // Cooperados: Produções + INSS 4% + SEST 0,5% por mês
-        (function () {
-          const byM = {};
-          filteredPROD.forEach(p => {
-            const k = byMonthKey(p.data) || '—';
-            (byM[k] ??= { prod: 0, inss4: 0, sest05: 0 }).prod += p.valor;
-            byM[k].inss4  += p.valor * 0.04;
-            byM[k].sest05 += p.valor * 0.005;
-          });
-
-          const labels = Object.keys(byM).sort();
-          const prod   = labels.map(k => byM[k].prod);
-          const inss4  = labels.map(k => byM[k].inss4);
-          const sest05 = labels.map(k => byM[k].sest05);
-
-          const ctx = document.getElementById('chartCooperados');
-          if (!ctx) return;
-
-          new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: 'Produções (bruto)',
-                  data: prod,
-                  borderColor: 'rgba(37, 99, 235, 1)',
-                  backgroundColor: 'rgba(37, 99, 235, 0.18)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                },
-                {
-                  label: 'INSS (4,0%)',
-                  data: inss4,
-                  borderColor: 'rgba(56, 189, 248, 1)',
-                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                },
-                {
-                  label: 'SEST/SENAT (0,5%)',
-                  data: sest05,
-                  borderColor: 'rgba(2, 132, 199, 1)',
-                  backgroundColor: 'rgba(2, 132, 199, 0.10)',
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 4
-                }
-              ]
-            },
-            options: baseChartOptions
-          });
-        })();
-
         // Estabelecimentos — barra horizontal + tabela real
         (function () {
           const byR = {};
@@ -3096,12 +2980,19 @@
       <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
       <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
         <div class="col-md-4">
-          <label class="form-label">Cooperados</label>
-          <select class="form-select form-select-sm" name="cooperado_ids[]" multiple size="5">
-            <option value="all">Todos</option>
+          <label class="form-label">Cooperados para lançar</label>
+          <select class="form-select form-select-sm" name="cooperado_ids[]" multiple size="8">
+            <option value="all">Todos os ativos</option>
             {% for coop in cooperados %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
           </select>
-          <small class="text-muted">Use Ctrl/Cmd para múltiplos.</small>
+          <small class="text-muted">Selecione “Todos os ativos” ou escolha cooperados específicos.</small>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Excluir do rateio</label>
+          <select class="form-select form-select-sm" name="cooperado_excluir_ids[]" multiple size="8">
+            {% for coop in cooperados %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
+          </select>
+          <small class="text-muted">Use quando lançar para todos, mas alguns não pagam.</small>
         </div>
 
         <div class="col-md-3">
