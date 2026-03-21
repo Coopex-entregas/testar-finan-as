@@ -4299,6 +4299,99 @@ def admin_dashboard():
             resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
             resumo_totais["pend_programado"] += snap["a_descontar"]
 
+    def _iso_date(v):
+        if not v:
+            return ""
+        if hasattr(v, "strftime"):
+            try:
+                return v.strftime("%Y-%m-%d")
+            except Exception:
+                return str(v)
+        return str(v)
+
+    def _money(v):
+        try:
+            return round(float(v or 0.0), 2)
+        except Exception:
+            return 0.0
+
+    resumo_frontend_data = {
+        "producoes": [
+            {
+                "id": l.id,
+                "data": _iso_date(getattr(l, "data", None)),
+                "valor": _money(getattr(l, "valor", 0.0)),
+                "cooperado_id": getattr(l, "cooperado_id", None),
+                "cooperado_nome": (getattr(getattr(l, "cooperado", None), "nome", "") or ""),
+                "restaurante_id": getattr(l, "restaurante_id", None),
+                "restaurante_nome": (getattr(getattr(l, "restaurante", None), "nome", "") or ""),
+            }
+            for l in (lancamentos or [])
+        ],
+        "receitas_coop": [
+            {
+                "id": r.id,
+                "data": _iso_date(getattr(r, "data", None)),
+                "valor": _money(getattr(r, "valor", 0.0)),
+                "cooperado_id": getattr(r, "cooperado_id", None),
+                "cooperado_nome": (getattr(getattr(r, "cooperado", None), "nome", "") or ""),
+                "descricao": getattr(r, "descricao", "") or "",
+            }
+            for r in (receitas_coop or [])
+        ],
+        "despesas_coop": [
+            {
+                "id": d.id,
+                "data": _iso_date(getattr(d, "data", None)),
+                "valor": _money(getattr(d, "valor", 0.0)),
+                "cooperado_id": getattr(d, "cooperado_id", None),
+                "cooperado_nome": (getattr(getattr(d, "cooperado", None), "nome", "") or getattr(d, "cooperado_nome", "") or ""),
+                "descricao": getattr(d, "descricao", "") or "",
+                "adiantamento": bool(getattr(d, "eh_adiantamento", False)),
+                "competencia_desconto": getattr(d, "competencia_desconto", "esta_semana") or "esta_semana",
+                "valor_pago_manual": _money(sum((getattr(ab, "valor", 0.0) or 0.0) for ab in (getattr(d, "abatimentos", None) or []))),
+            }
+            for d in (despesas_coop or [])
+        ],
+        "receitas_corp": [
+            {
+                "id": r.id,
+                "data": _iso_date(getattr(r, "data", None) or getattr(r, "data_lancamento", None)),
+                "valor": _money(getattr(r, "valor", None) if getattr(r, "valor", None) is not None else getattr(r, "valor_total", 0.0)),
+                "descricao": getattr(r, "descricao", "") or "",
+            }
+            for r in (receitas or [])
+        ],
+        "despesas_corp": [
+            {
+                "id": d.id,
+                "data": _iso_date(getattr(d, "data", None) or getattr(d, "data_lancamento", None)),
+                "valor": _money(getattr(d, "valor", None) if getattr(d, "valor", None) is not None else getattr(d, "valor_total", 0.0)),
+                "descricao": getattr(d, "descricao", "") or "",
+            }
+            for d in (despesas or [])
+        ],
+        "beneficios": [
+            {
+                "id": b.get("id"),
+                "data_inicial": _iso_date(b.get("data_inicial")),
+                "data_final": _iso_date(b.get("data_final")),
+                "data_lancamento": _iso_date(b.get("data_lancamento")),
+                "tipo": b.get("tipo", "") or "",
+                "valor_total": _money(b.get("valor_total", 0.0)),
+            }
+            for b in (beneficios_view or [])
+        ],
+        "coops": [
+            {"id": c.id, "nome": c.nome or ""}
+            for c in (cooperados or [])
+        ],
+        "rests": [
+            {"id": r.id, "nome": r.nome or ""}
+            for r in (restaurantes or [])
+        ],
+    }
+
     return render_template(
         "admin_dashboard.html",
         tab=active_tab,
@@ -4363,6 +4456,10 @@ def admin_dashboard():
         taxa_admin_rows=taxa_admin_rows,
         taxa_admin_totais=taxa_admin_totais,
         juros_arrecadados_total=juros_arrecadados_total,
+        fast_mode=True,
+        producoes=lancamentos,
+        rest_list=restaurantes,
+        resumo_frontend_data=resumo_frontend_data,
     )
     
 # =========================
@@ -6351,7 +6448,7 @@ def _import_backup_workbook(file_storage):
                 item = {}
                 for key, raw in row.items():
                     col = valid_cols.get(key)
-                    if col is None:
+                    if not col:
                         continue
                     item[key] = _deserialize_backup_value(raw, col)
                 if item:
