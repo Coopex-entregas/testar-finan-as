@@ -395,6 +395,8 @@
         padding:16px 10px;
       }
     }
+  
+    #chartCoop,#chartCooperados,#chartEstabs,#chartLancCoop,#chartLancCooperados{display:none !important;}
   </style>
 </head>
 <body>
@@ -1173,6 +1175,29 @@
             </div>
           </div>
         </div>
+
+        <!-- Gráficos -->
+        <div class="row g-2 mt-3">
+          <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+              <h6 class="mb-2 d-flex align-items-center gap-1">
+                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
+                <span>Evolução Mensal — Cooperativa</span>
+              </h6>
+              <canvas id="chartCoop"></canvas>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+              <h6 class="mb-2 d-flex align-items-center gap-1">
+                <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
+                <span>Evolução Mensal — Cooperados</span>
+              </h6>
+              <canvas id="chartCooperados"></canvas>
+            </div>
+          </div>
+        </div>
+
         <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
@@ -1180,6 +1205,7 @@
                 <span class="resumo-pill-label"><i class="bi bi-shop"></i></span>
                 <span>Top Estabelecimentos (Produções no período)</span>
               </h6>
+              <canvas id="chartEstabs"></canvas>
               <div class="table-responsive mt-3">
                 <table class="table table-sm table-bordered table-hover align-middle" id="tblTopEstabsResumo">
                   <thead class="table-light">
@@ -1308,6 +1334,10 @@
           font-weight: 600;
         }
 
+        #resumo canvas {
+          max-height: 280px;
+        }
+
         @media (max-width: 576px) {
           #resumo .resumo-shell{
             border-radius: 1rem;
@@ -1323,122 +1353,15 @@
         }
       </style>
     </section>
-    <!-- Dados prontos vindos do backend -->
+
+    <!-- Dados do resumo (leve) -->
     <script>
     (function(){
-      const RESUMO_DATA = {{ resumo_frontend_data|default({})|tojson }};
-      const FILTER = RESUMO_DATA.filter || {ri:"", rf:"", rid:null, cid:null};
-      const PRODUCOES = RESUMO_DATA.producoes || [];
-      const REC_COOP = RESUMO_DATA.rec_coop || [];
-      const DESP_COOP = RESUMO_DATA.desp_coop || [];
-      const REC_COOP_CORP = RESUMO_DATA.rec_coop_corp || [];
-      const DESP_COOP_CORP = RESUMO_DATA.desp_coop_corp || [];
-      const BENEFICIOS_VIEW = RESUMO_DATA.beneficios_view || [];
-      const COOPS = RESUMO_DATA.coops || [];
-      const RESTS = RESUMO_DATA.rests || [];
-
-      // ---- Utils ----
-      const parseISO = s => (!s) ? null : new Date(s + 'T00:00:00');
-
-      const fmtBR = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-
-      const inRange = (d) => {
-        const di = parseISO(FILTER.ri);
-        const df = parseISO(FILTER.rf);
-        const x  = parseISO(d);
-        if (!x) return true;
-        if (di && x < di) return false;
-        if (df && x > df) return false;
-        return true;
-      };
-
-      const byMonthKey = d => {
-        if (!d) return '';
-        const dt = parseISO(d);
-        if (!dt || isNaN(dt)) return '';
-        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
-      };
-
-      const sumBy = (arr, fn) => arr.reduce((acc, cur) => acc + (+fn(cur) || 0), 0);
-
-      // ---- Filtro ----
-      const filteredPROD = PRODUCOES.filter(p =>
-        inRange(p.data) &&
-        (FILTER.cid == null || p.cooperado_id === FILTER.cid) &&
-        (FILTER.rid == null || p.restaurante_id === FILTER.rid)
-      );
-
-      const filteredRECp = REC_COOP.filter(r =>
-        inRange(r.data) &&
-        (FILTER.cid == null || r.cooperado_id === FILTER.cid)
-      );
-
-      const filteredDESp = DESP_COOP.filter(d => {
-        if (!inRange(d.data)) return false;
-        if (FILTER.cid == null) return true;
-
-        if (d.cooperado_id === FILTER.cid) return true;
-
-        const coop = COOPS.find(c => c.id === FILTER.cid);
-        if (coop && d.cooperado_nome) {
-          return d.cooperado_nome.trim().toUpperCase() === coop.nome.trim().toUpperCase();
-        }
-        return false;
-      });
-
-      const filteredRECc = REC_COOP_CORP.filter(r => inRange(r.data));
-      const filteredDESc = DESP_COOP_CORP.filter(d => inRange(d.data));
-      const filteredBEN  = BENEFICIOS_VIEW.filter(b => inRange(b.data_lancamento || b.data_final || b.data_inicial));
-
-      // ---- KPIs (front) ----
-      const qtdEntregasPeriodo   = filteredPROD.length;
-      const kpiProd         = sumBy(filteredPROD, x => x.valor);
-      const kpiINSS4        = kpiProd * 0.04;
-      const kpiSEST05       = kpiProd * 0.005;
-      const kpiEncargos45   = kpiINSS4 + kpiSEST05;
-
-      const kpiRecCoopCorp  = sumBy(filteredRECc, x => x.valor);
-      const kpiDespCoopCorp = sumBy(filteredDESc, x => x.valor);
-
-      const kpiRecCooperadosFull = kpiProd + sumBy(filteredRECp, x => x.valor);
-
-      const kpiDespCooperados = sumBy(filteredDESp.filter(x => !x.adiantamento), x => x.valor);
-      const kpiResultadoCoop      = kpiRecCoopCorp - kpiDespCoopCorp;
-      const kpiTotalReceitasGeral = kpiRecCoopCorp + kpiRecCooperadosFull;
-      const kpiBeneficiosRateados = sumBy(filteredBEN, x => x.valor_total);
-
-      // aplica KPIs na tela
-      document.getElementById('kpiTotalProds').textContent         = fmtBR(kpiProd);
-      document.getElementById('kpiINSS4').textContent              = fmtBR(kpiINSS4);
-      document.getElementById('kpiSEST05').textContent             = fmtBR(kpiSEST05);
-      document.getElementById('kpiRecCoopCorp').textContent        = fmtBR(kpiRecCoopCorp);
-      document.getElementById('kpiDespCoopCorp').textContent       = fmtBR(kpiDespCoopCorp);
-      document.getElementById('kpiRecCooperadosFull').textContent  = fmtBR(kpiRecCooperadosFull);
-      document.getElementById('kpiDespCooperados').textContent     = fmtBR(kpiDespCooperados);
-      document.getElementById('kpiTotalReceitasGeral').textContent = fmtBR(kpiTotalReceitasGeral);
-      const benEl = document.getElementById('kpiBeneficiosRateados');
-      if (benEl) benEl.textContent = fmtBR(kpiBeneficiosRateados);
-
-      const resEl = document.getElementById('kpiResultadoCoop');
-      if (resEl) {
-        resEl.textContent = fmtBR(kpiResultadoCoop);
-        resEl.classList.remove('text-success', 'text-danger');
-        resEl.classList.add(kpiResultadoCoop < 0 ? 'text-danger' : 'text-success');
-      }
-
-      // ---- chave segura para agrupar cooperado mesmo sem id ----
-      const coopKey = (id, nome) => {
-        if (id != null) return `id:${id}`;
-        if (nome && nome.trim()) return `nome:${nome.trim().toUpperCase()}`;
-        return 'nome:—';
-      };
-
-      // ---- Função de resumo (usada na tabela e no XLSX) ----
+      const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
       const RESUMO_COOP_ROWS = {{ resumo_coop_rows|default([])|tojson|safe }};
-      // ---- Tabela Resumo por Cooperado (render backend) ----
+
+      const fmtBR = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       (function renderResumoCoopTable() {
         const rows  = Array.isArray(RESUMO_COOP_ROWS) ? RESUMO_COOP_ROWS : [];
         const tbody = document.querySelector('#tblResumoCoop tbody');
@@ -1493,15 +1416,9 @@
         setText('tSEST05', tSEST05);
         setText('tRec', tRec);
         setText('tDes', tDes);
-
-        const tAdEl = document.getElementById('tAdiant');
-        if (tAdEl) tAdEl.textContent = fmtBR(tAdiant);
-
-        const tLiqEl = document.getElementById('tLiq');
-        if (tLiqEl) tLiqEl.textContent = fmtBR(tReceber);
-
-        const tPendEl = document.getElementById('tPend');
-        if (tPendEl) tPendEl.textContent = fmtBR(tPend);
+        setText('tAdiant', tAdiant);
+        setText('tLiq', tReceber);
+        setText('tPend', tPend);
 
         const adiantEl = document.getElementById('kpiQtdEntregasPeriodo');
         if (adiantEl) adiantEl.textContent = fmtBR(tAdiant);
@@ -1509,6 +1426,8 @@
         const pendEl = document.getElementById('kpiTicketMedioPeriodo');
         if (pendEl) pendEl.textContent = fmtBR(tPend);
       })();
+
+      (function(){
         const form = document.querySelector('#resumo form[method="GET"]');
         if (!form) return;
         const diInput = form.querySelector('input[name="data_inicio"]');
@@ -1533,7 +1452,7 @@
           const lastDay = new Date(y, m, 0).getDate();
           diInput.value = `${y}-${String(m).padStart(2,'0')}-01`;
           dfInput.value = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-          form.submit();
+          form.requestSubmit ? form.requestSubmit() : form.submit();
         });
 
         btnYear?.addEventListener('click', () => {
@@ -1541,9 +1460,11 @@
           if (!y || !diInput || !dfInput) return;
           diInput.value = `${y}-01-01`;
           dfInput.value = `${y}-12-31`;
-          form.submit();
+          form.requestSubmit ? form.requestSubmit() : form.submit();
         });
       })();
+    })();
+    </script>
 
       // ---- Exportação XLSX ----
       const ensureXLSX = () => new Promise(res => {
@@ -5789,20 +5710,78 @@
     });
   })();
 
-  // ===== Sincronizar aba ativa pela URL =====
+  // ===== Controle único das abas =====
   document.addEventListener('DOMContentLoaded', () => {
-    const currentTab = (new URL(location.href)).searchParams.get('tab') || '{{ _tab }}' || 'lancamentos';
-    document.querySelectorAll('.sidebar a[href^="#"]').forEach(a => {
-      const tab = (a.getAttribute('href') || '').replace('#','');
-      const isActive = tab === currentTab;
-      a.classList.toggle('active', isActive);
-      a.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    const panes = Array.from(document.querySelectorAll('.tab-content > .tab-pane'));
+    const tabLinks = Array.from(document.querySelectorAll('.sidebar a[href^="#"]'));
+
+    function activateTab(tabId, pushUrl = true) {
+      if (!tabId) return;
+      panes.forEach(pane => {
+        const on = pane.id === tabId;
+        pane.classList.toggle('show', on);
+        pane.classList.toggle('active', on);
+      });
+      tabLinks.forEach(link => {
+        const on = (link.getAttribute('href') || '').slice(1) === tabId;
+        link.classList.toggle('active', on);
+        link.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      sessionStorage.setItem('adminActiveTab', tabId);
+      if (pushUrl) {
+        const p = new URLSearchParams(location.search);
+        p.set('tab', tabId);
+        history.replaceState(null, '', location.pathname + '?' + p.toString());
+      }
+    }
+
+    tabLinks.forEach(link => {
+      link.removeAttribute('data-bs-toggle');
+      link.removeAttribute('data-bs-target');
+      link.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const tabId = (link.getAttribute('href') || '').slice(1);
+        activateTab(tabId, true);
+      });
     });
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-      const isActive = pane.id === currentTab;
-      pane.classList.toggle('show', isActive);
-      pane.classList.toggle('active', isActive);
+
+    const params = new URLSearchParams(location.search);
+    activateTab(params.get('tab') || sessionStorage.getItem('adminActiveTab') || '{{ _tab }}', false);
+
+    document.querySelectorAll('main form').forEach(form => {
+      form.addEventListener('submit', () => {
+        const currentTab = sessionStorage.getItem('adminActiveTab') || '{{ _tab }}';
+        let hidden = form.querySelector('input[name="tab"]');
+        if (!hidden) {
+          hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = 'tab';
+          form.appendChild(hidden);
+        }
+        hidden.value = currentTab;
+
+        const paramsNow = new URLSearchParams(location.search);
+        ['data_inicio','data_fim','restaurante_id','cooperado_id','escala_dia','historico_inicio','historico_fim'].forEach(name => {
+          if (form.querySelector(`[name="${name}"]`)) return;
+          const v = paramsNow.get(name);
+          if (v !== null && v !== '') {
+            const extra = document.createElement('input');
+            extra.type = 'hidden';
+            extra.name = name;
+            extra.value = v;
+            form.appendChild(extra);
+          }
+        });
+        sessionStorage.setItem('adminScrollY', String(window.scrollY || 0));
+      });
     });
+
+    const savedY = Number(sessionStorage.getItem('adminScrollY') || '0');
+    if (savedY > 0) {
+      window.scrollTo(0, savedY);
+      sessionStorage.removeItem('adminScrollY');
+    }
 
     const anoSpan = document.getElementById('prazoAno');
     const diasSpan = document.getElementById('prazoDias');
@@ -5816,7 +5795,7 @@
       if (diasSpan) diasSpan.textContent = dias;
     }
     updatePrazo();
-    setInterval(updatePrazo, 60 * 1000);
+    setInterval(updatePrazo, 60000);
   });
 </script>
 
@@ -6542,7 +6521,7 @@ document.addEventListener('DOMContentLoaded', function(){
     renderAlertas(initial || []);
   } catch(_) {}
   pollAlertas();
-  setInterval(pollAlertas, 60000);
+  // polling removido para deixar a aba mais leve e evitar recargas duplicadas;
 });
 </script>
 
@@ -6550,142 +6529,6 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="modal fade" id="modalAbatimentoDespesaCoop" tabindex="-1"><div class="modal-dialog"><form method="POST" class="modal-content"><div class="modal-header"><h5 class="modal-title">Registrar abatimento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body row g-2 px-3"><div class="col-12"><label class="form-label">Data</label><input type="date" class="form-control" name="data" required></div><div class="col-12"><label class="form-label">Valor</label><input type="number" step="0.01" class="form-control" name="valor" required></div><div class="col-12"><label class="form-label">Origem</label><select class="form-select" name="origem"><option value="manual">Manual</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="desconto">Desconto</option></select></div><div class="col-12"><label class="form-label">Observação</label><input type="text" class="form-control" name="observacao"></div></div><div class="modal-footer"><button class="btn btn-royal">Salvar</button></div></form></div></div>
 <script>
 document.addEventListener('DOMContentLoaded', function(){ const cAll=document.getElementById('checkAllDespesas'); cAll?.addEventListener('change', ()=> document.querySelectorAll('#tblDespesasCoop tbody input[type="checkbox"]').forEach(ch=> ch.checked=cAll.checked)); const el=document.getElementById('modalAbatimentoDespesaCoop'); el?.addEventListener('show.bs.modal', (ev)=>{ const btn=ev.relatedTarget; const form=el.querySelector('form'); if(form && btn?.dataset?.url) form.action=btn.dataset.url; });});
-</script>
-
-
-<script>
-(function(){
-  const swapSel = '.layout';
-
-  function getCurrentUrl(){ return new URL(location.href); }
-  function currentTab(){ return getCurrentUrl().searchParams.get('tab') || '{{ _tab }}' || 'lancamentos'; }
-
-  function syncActiveUi(){
-    const tab = currentTab();
-    document.querySelectorAll('.sidebar a[href^="#"]').forEach(a => {
-      const name = (a.getAttribute('href') || '').slice(1);
-      const isActive = name === tab;
-      a.classList.toggle('active', isActive);
-      a.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-      const isActive = pane.id === tab;
-      pane.classList.toggle('show', isActive);
-      pane.classList.toggle('active', isActive);
-    });
-  }
-
-  function rerunScripts(root){
-    root.querySelectorAll('script').forEach(oldScript => {
-      const s = document.createElement('script');
-      for (const attr of oldScript.attributes) s.setAttribute(attr.name, attr.value);
-      s.textContent = oldScript.textContent;
-      oldScript.replaceWith(s);
-    });
-  }
-
-  async function fetchAndSwap(url, push=true){
-    const res = await fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest','Accept':'text/html'}});
-    const text = await res.text();
-    if (!res.ok) { location.href = url; return; }
-    const doc = new DOMParser().parseFromString(text, 'text/html');
-    const next = doc.querySelector(swapSel);
-    const cur = document.querySelector(swapSel);
-    if (!next || !cur) { location.href = url; return; }
-    const sy = window.scrollY;
-    cur.innerHTML = next.innerHTML;
-    document.title = doc.title || document.title;
-    if (push) history.pushState({}, '', res.url || url);
-    rerunScripts(cur);
-    bindAdminFast();
-    syncActiveUi();
-    window.scrollTo({top: sy});
-  }
-
-  async function submitViaFetch(form){
-    const method = (form.getAttribute('method') || 'GET').toUpperCase();
-    const action = form.getAttribute('action') || location.href;
-    const current = getCurrentUrl();
-    const u = new URL(action, location.origin);
-    const fd = new FormData(form);
-    const tab = currentTab();
-    fd.set('tab', tab);
-    u.searchParams.set('tab', tab);
-
-    if (method === 'GET'){
-      const merged = new URL(current.href);
-      merged.pathname = u.pathname;
-      merged.searchParams.set('tab', tab);
-      for (const key of [...merged.searchParams.keys()]) {
-        if (key === 'page') merged.searchParams.delete(key);
-      }
-      for (const [k,v] of fd.entries()) merged.searchParams.set(k, v);
-      return fetchAndSwap(merged.toString());
-    }
-
-    const res = await fetch(u.toString(), {method:'POST', body: fd, headers:{'X-Requested-With':'XMLHttpRequest','Accept':'text/html'}});
-    const finalUrl = res.redirected ? res.url : u.toString();
-    const text = await res.text();
-    const doc = new DOMParser().parseFromString(text, 'text/html');
-    const next = doc.querySelector(swapSel);
-    const cur = document.querySelector(swapSel);
-    if (!res.ok || !next || !cur) { location.href = finalUrl; return; }
-    const sy = window.scrollY;
-    cur.innerHTML = next.innerHTML;
-    document.title = doc.title || document.title;
-    history.replaceState({}, '', finalUrl);
-    rerunScripts(cur);
-    bindAdminFast();
-    syncActiveUi();
-    window.scrollTo({top: sy});
-  }
-
-  window.bindAdminFast = function(){
-    document.querySelectorAll('.sidebar a[href^="#"]').forEach(a => {
-      a.onclick = (e) => {
-        e.preventDefault();
-        const tab = (a.getAttribute('href') || '').slice(1);
-        if (!tab) return;
-        const u = getCurrentUrl();
-        u.searchParams.set('tab', tab);
-        fetchAndSwap(u.toString());
-      };
-    });
-
-    document.querySelectorAll('form[method="POST"], form[method="GET"]').forEach(f => {
-      if (f.closest('.sidebar')) return;
-      f.onsubmit = (e) => {
-        if (f.target === '_blank') return;
-        e.preventDefault();
-        submitViaFetch(f);
-      };
-    });
-
-    document.querySelectorAll('a[href]').forEach(a => {
-      const href = a.getAttribute('href') || '';
-      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
-      if (a.target === '_blank' || a.hasAttribute('download')) return;
-      const low = href.toLowerCase();
-      const isFast = a.dataset.fastNav === '1' || low.includes('/delete') || low.includes('/excluir') || low.includes('/edit') || low.includes('/editar') || low.includes('/filtrar_');
-      if (!isFast) return;
-      a.onclick = (e) => {
-        e.preventDefault();
-        const u = new URL(href, location.origin);
-        if (!u.searchParams.get('tab')) u.searchParams.set('tab', currentTab());
-        const current = getCurrentUrl();
-        ['data_inicio','data_fim','restaurante_id','cooperado_id','considerar_periodo','somente_pendentes'].forEach(k => {
-          if (!u.searchParams.get(k) && current.searchParams.get(k)) u.searchParams.set(k, current.searchParams.get(k));
-        });
-        fetchAndSwap(u.toString());
-      };
-    });
-
-    syncActiveUi();
-  };
-
-  window.addEventListener('popstate', () => fetchAndSwap(location.href, false));
-  document.addEventListener('DOMContentLoaded', bindAdminFast);
-})();
 </script>
 
 </body>
