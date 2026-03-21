@@ -1448,7 +1448,7 @@
       ];
 
       const RESTS = [
-        {% for r in restaurantes %}
+        {% for r in rest_list %}
           { id: {{ r.id }}, nome: "{{ r.nome|e }}" }{{ "," if not loop.last }}
         {% endfor %}
       ];
@@ -2913,7 +2913,7 @@
           <label class="form-label">Cooperado</label>
           <select class="form-select form-select-sm" name="cooperado_id" required>
             <option value="" selected disabled>Selecione o Cooperado</option>
-            {% for coop in cooperados %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
+            {% for coop in coop_list %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
           </select>
         </div>
         <div class="col-md-3">
@@ -3099,7 +3099,7 @@
           <label class="form-label">Cooperados</label>
           <select class="form-select form-select-sm" name="cooperado_ids[]" multiple size="5">
             <option value="all">Todos</option>
-            {% for coop in cooperados %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
+            {% for coop in coop_list %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
           </select>
           <small class="text-muted">Use Ctrl/Cmd para múltiplos.</small>
         </div>
@@ -3661,7 +3661,8 @@
       
 <!-- COOPERADOS (versão profissional / drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='cooperados' else '' }}" id="cooperados" role="tabpanel">
-  {% set qtd_coops = cooperados|length %}
+  {% set coop_list = cooperados_todos|default(cooperados) %}
+  {% set qtd_coops = coop_list|length %}
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
     <h5 class="m-0 d-flex align-items-center gap-2">
       <i class="bi bi-person-badge"></i> Cadastro de Cooperados
@@ -3758,7 +3759,7 @@
             </tr>
           </thead>
           <tbody id="tbodyCooperados">
-            {% for coop in cooperados_todos|default(cooperados) %}
+            {% for coop in cooperados %}
               <tr data-nome="{{ coop.nome|lower }}"
                   data-user="{{ coop.usuario_ref.usuario|lower }}"
                   data-fone="{{ (coop.telefone or '')|replace('(','')|replace(')','')|replace('-','')|replace(' ','')|replace('+','')|lower }}">
@@ -4469,7 +4470,7 @@
                  placeholder="Digite nome, placa ou CNH...">
         </div>
         <div class="d-flex gap-2 mt-2 justify-content-end">
-          <span class="badge-soft">Cooperados: {{ cooperados|length if cooperados else 0 }}</span>
+          <span class="badge-soft">Cooperados: {{ coop_list|length if coop_list else 0 }}</span>
           <span class="badge-soft">Com escala: {{ escalas_por_coop|length if escalas_por_coop is defined else 0 }}</span>
         </div>
       </div>
