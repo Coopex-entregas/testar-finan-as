@@ -706,6 +706,7 @@
 
     <!-- === RESUMO (Dashboard Financeiro Completo) === -->
     <section class="tab-pane fade {{ 'show active' if _tab=='resumo' else '' }}" id="resumo" role="tabpanel">
+{% if _tab=='resumo' %}
       <div class="resumo-shell">
 
         {# ---------- Helpers de data ---------- #}
@@ -753,21 +754,18 @@
                (despesas_corp if despesas_corp is defined else
                 []))) %}
 
-                {# Totais calculados no backend para evitar recalcular tudo em Jinja #}
-        {% set total_producoes_f = total_producoes|default(0) %}
-        {% set total_inss_4_f    = total_inss|default(0) %}
-        {% set total_sest_05_f   = total_sest|default(0) %}
-        {% set total_encargos_f  = total_encargos|default(0) %}
-
-        {% set total_receitas_corp_f = total_receitas|default(0) %}
-        {% set total_despesas_corp_f = total_despesas|default(0) %}
-
-        {% set total_receitas_coop_f = total_receitas_coop|default(0) %}
-        {% set total_despesas_coop_f = total_despesas_coop|default(0) %}
-
-        {% set total_receitas_coop_full_f = (total_producoes_f|default(0)) + (total_receitas_coop_f|default(0)) %}
-        {% set _resultado_corp = (total_receitas_corp_f|default(0)) - (total_despesas_corp_f|default(0)) %}
-        {% set _total_receitas_geral = (total_receitas_corp_f|default(0)) + (total_receitas_coop_full_f|default(0)) %}
+        {% if not fast_mode %}
+{# ---------- Totais (lado servidor, para primeiro paint) ---------- #}
+        {# Produções (considera restaurante/cooperado) #}
+        {% set ns_prod = namespace(total=0) %}
+        {% for p in _producoes %}
+          {% set d   = ymd(p.data) %}
+          {% set okd = (not ri or d >= ri) and (not rf or d <= rf) %}
+          {% set okc = (not cid or (p.cooperado and p.cooperado.id==cid)) %}
+          {% set okr = (not rid or (p.restaurante and p.restaurante.id==rid)) %}
+          {% if okd and okc and okr %}
+            {% set ns_prod.total = ns_prod.total + (p.valor or 0) %}
+          {% endif %}
         {% endfor %}
         {% set total_producoes_f = ns_prod.total %}
         {% set total_inss_4_f    = total_producoes_f * 0.04 %}
@@ -1185,7 +1183,7 @@
                 <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
                 <span>Evolução Mensal — Cooperativa</span>
               </h6>
-              <canvas id="chartCoop"></canvas>
+              
             </div>
           </div>
           <div class="col-12 col-lg-6">
@@ -1194,7 +1192,7 @@
                 <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
                 <span>Evolução Mensal — Cooperados</span>
               </h6>
-              <canvas id="chartCooperados"></canvas>
+              
             </div>
           </div>
         </div>
@@ -1353,7 +1351,10 @@
           }
         }
       </style>
-    </section>
+    {% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
+</section>
 
     <!-- Dados (seguros p/ JS) + Scripts (Chart.js + XLSX) -->
     <script>
@@ -1361,17 +1362,105 @@
       // ---- Filtros atuais (mais seguro com tojson) ----
       const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
 
-      // ---- Bases compactas (payload único vindo do backend) ----
-      const RESUMO_PAYLOAD = {{ admin_resumo_payload|default({})|tojson|safe }};
+      // ---- Bases compactas ----
+      {% if _tab=='resumo' %}
+      const PRODUCOES = [
+        {% for l in _producoes %}
+          {
+            id: {{ l.id }},
+            data: "{{ ymd(l.data) }}",
+            valor: {{ (l.valor or 0)|float }},
+            cooperado_id: {{ l.cooperado.id if l.cooperado else 'null' }},
+            cooperado_nome: "{{ (l.cooperado.nome if l.cooperado else '')|e }}",
+            restaurante_id: {{ l.restaurante.id if l.restaurante else 'null' }},
+            restaurante_nome: "{{ (l.restaurante.nome if l.restaurante else '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
 
-      const PRODUCOES = Array.isArray(RESUMO_PAYLOAD.producoes) ? RESUMO_PAYLOAD.producoes : [];
-      const REC_COOP = Array.isArray(RESUMO_PAYLOAD.receitas_cooperados) ? RESUMO_PAYLOAD.receitas_cooperados : [];
-      const DESP_COOP = Array.isArray(RESUMO_PAYLOAD.despesas_cooperados) ? RESUMO_PAYLOAD.despesas_cooperados : [];
-      const REC_COOP_CORP = Array.isArray(RESUMO_PAYLOAD.receitas_cooperativa) ? RESUMO_PAYLOAD.receitas_cooperativa : [];
-      const DESP_COOP_CORP = Array.isArray(RESUMO_PAYLOAD.despesas_cooperativa) ? RESUMO_PAYLOAD.despesas_cooperativa : [];
-      const BENEFICIOS_VIEW = Array.isArray(RESUMO_PAYLOAD.beneficios) ? RESUMO_PAYLOAD.beneficios : [];
-      const COOPS = Array.isArray(RESUMO_PAYLOAD.cooperados) ? RESUMO_PAYLOAD.cooperados : [];
-      const RESTS = Array.isArray(RESUMO_PAYLOAD.restaurantes) ? RESUMO_PAYLOAD.restaurantes : [];
+      {% if _tab=='resumo' %}
+      const REC_COOP = [
+        {% for r in receitas_coop %}
+          {
+            id: {{ r.id }},
+            data: "{{ ymd(r.data) }}",
+            valor: {{ (r.valor or 0)|float }},
+            cooperado_id: {{ r.cooperado.id if r.cooperado else 'null' }},
+            cooperado_nome: "{{ (r.cooperado.nome if r.cooperado else '')|e }}",
+            descricao: "{{ (r.descricao or '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      // Adiantamento deve aparecer na coluna própria do resumo e no total do rodapé.
+      {% if _tab=='resumo' %}
+      const DESP_COOP = [
+        {% for d in despesas_coop %}
+          {% set _is_ad_js = 1 if (d.eh_adiantamento if d.eh_adiantamento is defined else (d.adiantamento in [True, 1, '1', 'true', 'True', 'on'])) else 0 %}
+          {% set _abat_manual = namespace(v=0) %}{% if d.abatimentos is defined %}{% for ab in d.abatimentos %}{% set _abat_manual.v = _abat_manual.v + (ab.valor or 0) %}{% endfor %}{% endif %}
+          {
+            id: {{ d.id }},
+            data: "{{ ymd(d.data) }}",
+            valor: {{ (d.valor or 0)|float }},
+            cooperado_id: {{ d.cooperado.id if d.cooperado else 'null' }},
+            cooperado_nome: "{{ (d.cooperado.nome if d.cooperado else (d.cooperado_nome if d.cooperado_nome is defined else ''))|e }}",
+            descricao: "{{ (d.descricao or '')|e }}",
+            adiantamento: {{ _is_ad_js }},
+            competencia_desconto: "{{ (d.competencia_desconto if d.competencia_desconto is defined else 'esta_semana')|e }}",
+            valor_pago_manual: {{ _abat_manual.v|float }}
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      // Receitas e Despesas da COOPERATIVA
+      {% if _tab=='resumo' %}
+      const REC_COOP_CORP = [
+        {% for r in _rec_coop_corp %}
+          {
+            id: {{ r.id }},
+            data: "{{ ymd(r.data or r.data_lancamento) }}",
+            valor: {{ (r.valor|default(r.valor_total, true)|default(0, true))|float }},
+            descricao: "{{ (r.descricao or '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      {% if _tab=='resumo' %}
+      const DESP_COOP_CORP = [
+        {% for d in _desp_coop_corp %}
+          {
+            id: {{ d.id }},
+            data: "{{ ymd(d.data or d.data_lancamento) }}",
+            valor: {{ (d.valor|default(d.valor_total, true)|default(0, true))|float }},
+            descricao: "{{ (d.descricao or '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const BENEFICIOS_VIEW = [
+        {% for b in beneficios_view %}
+          {
+            id: {{ b.id }},
+            data_inicial: "{{ ymd(b.data_inicial) }}",
+            data_final: "{{ ymd(b.data_final) }}",
+            data_lancamento: "{{ ymd(b.data_lancamento) }}",
+            tipo: "{{ (b.tipo or '')|e }}",
+            valor_total: {{ (b.valor_total or 0)|float }}
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const COOPS = [
+        {% for c in cooperados %}
+          { id: {{ c.id }}, nome: "{{ c.nome|e }}" }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const RESTS = [
+        {% for r in rest_list %}
+          { id: {{ r.id }}, nome: "{{ r.nome|e }}" }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
 
       // ---- Utils ----
       const parseISO = s => (!s) ? null : new Date(s + 'T00:00:00');
@@ -1885,6 +1974,7 @@
 
 <!-- LANÇAMENTOS (versão moderna/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='lancamentos' else '' }}" id="lancamentos" role="tabpanel">
+{% if _tab=='lancamentos' %}
   {# ====== TOTAIS DO FILTRO (já vem filtrado do backend) ====== #}
   {% set soma_valor    = (lancamentos|sum(attribute='valor')) if lancamentos else 0 %}
   {% set soma_inss_4   = (soma_valor * 0.04) %}
@@ -2193,6 +2283,9 @@
       </div>
     </div>
   </div>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
 <style>
@@ -2414,6 +2507,7 @@
 
 <!-- RECEITAS COOP (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='receitas' else '' }}" id="receitas" role="tabpanel">
+{% if _tab=='receitas' %}
   {# total defensivo: aceita r.valor OU r.valor_total #}
   {% set ns_total = namespace(v=0) %}
   {% for r in receitas or [] %}
@@ -2642,11 +2736,15 @@
       });
     })();
   </script>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
 
 <!-- DESPESAS COOP (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='despesas' else '' }}" id="despesas" role="tabpanel">
+{% if _tab=='despesas' %}
   {% set total_despesas_coop_table = (despesas|sum(attribute='valor')) if despesas else 0 %}
   {% set qtd_registros = despesas|length if despesas else 0 %}
 
@@ -2773,11 +2871,15 @@
       </div>
     </div>
   </div>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
 
 <!-- RECEITAS COOPERADOS (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_receitas' else '' }}" id="coop_receitas" role="tabpanel">
+{% if _tab=='coop_receitas' %}
   {% set total_receitas_coop_table = (receitas_coop|sum(attribute='valor')) if receitas_coop else 0 %}
   {% set qtd_registros = receitas_coop|length if receitas_coop else 0 %}
 
@@ -2921,11 +3023,15 @@
       </div>
     </div>
   </div>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
 
 <!-- DESPESAS COOPERADOS (versão profissional/compacta – SEM ADIANTAMENTO + PESQUISA) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_despesas' else '' }}" id="coop_despesas" role="tabpanel">
+{% if _tab=='coop_despesas' %}
   {% set _despesas = (despesas_coop | default([]) | list) %}
 
   {# Totais (tudo entra como despesa) #}
@@ -3194,10 +3300,14 @@
       apply();
     })();
   </script>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
      <!-- BENEFÍCIOS (versão profissional / sem alterar backend) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='beneficios' else '' }}" id="beneficios" role="tabpanel">
+{% if _tab=='beneficios' %}
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
     <h5 class="m-0 d-flex align-items-center gap-2">
       <i class="bi bi-heart-pulse"></i> Benefícios
@@ -3460,6 +3570,9 @@
     </form>
   </div>
 </div>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section> <!-- FECHA A ABA BENEFÍCIOS -->
 
 <!-- ==== BENEFÍCIOS: prévia + total + seleção em massa (escopado) ==== -->
@@ -3580,6 +3693,7 @@
       
 <!-- COOPERADOS (versão profissional / drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='cooperados' else '' }}" id="cooperados" role="tabpanel">
+{% if _tab=='cooperados' %}
   {% set qtd_coops = cooperados|length %}
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
     <h5 class="m-0 d-flex align-items-center gap-2">
@@ -3981,10 +4095,14 @@
       </form>
     </div>
   </div>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
       <!-- RESTAURANTES (versão profissional / drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='restaurantes' else '' }}" id="restaurantes" role="tabpanel">
+{% if _tab=='restaurantes' %}
   {% set rest_list = restaurantes_todos|default(restaurantes) %}
   {% set qtd_rest = rest_list|length %}
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
@@ -4261,10 +4379,14 @@
       });
     })();
   </script>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
      <!-- ESCALAS -->
 <section class="tab-pane fade {{ 'show active' if _tab=='escalas' else '' }}" id="escalas" role="tabpanel">
+{% if _tab=='escalas' %}
   <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 align-items-lg-center mb-3">
     <div>
       <h5 class="mb-0 section-title">Gestão de Escalas</h5>
@@ -5156,10 +5278,14 @@
       </div>
     </div>
   </div>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
     <!-- === CONFIGURAÇÕES === -->
 <section class="tab-pane fade {{ 'show active' if _tab=='config' else '' }}" id="config" role="tabpanel">
+{% if _tab=='config' %}
   <div class="content-shell">
     <div class="page-header">
       <h3><i class="bi bi-gear"></i> Configurações</h3>
@@ -5616,6 +5742,9 @@
     </div>
 
   </div>
+{% else %}
+<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
+{% endif %}
 </section>
 
 <style>
@@ -6065,24 +6194,17 @@
   buildLineChart('chartLancCoop', dataLancCoop.labels, dataLancCoop.values, 'Lançamentos/Produções');
   buildLineChart('chartLancCooperados', dataLancCooperados.labels, dataLancCooperados.values, 'Lançamentos/Produções');
 
-  // ===== Preservar aba ativa via ?tab= =====
+  // ===== Navegação por aba via servidor (mais leve) =====
   document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(location.search);
-    const targetTab = params.get('tab');
-
-    if (targetTab) {
-      const link = document.querySelector(`.sidebar .nav-link[href="#${targetTab}"]`);
-      if (link) new bootstrap.Tab(link).show();
-    }
-
-    document.querySelectorAll('.sidebar .nav-link[data-bs-toggle="tab"]').forEach(a => {
-      a.addEventListener('shown.bs.tab', (e) => {
-        const id = e.target.getAttribute('href')?.slice(1) || '';
+    document.querySelectorAll('.sidebar [data-bs-toggle="tab"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const href = a.getAttribute('href') || '';
+        const id = href.startsWith('#') ? href.slice(1) : '';
         if (!id) return;
-
+        e.preventDefault();
         const p = new URLSearchParams(location.search);
         p.set('tab', id);
-        history.replaceState(null, '', location.pathname + '?' + p.toString() + e.target.getAttribute('href'));
+        location.href = location.pathname + '?' + p.toString();
       });
     });
 
@@ -6828,8 +6950,8 @@ document.addEventListener('DOMContentLoaded', function(){
     knownAlertIds = new Set((initial || []).map(a => String(a.id)));
     renderAlertas(initial || []);
   } catch(_) {}
-  pollAlertas();
-  setInterval(pollAlertas, 60000);
+  {% if _tab=='escalas' %}pollAlertas();
+  setInterval(pollAlertas, 60000);{% endif %}
 });
 </script>
 
