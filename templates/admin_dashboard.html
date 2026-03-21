@@ -1358,16 +1358,100 @@
       // ---- Filtros atuais (mais seguro com tojson) ----
       const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
 
-      // ---- Bases compactas vindas do backend ----
-      const RESUMO_DATA = {{ resumo_frontend_data|default({}, true)|tojson|safe }};
-      const PRODUCOES = Array.isArray(RESUMO_DATA.producoes) ? RESUMO_DATA.producoes : [];
-      const REC_COOP = Array.isArray(RESUMO_DATA.receitas_coop) ? RESUMO_DATA.receitas_coop : [];
-      const DESP_COOP = Array.isArray(RESUMO_DATA.despesas_coop) ? RESUMO_DATA.despesas_coop : [];
-      const REC_COOP_CORP = Array.isArray(RESUMO_DATA.receitas_corp) ? RESUMO_DATA.receitas_corp : [];
-      const DESP_COOP_CORP = Array.isArray(RESUMO_DATA.despesas_corp) ? RESUMO_DATA.despesas_corp : [];
-      const BENEFICIOS_VIEW = Array.isArray(RESUMO_DATA.beneficios) ? RESUMO_DATA.beneficios : [];
-      const COOPS = Array.isArray(RESUMO_DATA.coops) ? RESUMO_DATA.coops : [];
-      const RESTS = Array.isArray(RESUMO_DATA.rests) ? RESUMO_DATA.rests : [];
+      // ---- Bases compactas ----
+      const PRODUCOES = [
+        {% for l in _producoes %}
+          {
+            id: {{ l.id }},
+            data: "{{ ymd(l.data) }}",
+            valor: {{ (l.valor or 0)|float }},
+            cooperado_id: {{ l.cooperado.id if l.cooperado else 'null' }},
+            cooperado_nome: "{{ (l.cooperado.nome if l.cooperado else '')|e }}",
+            restaurante_id: {{ l.restaurante.id if l.restaurante else 'null' }},
+            restaurante_nome: "{{ (l.restaurante.nome if l.restaurante else '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const REC_COOP = [
+        {% for r in receitas_coop %}
+          {
+            id: {{ r.id }},
+            data: "{{ ymd(r.data) }}",
+            valor: {{ (r.valor or 0)|float }},
+            cooperado_id: {{ r.cooperado.id if r.cooperado else 'null' }},
+            cooperado_nome: "{{ (r.cooperado.nome if r.cooperado else '')|e }}",
+            descricao: "{{ (r.descricao or '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      // Adiantamento deve aparecer na coluna própria do resumo e no total do rodapé.
+      const DESP_COOP = [
+        {% for d in despesas_coop %}
+          {% set _is_ad_js = 1 if (d.eh_adiantamento if d.eh_adiantamento is defined else (d.adiantamento in [True, 1, '1', 'true', 'True', 'on'])) else 0 %}
+          {% set _abat_manual = namespace(v=0) %}{% if d.abatimentos is defined %}{% for ab in d.abatimentos %}{% set _abat_manual.v = _abat_manual.v + (ab.valor or 0) %}{% endfor %}{% endif %}
+          {
+            id: {{ d.id }},
+            data: "{{ ymd(d.data) }}",
+            valor: {{ (d.valor or 0)|float }},
+            cooperado_id: {{ d.cooperado.id if d.cooperado else 'null' }},
+            cooperado_nome: "{{ (d.cooperado.nome if d.cooperado else (d.cooperado_nome if d.cooperado_nome is defined else ''))|e }}",
+            descricao: "{{ (d.descricao or '')|e }}",
+            adiantamento: {{ _is_ad_js }},
+            competencia_desconto: "{{ (d.competencia_desconto if d.competencia_desconto is defined else 'esta_semana')|e }}",
+            valor_pago_manual: {{ _abat_manual.v|float }}
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      // Receitas e Despesas da COOPERATIVA
+      const REC_COOP_CORP = [
+        {% for r in _rec_coop_corp %}
+          {
+            id: {{ r.id }},
+            data: "{{ ymd(r.data or r.data_lancamento) }}",
+            valor: {{ (r.valor|default(r.valor_total, true)|default(0, true))|float }},
+            descricao: "{{ (r.descricao or '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const DESP_COOP_CORP = [
+        {% for d in _desp_coop_corp %}
+          {
+            id: {{ d.id }},
+            data: "{{ ymd(d.data or d.data_lancamento) }}",
+            valor: {{ (d.valor|default(d.valor_total, true)|default(0, true))|float }},
+            descricao: "{{ (d.descricao or '')|e }}"
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const BENEFICIOS_VIEW = [
+        {% for b in beneficios_view %}
+          {
+            id: {{ b.id }},
+            data_inicial: "{{ ymd(b.data_inicial) }}",
+            data_final: "{{ ymd(b.data_final) }}",
+            data_lancamento: "{{ ymd(b.data_lancamento) }}",
+            tipo: "{{ (b.tipo or '')|e }}",
+            valor_total: {{ (b.valor_total or 0)|float }}
+          }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const COOPS = [
+        {% for c in cooperados %}
+          { id: {{ c.id }}, nome: "{{ c.nome|e }}" }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
+
+      const RESTS = [
+        {% for r in rest_list %}
+          { id: {{ r.id }}, nome: "{{ r.nome|e }}" }{{ "," if not loop.last }}
+        {% endfor %}
+      ];
 
       // ---- Utils ----
       const parseISO = s => (!s) ? null : new Date(s + 'T00:00:00');
@@ -6836,6 +6920,62 @@ document.addEventListener('DOMContentLoaded', function(){
 document.addEventListener('DOMContentLoaded', function(){ const cAll=document.getElementById('checkAllDespesas'); cAll?.addEventListener('change', ()=> document.querySelectorAll('#tblDespesasCoop tbody input[type="checkbox"]').forEach(ch=> ch.checked=cAll.checked)); const el=document.getElementById('modalAbatimentoDespesaCoop'); el?.addEventListener('show.bs.modal', (ev)=>{ const btn=ev.relatedTarget; const form=el.querySelector('form'); if(form && btn?.dataset?.url) form.action=btn.dataset.url; });});
 </script>
 
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const keyTab = 'admin_dashboard_active_tab';
+  const keyScroll = 'admin_dashboard_scroll_y';
+
+  try {
+    const savedScroll = sessionStorage.getItem(keyScroll);
+    if (savedScroll !== null) {
+      requestAnimationFrame(() => window.scrollTo(0, Number(savedScroll || 0)));
+      sessionStorage.removeItem(keyScroll);
+    }
+  } catch(e) {}
+
+  document.querySelectorAll('.sidebar .nav-link[data-bs-toggle="tab"], .sidebar .nav-link-main[data-bs-toggle="tab"]').forEach(function(a){
+    a.addEventListener('shown.bs.tab', function(e){
+      const href = e.target.getAttribute('href') || '';
+      if (href) sessionStorage.setItem(keyTab, href.replace('#',''));
+    });
+  });
+
+  document.querySelectorAll('form').forEach(function(form){
+    form.addEventListener('submit', function(){
+      try {
+        const activePane = document.querySelector('.tab-pane.active');
+        const activeId = activePane ? activePane.id : (sessionStorage.getItem(keyTab) || 'lancamentos');
+        sessionStorage.setItem(keyTab, activeId);
+        sessionStorage.setItem(keyScroll, String(window.scrollY || window.pageYOffset || 0));
+        if (!form.querySelector('input[name="tab"]')) {
+          const hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = 'tab';
+          hidden.value = activeId;
+          form.appendChild(hidden);
+        } else {
+          form.querySelector('input[name="tab"]').value = activeId;
+        }
+      } catch(e) {}
+    }, {passive:true});
+  });
+
+  document.querySelectorAll('a[href*="/admin/"]').forEach(function(a){
+    a.addEventListener('click', function(){
+      try { sessionStorage.setItem(keyScroll, String(window.scrollY || window.pageYOffset || 0)); } catch(e) {}
+    }, {passive:true});
+  });
+
+  const savedTab = sessionStorage.getItem(keyTab);
+  if (savedTab) {
+    const link = document.querySelector(`.sidebar [href="#${savedTab}"]`);
+    if (link && window.bootstrap && bootstrap.Tab) {
+      try { new bootstrap.Tab(link).show(); } catch(e) {}
+    }
+  }
+});
+</script>
 </body>
 </html>
 
