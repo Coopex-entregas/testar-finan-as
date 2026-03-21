@@ -1574,7 +1574,7 @@
           const des = Number(r.des || 0);
           const adiant = Number(r.adiant || 0);
           const aReceber = Number(r.a_receber ?? r.aReceber ?? 0);
-          const saldoPend = Number((r.saldo_pendente ?? r.saldoPendente ?? 0)) + Number((r.pend_programado ?? r.pendProgramado ?? 0));
+          const saldoPend = Number(r.saldo_pendente ?? r.saldoPendente ?? 0);
 
           tProd += prod;
           tINSS4 += inss4;
@@ -2859,7 +2859,6 @@
 
 <!-- RECEITAS COOPERADOS (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_receitas' else '' }}" id="coop_receitas" role="tabpanel">
-  {% set coop_list = cooperados|default([]) %}
   {% set total_receitas_coop_table = (receitas_coop|sum(attribute='valor')) if receitas_coop else 0 %}
   {% set qtd_registros = receitas_coop|length if receitas_coop else 0 %}
 
@@ -2914,7 +2913,7 @@
           <label class="form-label">Cooperado</label>
           <select class="form-select form-select-sm" name="cooperado_id" required>
             <option value="" selected disabled>Selecione o Cooperado</option>
-            {% for coop in coop_list %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
+            {% for coop in cooperados %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
           </select>
         </div>
         <div class="col-md-3">
@@ -3008,7 +3007,6 @@
 
 <!-- DESPESAS COOPERADOS (versão profissional/compacta – SEM ADIANTAMENTO + PESQUISA) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_despesas' else '' }}" id="coop_despesas" role="tabpanel">
-  {% set coop_list = cooperados|default([]) %}
   {% set _despesas = (despesas_coop | default([]) | list) %}
 
   {# Totais (tudo entra como despesa) #}
@@ -3097,30 +3095,16 @@
       <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
       <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
       <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
-        <div class="col-md-2">
-          <label class="form-label">Rateio</label>
-          <div class="form-check pt-2">
-            <input class="form-check-input" type="checkbox" name="ratear_todos_ativos" id="ratearTodosAtivos" checked>
-            <label class="form-check-label" for="ratearTodosAtivos">Todos os ativos</label>
-          </div>
+        <div class="col-md-4">
+          <label class="form-label">Cooperados</label>
+          <select class="form-select form-select-sm" name="cooperado_ids[]" multiple size="5">
+            <option value="all">Todos</option>
+            {% for coop in cooperados %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
+          </select>
+          <small class="text-muted">Use Ctrl/Cmd para múltiplos.</small>
         </div>
 
-        <div class="col-md-4">
-          <label class="form-label">Excluir do rateio</label>
-          <select class="form-select form-select-sm" name="cooperado_excluir_ids[]" multiple size="5" id="cooperadosExcluirRateio">
-            {% for coop in coop_list %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
-          </select>
-          <small class="text-muted">Marque aqui somente os ativos que não vão pagar.</small>
-        </div>
-
-        <div class="col-md-4">
-          <label class="form-label">Cooperados específicos</label>
-          <select class="form-select form-select-sm" name="cooperado_ids[]" multiple size="5" id="cooperadosEspecificosRateio">
-            {% for coop in coop_list %}<option value="{{ coop.id }}">{{ coop.nome }}</option>{% endfor %}
-          </select>
-          <small class="text-muted">Use esta lista só quando não for ratear para todos os ativos.</small>
-        </div>
-<div class="col-md-3">
+        <div class="col-md-3">
           <label class="form-label">Descrição</label>
           <input type="text" class="form-control form-control-sm" name="descricao" placeholder="Descrição" required>
         </div>
@@ -3162,7 +3146,7 @@
   <!-- Tabela -->
   <div class="card border-0 shadow-sm rounded-3">
     <div class="card-body p-2 p-md-3">
-      <form method="POST" action="{{ url_for('delete_despesa_coop') }}" id="bulkDeleteDespesasForm" class="mb-2 d-flex justify-content-end gap-2">
+      <form method="POST" action="{{ url_for('delete_despesa_coop_bulk') }}" id="bulkDeleteDespesasForm" class="mb-2 d-flex justify-content-end gap-2">
         <input type="hidden" name="tab" value="coop_despesas">
         <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', request.args.get('resumo_inicio','')) }}">
         <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
@@ -3677,8 +3661,7 @@
       
 <!-- COOPERADOS (versão profissional / drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='cooperados' else '' }}" id="cooperados" role="tabpanel">
-  {% set coop_list = cooperados_todos|default(cooperados) %}
-  {% set qtd_coops = coop_list|length %}
+  {% set qtd_coops = cooperados|length %}
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
     <h5 class="m-0 d-flex align-items-center gap-2">
       <i class="bi bi-person-badge"></i> Cadastro de Cooperados
@@ -4221,7 +4204,7 @@
             </tr>
           </thead>
           <tbody id="tbodyRestaurantes">
-            {% for r in rest_list %}
+            {% for r in restaurantes %}
               <tr data-nome="{{ r.nome|lower }}" data-user="{{ r.usuario_ref.usuario|lower }}" data-periodo="{{ r.periodo|lower }}">
                 <td class="text-center">
                   <img src="{{ r.foto_url or url_for('static', filename='img/default.png') }}"
@@ -4486,7 +4469,7 @@
                  placeholder="Digite nome, placa ou CNH...">
         </div>
         <div class="d-flex gap-2 mt-2 justify-content-end">
-          <span class="badge-soft">Cooperados: {{ coop_list|length if coop_list else 0 }}</span>
+          <span class="badge-soft">Cooperados: {{ cooperados|length if cooperados else 0 }}</span>
           <span class="badge-soft">Com escala: {{ escalas_por_coop|length if escalas_por_coop is defined else 0 }}</span>
         </div>
       </div>
@@ -6935,18 +6918,6 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="modal fade" id="modalAbatimentoDespesaCoop" tabindex="-1"><div class="modal-dialog"><form method="POST" class="modal-content"><div class="modal-header"><h5 class="modal-title">Registrar abatimento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body row g-2 px-3"><div class="col-12"><label class="form-label">Data</label><input type="date" class="form-control" name="data" required></div><div class="col-12"><label class="form-label">Valor</label><input type="number" step="0.01" class="form-control" name="valor" required></div><div class="col-12"><label class="form-label">Origem</label><select class="form-select" name="origem"><option value="manual">Manual</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="desconto">Desconto</option></select></div><div class="col-12"><label class="form-label">Observação</label><input type="text" class="form-control" name="observacao"></div></div><div class="modal-footer"><button class="btn btn-royal">Salvar</button></div></form></div></div>
 <script>
 document.addEventListener('DOMContentLoaded', function(){ const cAll=document.getElementById('checkAllDespesas'); cAll?.addEventListener('change', ()=> document.querySelectorAll('#tblDespesasCoop tbody input[type="checkbox"]').forEach(ch=> ch.checked=cAll.checked)); const el=document.getElementById('modalAbatimentoDespesaCoop'); el?.addEventListener('show.bs.modal', (ev)=>{ const btn=ev.relatedTarget; const form=el.querySelector('form'); if(form && btn?.dataset?.url) form.action=btn.dataset.url; });});
-</script>
-
-
-<script>
-(function(){
-  const chk = document.getElementById('ratearTodosAtivos');
-  const selEsp = document.getElementById('cooperadosEspecificosRateio');
-  if (!chk || !selEsp) return;
-  const sync = () => { selEsp.disabled = chk.checked; };
-  chk.addEventListener('change', sync);
-  sync();
-})();
 </script>
 
 </body>
