@@ -1065,7 +1065,7 @@
               <div class="d-flex align-items-center justify-content-between">
                 <div>
                   <div class="text-uppercase text-muted small">Benefícios Rateados</div>
-                  <div id="kpiBeneficiosRateados" class="fw-bold fs-5">R$ 0,00</div>
+                  <div id="kpiBeneficiosRateados" class="fw-bold fs-5">R$ {{ '%.2f'|format(beneficios_total_periodo|default(0)) }}</div>
                   <div class="small text-muted">Total lançado no período</div>
                 </div>
                 <div class="kpi-icon"><i class="bi bi-heart-pulse"></i></div>
@@ -1301,6 +1301,7 @@
       </style>
     </section>
 
+    {% if _tab=='resumo' %}
     <script>
     (function(){
       const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
@@ -1351,6 +1352,7 @@
       });
     })();
     </script>
+    {% endif %}
 </section>
 
 <!-- LANÇAMENTOS (versão moderna/compacta – drop-in) -->
