@@ -3553,6 +3553,16 @@ def admin_dashboard():
     considerar_periodo = bool(args.get("considerar_periodo"))
     dows = set(args.getlist("dow"))
 
+    load_lancamentos = active_tab in {"lancamentos", "resumo"}
+    load_receitas_corp = active_tab in {"receitas", "despesas", "resumo"}
+    load_receitas_coop = active_tab in {"coop_receitas", "coop_despesas", "resumo"}
+    load_escalas = active_tab == "escalas"
+    load_folha = active_tab == "folha"
+    load_beneficios = active_tab in {"beneficios", "resumo"}
+    load_trocas = active_tab == "trocas"
+    load_config = active_tab == "config"
+    load_resumo = active_tab == "resumo"
+
     # =========================
     # Lançamentos
     # =========================
@@ -3562,39 +3572,40 @@ def admin_dashboard():
     total_sest = 0.0
     total_encargos = 0.0
 
-    q = Lancamento.query
+    if load_lancamentos:
+        q = Lancamento.query
 
-    if restaurante_id:
-        q = q.filter(Lancamento.restaurante_id == restaurante_id)
-    if cooperado_id:
-        q = q.filter(Lancamento.cooperado_id == cooperado_id)
-    if data_inicio:
-        q = q.filter(Lancamento.data >= data_inicio)
-    if data_fim:
-        q = q.filter(Lancamento.data <= data_fim)
+        if restaurante_id:
+            q = q.filter(Lancamento.restaurante_id == restaurante_id)
+        if cooperado_id:
+            q = q.filter(Lancamento.cooperado_id == cooperado_id)
+        if data_inicio:
+            q = q.filter(Lancamento.data >= data_inicio)
+        if data_fim:
+            q = q.filter(Lancamento.data <= data_fim)
 
-    lanc_base = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
+        lanc_base = q.order_by(Lancamento.data.desc(), Lancamento.id.desc()).all()
 
-    if dows:
-        lancamentos = [l for l in lanc_base if l.data and _dow(l.data) in dows]
-    else:
-        lancamentos = lanc_base
+        if dows:
+            lancamentos = [l for l in lanc_base if l.data and _dow(l.data) in dows]
+        else:
+            lancamentos = lanc_base
 
-    if considerar_periodo and restaurante_id:
-        rest = Restaurante.query.get(restaurante_id)
-        if rest:
-            mapa = {
-                "seg-dom": {"1", "2", "3", "4", "5", "6", "7"},
-                "sab-sex": {"6", "7", "1", "2", "3", "4", "5"},
-                "sex-qui": {"5", "6", "7", "1", "2", "3", "4"},
-            }
-            permitidos = mapa.get(rest.periodo, {"1", "2", "3", "4", "5", "6", "7"})
-            lancamentos = [l for l in lancamentos if l.data and _dow(l.data) in permitidos]
+        if considerar_periodo and restaurante_id:
+            rest = Restaurante.query.get(restaurante_id)
+            if rest:
+                mapa = {
+                    "seg-dom": {"1", "2", "3", "4", "5", "6", "7"},
+                    "sab-sex": {"6", "7", "1", "2", "3", "4", "5"},
+                    "sex-qui": {"5", "6", "7", "1", "2", "3", "4"},
+                }
+                permitidos = mapa.get(rest.periodo, {"1", "2", "3", "4", "5", "6", "7"})
+                lancamentos = [l for l in lancamentos if l.data and _dow(l.data) in permitidos]
 
-    total_producoes = sum((l.valor or 0.0) for l in lancamentos)
-    total_inss = round(total_producoes * INSS_ALIQ, 2)
-    total_sest = round(total_producoes * SEST_ALIQ, 2)
-    total_encargos = round(total_inss + total_sest, 2)
+        total_producoes = sum((l.valor or 0.0) for l in lancamentos)
+        total_inss = round(total_producoes * INSS_ALIQ, 2)
+        total_sest = round(total_producoes * SEST_ALIQ, 2)
+        total_encargos = round(total_inss + total_sest, 2)
 
     # =========================
     # Receitas / Despesas Coop
@@ -3604,7 +3615,7 @@ def admin_dashboard():
     total_receitas = 0.0
     total_despesas = 0.0
 
-    if True:
+    if load_receitas_corp:
         rq = ReceitaCooperativa.query
         dq = DespesaCooperativa.query
 
@@ -3637,7 +3648,7 @@ def admin_dashboard():
     total_despesas_coop = 0.0
     total_adiantamentos_coop = 0.0
 
-    if True:
+    if load_receitas_coop:
         rq2 = ReceitaCooperado.query
         dq2 = DespesaCooperado.query
 
@@ -3704,147 +3715,160 @@ def admin_dashboard():
     )
 
     restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
-    _ensure_taxas_admin_receitas(restaurantes, months_back=0)
+    taxa_admin_rows = []
+    taxa_admin_totais = {"valor_total": 0.0, "valor_pago": 0.0, "valor_pendente": 0.0, "multa_total": 0.0, "juros_total": 0.0}
+    juros_arrecadados_total = 0.0
 
-    # Recarrega SEMPRE as receitas/despesas após gerar taxas automáticas.
-    # Assim, sem filtro manual, a aba de receitas já abre mostrando o mês atual,
-    # e com filtro continua respeitando o período informado.
-    rq = ReceitaCooperativa.query
-    dq = DespesaCooperativa.query
-    if data_inicio:
-        rq = rq.filter(ReceitaCooperativa.data >= data_inicio)
-        dq = dq.filter(DespesaCooperativa.data >= data_inicio)
-    if data_fim:
-        rq = rq.filter(ReceitaCooperativa.data <= data_fim)
-        dq = dq.filter(DespesaCooperativa.data <= data_fim)
+    if load_receitas_corp:
+        _ensure_taxas_admin_receitas(restaurantes, months_back=0)
 
-    receitas = rq.order_by(
-        ReceitaCooperativa.data.desc().nullslast(),
-        ReceitaCooperativa.id.desc(),
-    ).all()
-    despesas = dq.order_by(
-        DespesaCooperativa.data.desc(),
-        DespesaCooperativa.id.desc(),
-    ).all()
-    total_receitas = sum(_receita_total_real(r) for r in receitas)
-    total_despesas = sum((d.valor or 0.0) for d in despesas)
-    taxa_admin_rows, taxa_admin_totais = _build_taxa_admin_rows(receitas)
-    juros_arrecadados_total = round(sum((r['valor_multa'] + r['valor_juros']) for r in taxa_admin_rows if r['status'] == 'pago'), 2)
+        # Recarrega apenas quando a aba realmente usa estes dados.
+        rq = ReceitaCooperativa.query
+        dq = DespesaCooperativa.query
+        if data_inicio:
+            rq = rq.filter(ReceitaCooperativa.data >= data_inicio)
+            dq = dq.filter(DespesaCooperativa.data >= data_inicio)
+        if data_fim:
+            rq = rq.filter(ReceitaCooperativa.data <= data_fim)
+            dq = dq.filter(DespesaCooperativa.data <= data_fim)
+
+        receitas = rq.order_by(
+            ReceitaCooperativa.data.desc().nullslast(),
+            ReceitaCooperativa.id.desc(),
+        ).all()
+        despesas = dq.order_by(
+            DespesaCooperativa.data.desc(),
+            DespesaCooperativa.id.desc(),
+        ).all()
+        total_receitas = sum(_receita_total_real(r) for r in receitas)
+        total_despesas = sum((d.valor or 0.0) for d in despesas)
+        taxa_admin_rows, taxa_admin_totais = _build_taxa_admin_rows(receitas)
+        juros_arrecadados_total = round(sum((r['valor_multa'] + r['valor_juros']) for r in taxa_admin_rows if r['status'] == 'pago'), 2)
+
     cooperados_map = {c.id: c for c in cooperados}
 
     # =========================
     # Documentos / status
     # =========================
-    docinfo_map = {c.id: _build_docinfo(c) for c in cooperados}
+    docinfo_map = {c.id: _build_docinfo(c) for c in cooperados} if load_escalas else {}
     status_doc_por_coop = {
         c.id: {
             "cnh_ok": docinfo_map[c.id]["cnh"]["ok"],
             "placa_ok": docinfo_map[c.id]["placa"]["ok"],
         }
         for c in cooperados
-    }
+    } if load_escalas else {}
 
     # =========================
     # Escalas
     # =========================
-    escalas_all = (
-        db.session.query(Escala)
-        .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
-        .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
-        .filter(
-            or_(
-                Escala.cooperado_id.is_(None),
-                Usuario.ativo.is_(True)
-            )
-        )
-        .order_by(Escala.id.asc())
-        .all()
-    )
-
+    escalas_all = []
     esc_by_int = defaultdict(list)
     esc_by_str = defaultdict(list)
-
-    for e in escalas_all:
-        k_int = e.cooperado_id if e.cooperado_id is not None else 0
-        esc_item = {
-            "data": e.data,
-            "turno": e.turno,
-            "horario": e.horario,
-            "contrato": e.contrato,
-            "cor": getattr(e, "cor", None),
-            "nome_planilha": getattr(e, "cooperado_nome", None),
-        }
-        esc_by_int[k_int].append(esc_item)
-        esc_by_str[str(k_int)].append(esc_item)
-
-    cont_rows = dict(
-        db.session.query(Escala.cooperado_id, func.count(Escala.id))
-        .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
-        .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
-        .filter(
-            or_(
-                Escala.cooperado_id.is_(None),
-                Usuario.ativo.is_(True)
-            )
-        )
-        .group_by(Escala.cooperado_id)
-        .all()
-    )
-
-    qtd_escalas_map = {c.id: int(cont_rows.get(c.id, 0)) for c in cooperados}
-    qtd_sem_cadastro = int(cont_rows.get(None, 0))
-
-    contratos_set = {((e.contrato or "").strip()) for e in escalas_all if (e.contrato or "").strip()}
-    contratos_set.update({((r.nome or "").strip()) for r in restaurantes if (r.nome or "").strip()})
-    contratos_escala_opcoes = sorted(contratos_set, key=lambda s: s.lower())
-
+    qtd_escalas_map = {}
+    qtd_sem_cadastro = 0
+    contratos_escala_opcoes = []
     escala_editor_rows = []
-    for e in sorted(escalas_all, key=_escala_sort_key):
-        coop_obj = None
-        if e.cooperado_id:
-            coop_obj = cooperados_map.get(e.cooperado_id)
+    escala_alertas_1h = []
 
-        nome_atual = (coop_obj.nome if coop_obj else (e.cooperado_nome or "").strip())
-        escala_editor_rows.append({
-            "id": e.id,
-            "data": e.data or "",
-            "weekday_num": _escala_weekday_num(e.data),
-            "weekday_label": _escala_weekday_label(e.data),
-            "turno": e.turno or "",
-            "horario": e.horario or "",
-            "contrato": e.contrato or "",
-            "cooperado_id": e.cooperado_id,
-            "cooperado_nome": nome_atual or "",
-            "cooperado_nome_livre": (e.cooperado_nome or "") if not coop_obj else "",
-            "restaurante_id": e.restaurante_id,
-            "cor": getattr(e, "cor", None),
-        })
+    if load_escalas:
+        escalas_all = (
+            db.session.query(Escala)
+            .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
+            .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
+            .filter(
+                or_(
+                    Escala.cooperado_id.is_(None),
+                    Usuario.ativo.is_(True)
+                )
+            )
+            .order_by(Escala.id.asc())
+            .all()
+        )
 
-    escala_alertas_1h = _build_escala_alertas_1h(escalas_all, cooperados_map)
+        for e in escalas_all:
+            k_int = e.cooperado_id if e.cooperado_id is not None else 0
+            esc_item = {
+                "data": e.data,
+                "turno": e.turno,
+                "horario": e.horario,
+                "contrato": e.contrato,
+                "cor": getattr(e, "cor", None),
+                "nome_planilha": getattr(e, "cooperado_nome", None),
+            }
+            esc_by_int[k_int].append(esc_item)
+            esc_by_str[str(k_int)].append(esc_item)
+
+        cont_rows = dict(
+            db.session.query(Escala.cooperado_id, func.count(Escala.id))
+            .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
+            .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
+            .filter(
+                or_(
+                    Escala.cooperado_id.is_(None),
+                    Usuario.ativo.is_(True)
+                )
+            )
+            .group_by(Escala.cooperado_id)
+            .all()
+        )
+
+        qtd_escalas_map = {c.id: int(cont_rows.get(c.id, 0)) for c in cooperados}
+        qtd_sem_cadastro = int(cont_rows.get(None, 0))
+
+        contratos_set = {((e.contrato or "").strip()) for e in escalas_all if (e.contrato or "").strip()}
+        contratos_set.update({((r.nome or "").strip()) for r in restaurantes if (r.nome or "").strip()})
+        contratos_escala_opcoes = sorted(contratos_set, key=lambda s: s.lower())
+
+        for e in sorted(escalas_all, key=_escala_sort_key):
+            coop_obj = None
+            if e.cooperado_id:
+                coop_obj = cooperados_map.get(e.cooperado_id)
+
+            nome_atual = (coop_obj.nome if coop_obj else (e.cooperado_nome or "").strip())
+            escala_editor_rows.append({
+                "id": e.id,
+                "data": e.data or "",
+                "weekday_num": _escala_weekday_num(e.data),
+                "weekday_label": _escala_weekday_label(e.data),
+                "turno": e.turno or "",
+                "horario": e.horario or "",
+                "contrato": e.contrato or "",
+                "cooperado_id": e.cooperado_id,
+                "cooperado_nome": nome_atual or "",
+                "cooperado_nome_livre": (e.cooperado_nome or "") if not coop_obj else "",
+                "restaurante_id": e.restaurante_id,
+                "cor": getattr(e, "cor", None),
+            })
+
+        escala_alertas_1h = _build_escala_alertas_1h(escalas_all, cooperados_map)
 
     # =========================
     # Gráficos
     # =========================
-    sums = {}
-    for l in lancamentos:
-        if not l.data:
-            continue
-        key = l.data.strftime("%Y-%m")
-        sums[key] = sums.get(key, 0.0) + (l.valor or 0.0)
+    chart_data_lancamentos_coop = {"labels": [], "values": []}
+    chart_data_lancamentos_cooperados = {"labels": [], "values": []}
+    if load_lancamentos:
+        sums = {}
+        for l in lancamentos:
+            if not l.data:
+                continue
+            key = l.data.strftime("%Y-%m")
+            sums[key] = sums.get(key, 0.0) + (l.valor or 0.0)
 
-    labels_ord = sorted(sums.keys())
+        labels_ord = sorted(sums.keys())
 
-    def _fmt_label(k: str) -> str:
-        parts = k.split("-")
-        if len(parts) == 2 and parts[0] and parts[1]:
-            year, month = parts[0], parts[1]
-            return f"{month}/{year[-2:]}"
-        return k
+        def _fmt_label(k: str) -> str:
+            parts = k.split("-")
+            if len(parts) == 2 and parts[0] and parts[1]:
+                year, month = parts[0], parts[1]
+                return f"{month}/{year[-2:]}"
+            return k
 
-    labels_fmt = [_fmt_label(k) for k in labels_ord]
-    values = [round(sums[k], 2) for k in labels_ord]
-    chart_data_lancamentos_coop = {"labels": labels_fmt, "values": values}
-    chart_data_lancamentos_cooperados = {"labels": labels_fmt, "values": values}
+        labels_fmt = [_fmt_label(k) for k in labels_ord]
+        values = [round(sums[k], 2) for k in labels_ord]
+        chart_data_lancamentos_coop = {"labels": labels_fmt, "values": values}
+        chart_data_lancamentos_cooperados = {"labels": labels_fmt, "values": values}
 
     # =========================
     # Admin master / principal
@@ -3871,7 +3895,7 @@ def admin_dashboard():
     folha_inicio = None
     folha_fim = None
 
-    if active_tab == "folha":
+    if load_folha:
         folha_inicio = _parse_date(args.get("folha_inicio"))
         folha_fim = _parse_date(args.get("folha_fim"))
 
@@ -3978,8 +4002,9 @@ def admin_dashboard():
 
     historico_beneficios = []
     beneficios_view = []
+    beneficios_total_periodo = 0.0
 
-    if True:
+    if load_beneficios:
         if b_ini and not b_fim:
             b_fim = b_ini
         elif b_fim and not b_ini:
@@ -4030,6 +4055,7 @@ def admin_dashboard():
                 "valor_total": b.valor_total or 0.0,
                 "recebedores": recs,
             })
+            beneficios_total_periodo += float(b.valor_total or 0.0)
 
     # =========================
     # Trocas
@@ -4056,7 +4082,7 @@ def admin_dashboard():
             "entrou": entrou,
         }
 
-    trocas_all = TrocaSolicitacao.query.order_by(TrocaSolicitacao.id.desc()).all()
+    trocas_all = TrocaSolicitacao.query.order_by(TrocaSolicitacao.id.desc()).all() if load_trocas else []
     trocas_pendentes = []
     trocas_historico = []
     trocas_historico_flat = []
@@ -4330,6 +4356,7 @@ def admin_dashboard():
         cooperados=cooperados,
         restaurantes=restaurantes,
         beneficios_view=beneficios_view,
+        beneficios_total_periodo=beneficios_total_periodo,
         historico_beneficios=historico_beneficios,
         current_date=current_date,
         data_limite=data_limite,
@@ -4405,6 +4432,16 @@ def admin_exportar_resumo_xlsx():
     cooperado_id = args.get("cooperado_id", type=int)
     considerar_periodo = bool(args.get("considerar_periodo"))
     dows = set(args.getlist("dow"))
+
+    load_lancamentos = active_tab in {"lancamentos", "resumo"}
+    load_receitas_corp = active_tab in {"receitas", "despesas", "resumo"}
+    load_receitas_coop = active_tab in {"coop_receitas", "coop_despesas", "resumo"}
+    load_escalas = active_tab == "escalas"
+    load_folha = active_tab == "folha"
+    load_beneficios = active_tab in {"beneficios", "resumo"}
+    load_trocas = active_tab == "trocas"
+    load_config = active_tab == "config"
+    load_resumo = active_tab == "resumo"
 
     cooperados = (
         Cooperado.query
