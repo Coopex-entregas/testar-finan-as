@@ -21,7 +21,7 @@ mimetypes.add_type("application/vnd.ms-powerpoint", ".ppt")
 # ============ Terceiros ============
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
-    flash, send_file, abort, jsonify, current_app
+    flash, send_file, abort, jsonify, current_app, g
 )
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1521,12 +1521,18 @@ ADMIN_ABAS = {
 
 
 def _usuario_logado() -> Usuario | None:
+    cached = getattr(g, "_usuario_logado_cache", None)
+    if cached is not None:
+        return cached
+
     uid = session.get("user_id")
     if not uid:
+        g._usuario_logado_cache = None
         return None
 
     u = Usuario.query.get(uid)
     if not u:
+        g._usuario_logado_cache = None
         return None
 
     if getattr(u, "ativo", None) is None:
@@ -1534,8 +1540,10 @@ def _usuario_logado() -> Usuario | None:
         db.session.commit()
 
     if u.ativo is False:
+        g._usuario_logado_cache = None
         return None
 
+    g._usuario_logado_cache = u
     return u
 
 
@@ -1545,6 +1553,14 @@ def is_admin_master() -> bool:
 
 
 def get_admin_permissions_map(usuario_id: int) -> dict:
+    cache = getattr(g, "_admin_permissions_map_cache", None)
+    if cache is None:
+        cache = {}
+        g._admin_permissions_map_cache = cache
+
+    if usuario_id in cache:
+        return cache[usuario_id]
+
     perms = AdminPermissao.query.filter_by(usuario_id=usuario_id).all()
     out = {}
 
@@ -1556,7 +1572,113 @@ def get_admin_permissions_map(usuario_id: int) -> dict:
             "excluir": bool(p.pode_excluir),
         }
 
+    cache[usuario_id] = out
     return out
+
+
+def _ymd_or_empty(v):
+    if not v:
+        return ""
+    if hasattr(v, "strftime"):
+        try:
+            return v.strftime("%Y-%m-%d")
+        except Exception:
+            return ""
+    return str(v)
+
+
+def _build_admin_resumo_payload(
+    lancamentos, receitas_coop, despesas_coop, receitas, despesas, beneficios_view, cooperados, restaurantes
+):
+    payload = {
+        "producoes": [],
+        "receitas_cooperados": [],
+        "despesas_cooperados": [],
+        "receitas_cooperativa": [],
+        "despesas_cooperativa": [],
+        "beneficios": [],
+        "cooperados": [],
+        "restaurantes": [],
+    }
+
+    for l in lancamentos or []:
+        coop = getattr(l, "cooperado", None)
+        rest = getattr(l, "restaurante", None)
+        payload["producoes"].append({
+            "id": l.id,
+            "data": _ymd_or_empty(getattr(l, "data", None)),
+            "valor": float(getattr(l, "valor", 0) or 0),
+            "cooperado_id": getattr(coop, "id", None),
+            "cooperado_nome": getattr(coop, "nome", "") or "",
+            "restaurante_id": getattr(rest, "id", None),
+            "restaurante_nome": getattr(rest, "nome", "") or "",
+        })
+
+    for r in receitas_coop or []:
+        coop = getattr(r, "cooperado", None)
+        payload["receitas_cooperados"].append({
+            "id": r.id,
+            "data": _ymd_or_empty(getattr(r, "data", None)),
+            "valor": float(getattr(r, "valor", 0) or 0),
+            "cooperado_id": getattr(coop, "id", None),
+            "cooperado_nome": getattr(coop, "nome", "") or "",
+            "descricao": getattr(r, "descricao", "") or "",
+        })
+
+    for d in despesas_coop or []:
+        coop = getattr(d, "cooperado", None)
+        valor_pago_manual = 0.0
+        try:
+            for ab in (getattr(d, "abatimentos", None) or []):
+                valor_pago_manual += float(getattr(ab, "valor", 0) or 0)
+        except Exception:
+            valor_pago_manual = 0.0
+
+        payload["despesas_cooperados"].append({
+            "id": d.id,
+            "data": _ymd_or_empty(getattr(d, "data", None)),
+            "valor": float(getattr(d, "valor", 0) or 0),
+            "cooperado_id": getattr(coop, "id", None),
+            "cooperado_nome": (getattr(coop, "nome", None) or getattr(d, "cooperado_nome", "") or ""),
+            "descricao": getattr(d, "descricao", "") or "",
+            "adiantamento": bool(getattr(d, "eh_adiantamento", False) or getattr(d, "adiantamento", False)),
+            "competencia_desconto": getattr(d, "competencia_desconto", None) or "esta_semana",
+            "valor_pago_manual": float(valor_pago_manual or 0),
+        })
+
+    for r in receitas or []:
+        payload["receitas_cooperativa"].append({
+            "id": r.id,
+            "data": _ymd_or_empty(getattr(r, "data", None) or getattr(r, "data_lancamento", None)),
+            "valor": float(getattr(r, "valor", None) if getattr(r, "valor", None) is not None else (getattr(r, "valor_total", 0) or 0)),
+            "descricao": getattr(r, "descricao", "") or "",
+        })
+
+    for d in despesas or []:
+        payload["despesas_cooperativa"].append({
+            "id": d.id,
+            "data": _ymd_or_empty(getattr(d, "data", None) or getattr(d, "data_lancamento", None)),
+            "valor": float(getattr(d, "valor", None) if getattr(d, "valor", None) is not None else (getattr(d, "valor_total", 0) or 0)),
+            "descricao": getattr(d, "descricao", "") or "",
+        })
+
+    for b in beneficios_view or []:
+        payload["beneficios"].append({
+            "id": b.get("id") if isinstance(b, dict) else getattr(b, "id", None),
+            "data_inicial": _ymd_or_empty(b.get("data_inicial") if isinstance(b, dict) else getattr(b, "data_inicial", None)),
+            "data_final": _ymd_or_empty(b.get("data_final") if isinstance(b, dict) else getattr(b, "data_final", None)),
+            "data_lancamento": _ymd_or_empty(b.get("data_lancamento") if isinstance(b, dict) else getattr(b, "data_lancamento", None)),
+            "tipo": (b.get("tipo") if isinstance(b, dict) else getattr(b, "tipo", "")) or "",
+            "valor_total": float((b.get("valor_total") if isinstance(b, dict) else getattr(b, "valor_total", 0)) or 0),
+        })
+
+    for c in cooperados or []:
+        payload["cooperados"].append({"id": c.id, "nome": c.nome or ""})
+
+    for r in restaurantes or []:
+        payload["restaurantes"].append({"id": r.id, "nome": r.nome or ""})
+
+    return payload
 
 
 def admin_has_perm(aba: str, acao: str = "ver") -> bool:
@@ -3563,7 +3685,7 @@ def admin_dashboard():
     total_sest = 0.0
     total_encargos = 0.0
 
-    q = Lancamento.query
+    q = Lancamento.query.options(selectinload(Lancamento.cooperado), selectinload(Lancamento.restaurante))
 
     if restaurante_id:
         q = q.filter(Lancamento.restaurante_id == restaurante_id)
@@ -3639,8 +3761,8 @@ def admin_dashboard():
     total_adiantamentos_coop = 0.0
 
     if True:
-        rq2 = ReceitaCooperado.query
-        dq2 = DespesaCooperado.query
+        rq2 = ReceitaCooperado.query.options(selectinload(ReceitaCooperado.cooperado))
+        dq2 = DespesaCooperado.query.options(selectinload(DespesaCooperado.cooperado), selectinload(DespesaCooperado.abatimentos))
 
         if data_inicio:
             rq2 = rq2.filter(ReceitaCooperado.data >= data_inicio)
@@ -4300,6 +4422,17 @@ def admin_dashboard():
             resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
             resumo_totais["pend_programado"] += snap["a_descontar"]
 
+    admin_resumo_payload = _build_admin_resumo_payload(
+        lancamentos=lancamentos,
+        receitas_coop=receitas_coop,
+        despesas_coop=despesas_coop,
+        receitas=receitas,
+        despesas=despesas,
+        beneficios_view=beneficios_view,
+        cooperados=cooperados,
+        restaurantes=restaurantes,
+    )
+
     return render_template(
         "admin_dashboard.html",
         tab=active_tab,
@@ -4364,6 +4497,8 @@ def admin_dashboard():
         taxa_admin_rows=taxa_admin_rows,
         taxa_admin_totais=taxa_admin_totais,
         juros_arrecadados_total=juros_arrecadados_total,
+        admin_resumo_payload=admin_resumo_payload,
+        fast_mode=True,
     )
     
 # =========================
@@ -4425,7 +4560,7 @@ def exportar_lancamentos():
     data_fim       = _parse_date(args.get("data_fim"))
     dows           = set(args.getlist("dow"))  # '0'..'6'
 
-    q = Lancamento.query
+    q = Lancamento.query.options(selectinload(Lancamento.cooperado), selectinload(Lancamento.restaurante))
     if restaurante_id:
         q = q.filter(Lancamento.restaurante_id == restaurante_id)
     if cooperado_id:
