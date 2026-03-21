@@ -1174,7 +1174,7 @@
           </div>
         </div>
 
-        <!-- Gráfico único do resumo -->
+        <!-- Gráficos -->
         <div class="row g-2 mt-3">
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
@@ -1552,10 +1552,8 @@
           const rec = Number(r.rec || 0);
           const des = Number(r.des || 0);
           const adiant = Number(r.adiant || 0);
+          const aReceber = Number(r.a_receber ?? r.aReceber ?? 0);
           const saldoPend = Number(r.saldo_pendente ?? r.saldoPendente ?? 0);
-          const pendProgramado = Number(r.pend_programado ?? r.pendProgramado ?? 0);
-          const totalPendente = Number(r.total_pendente ?? r.totalPendente ?? (saldoPend + pendProgramado) ?? 0);
-          const pendencias = Array.isArray(r.pendencias) ? r.pendencias : [];
 
           tProd += prod;
           tINSS4 += inss4;
@@ -1564,15 +1562,13 @@
           tDes += des;
           tAdiant += adiant;
           tReceber += aReceber;
-          tPend += totalPendente;
+          tPend += saldoPend;
 
-          const detalheHtml = pendencias.length
-            ? `<div class="small text-muted mt-1">${pendencias.map(p => `${p.descricao || 'Despesa'}: ${fmtBR(Number(p.restante || 0))}`).join('<br>')}</div>`
-            : '';
-
+          const detalhes = (r.pendencia_texto || r.pendenciaTexto || '').trim();
+          const detalhesHtml = detalhes ? `<div class="small text-muted mt-1">${detalhes}</div>` : '';
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="text-break"><div>${r.nome || '—'}</div>${detalheHtml}</td>
+            <td class="text-break"><div class="fw-semibold">${r.nome || '—'}</div>${detalhesHtml}</td>
             <td class="text-end">${fmtBR(prod)}</td>
             <td class="text-end">${fmtBR(inss4)}</td>
             <td class="text-end">${fmtBR(sest05)}</td>
@@ -1580,7 +1576,7 @@
             <td class="text-end text-danger">${fmtBR(des)}</td>
             <td class="text-end text-danger">${fmtBR(adiant)}</td>
             <td class="text-end fw-bold">${fmtBR(aReceber)}</td>
-            <td class="text-end fw-bold text-warning">${fmtBR(totalPendente)}</td>`;
+            <td class="text-end fw-bold text-warning" title="${detalhes.replace(/"/g, '&quot;')}">${fmtBR(saldoPend)}</td>`;
           tbody.appendChild(tr);
         });
 
@@ -1611,7 +1607,7 @@
         if (pendEl) pendEl.textContent = fmtBR(tPend);
       })();
 
-      // ---- Gráfico único do resumo (Chart.js via CDN) ----
+      // ---- Gráficos (Chart.js via CDN) ----
       const ensureChart = () => new Promise(res => {
         if (window.Chart) return res();
         const s = document.createElement('script');
@@ -1626,6 +1622,130 @@
           maximumFractionDigits: 2
         });
 
+        const baseChartOptions = {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, padding: 18, boxWidth: 10, boxHeight: 10 }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: (ctx) => {
+                  const label = ctx.dataset.label || '';
+                  const v = ctx.parsed.y ?? ctx.parsed.x ?? 0;
+                  return `${label}: ${moneyTick(v)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(148,163,184,0.25)' },
+              ticks: { callback: (v) => moneyTick(v) }
+            }
+          }
+        };
+
+        // Cooperativa: Receitas vs Despesas por mês
+        (function () {
+          const byM = {};
+          filteredRECc.forEach(r => {
+            const k = byMonthKey(r.data) || '—';
+            (byM[k] ??= { r: 0, d: 0 }).r += r.valor;
+          });
+          filteredDESc.forEach(d => {
+            const k = byMonthKey(d.data) || '—';
+            (byM[k] ??= { r: 0, d: 0 }).d += d.valor;
+          });
+
+          const labels = Object.keys(byM).sort();
+          const rec    = labels.map(k => byM[k].r);
+          const des    = labels.map(k => byM[k].d);
+
+          const ctx = document.getElementById('chartCoop');
+          if (!ctx) return;
+
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Receitas', data: rec, backgroundColor: 'rgba(37, 99, 235, 0.75)', borderRadius: 6 },
+                { label: 'Despesas', data: des, backgroundColor: 'rgba(239, 68, 68, 0.75)', borderRadius: 6 }
+              ]
+            },
+            options: baseChartOptions
+          });
+        })();
+
+        // Cooperados: Produções + INSS 4% + SEST 0,5% por mês
+        (function () {
+          const byM = {};
+          filteredPROD.forEach(p => {
+            const k = byMonthKey(p.data) || '—';
+            (byM[k] ??= { prod: 0, inss4: 0, sest05: 0 }).prod += p.valor;
+            byM[k].inss4  += p.valor * 0.04;
+            byM[k].sest05 += p.valor * 0.005;
+          });
+
+          const labels = Object.keys(byM).sort();
+          const prod   = labels.map(k => byM[k].prod);
+          const inss4  = labels.map(k => byM[k].inss4);
+          const sest05 = labels.map(k => byM[k].sest05);
+
+          const ctx = document.getElementById('chartCooperados');
+          if (!ctx) return;
+
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Produções (bruto)',
+                  data: prod,
+                  borderColor: 'rgba(37, 99, 235, 1)',
+                  backgroundColor: 'rgba(37, 99, 235, 0.18)',
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                  pointHoverRadius: 4
+                },
+                {
+                  label: 'INSS (4,0%)',
+                  data: inss4,
+                  borderColor: 'rgba(56, 189, 248, 1)',
+                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                  pointHoverRadius: 4
+                },
+                {
+                  label: 'SEST/SENAT (0,5%)',
+                  data: sest05,
+                  borderColor: 'rgba(2, 132, 199, 1)',
+                  backgroundColor: 'rgba(2, 132, 199, 0.10)',
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                  pointHoverRadius: 4
+                }
+              ]
+            },
+            options: baseChartOptions
+          });
+        })();
+
+        // Estabelecimentos — barra horizontal + tabela real
         (function () {
           const byR = {};
           filteredPROD.forEach(p => {
@@ -1663,7 +1783,7 @@
             type: 'bar',
             data: {
               labels,
-              datasets: [{ label: 'Produções por Estabelecimento', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
+              datasets: [{ label: 'Produções', data: vals, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 6 }]
             },
             options: {
               responsive: true,
@@ -1672,19 +1792,19 @@
                 legend: { display: false },
                 tooltip: {
                   callbacks: {
-                    label: (ctx) => `Produções: ${moneyTick(ctx.parsed.x ?? 0)}`
+                    label: (ctx) => `Produções: ${fmtBR(ctx.parsed.x ?? 0)}`
                   }
                 }
               },
               scales: {
                 x: {
                   beginAtZero: true,
-                  grid: { color: 'rgba(148,163,184,0.25)' },
+                  grid: { display: false },
                   ticks: { callback: (v) => moneyTick(v) }
                 },
                 y: {
-                  grid: { display: false },
-                  ticks: { autoSkip: false }
+                  grid: { color: 'rgba(148,163,184,0.25)' },
+                  ticks: { callback: (v, i) => labels[i] || '' }
                 }
               }
             }
