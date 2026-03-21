@@ -3647,6 +3647,7 @@ def admin_dashboard():
     total_receitas_coop = 0.0
     total_despesas_coop = 0.0
     total_adiantamentos_coop = 0.0
+    despesa_snapshot_map = {}
 
     if load_receitas_coop:
         rq2 = ReceitaCooperado.query
