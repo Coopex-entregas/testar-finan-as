@@ -3695,15 +3695,21 @@ def admin_dashboard():
 
     cfg = get_config()
 
-    cooperados = (
+    cooperados_todos = (
         Cooperado.query
         .join(Usuario, Cooperado.usuario_id == Usuario.id)
-        .filter(Usuario.ativo.is_(True))
         .order_by(Cooperado.nome)
         .all()
     )
+    cooperados = [c for c in cooperados_todos if bool(getattr(getattr(c, "usuario_ref", None), "ativo", True))]
 
-    restaurantes = Restaurante.query.order_by(Restaurante.nome).all()
+    restaurantes_todos = Restaurante.query.order_by(Restaurante.nome).all()
+    restaurantes = [
+        r for r in restaurantes_todos
+        if bool(
+            getattr(getattr(r, "usuario_ref", None), "ativo", getattr(r, "ativo", True))
+        )
+    ]
     _ensure_taxas_admin_receitas(restaurantes, months_back=0)
 
     # Recarrega SEMPRE as receitas/despesas após gerar taxas automáticas.
@@ -4267,20 +4273,11 @@ def admin_dashboard():
         rec = sum((r.valor or 0.0) for r in receitas_coop if getattr(r, "cooperado_id", None) == coop.id)
         inss4 = sum((l.valor or 0.0) * INSS_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
         sest05 = sum((l.valor or 0.0) * SEST_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
-        snap_itens = snap.get("itens", []) or []
-        des = round(sum((item.get("valor_total", 0.0) or 0.0) for item in snap_itens if not item.get("eh_adiantamento")), 2)
-        adiant = round(sum((item.get("valor_total", 0.0) or 0.0) for item in snap_itens if item.get("eh_adiantamento")), 2)
-        pendencias = []
-        for item in snap_itens:
-            restante = round(float(item.get("restante", 0.0) or 0.0), 2)
-            if restante <= 0:
-                continue
-            desc = (item.get("descricao") or ("Adiantamento" if item.get("eh_adiantamento") else "Despesa")).strip()
-            pendencias.append(f"{desc}: R$ {restante:.2f}")
-        pendencia_texto = " | ".join(pendencias)
+        des = round(snap.get("descontado_despesa", 0.0), 2)
+        adiant = round(sum((d.valor or 0.0) for d in despesas_coop if getattr(d, "cooperado_id", None) == coop.id and bool(getattr(d, "eh_adiantamento", False))), 2)
         if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"]:
             _a_receber = round(max(0.0, snap["disponivel_auto_restante"]), 2)
-            _saldo_pendente = round((snap["saldo_devedor"] or 0.0) + (snap["a_descontar"] or 0.0), 2)
+            _saldo_pendente = round(snap["saldo_devedor"], 2)
             _pend_programado = round(snap["a_descontar"], 2)
             resumo_coop_rows.append({
                 "id": coop.id,
@@ -4297,8 +4294,6 @@ def admin_dashboard():
                 "saldoPendente": _saldo_pendente,
                 "pend_programado": _pend_programado,
                 "pendProgramado": _pend_programado,
-                "pendencia_texto": pendencia_texto,
-                "pendenciaTexto": pendencia_texto,
             })
             resumo_totais["prod"] += prod
             resumo_totais["inss4"] += inss4
@@ -4307,7 +4302,7 @@ def admin_dashboard():
             resumo_totais["des"] += des
             resumo_totais["adiant"] += adiant
             resumo_totais["a_receber"] += max(0.0, snap["disponivel_auto_restante"])
-            resumo_totais["saldo_pendente"] += ((snap["saldo_devedor"] or 0.0) + (snap["a_descontar"] or 0.0))
+            resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
             resumo_totais["pend_programado"] += snap["a_descontar"]
 
     return render_template(
@@ -4329,7 +4324,9 @@ def admin_dashboard():
         receitas_coop=receitas_coop,
         despesas_coop=despesas_coop,
         cooperados=cooperados,
+        cooperados_todos=cooperados_todos,
         restaurantes=restaurantes,
+        restaurantes_todos=restaurantes_todos,
         beneficios_view=beneficios_view,
         historico_beneficios=historico_beneficios,
         current_date=current_date,
@@ -6609,9 +6606,11 @@ def salvar_permissoes_admin(usuario_id):
 @admin_perm_required("coop_receitas", "criar")
 def add_receita_coop():
     f = request.form
+    cooperado_id = f.get("cooperado_id", type=int)
+    _assert_cooperado_ativo(cooperado_id)
 
     rc = ReceitaCooperado(
-        cooperado_id=f.get("cooperado_id", type=int),
+        cooperado_id=cooperado_id,
         descricao=(f.get("descricao") or "").strip(),
         valor=f.get("valor", type=float),
         data=_parse_date(f.get("data")),
@@ -6629,7 +6628,9 @@ def edit_receita_coop(id):
     rc = ReceitaCooperado.query.get_or_404(id)
     f = request.form
 
-    rc.cooperado_id = f.get("cooperado_id", type=int)
+    cooperado_id = f.get("cooperado_id", type=int)
+    _assert_cooperado_ativo(cooperado_id)
+    rc.cooperado_id = cooperado_id
     rc.descricao = (f.get("descricao") or "").strip()
     rc.valor = f.get("valor", type=float)
     rc.data = _parse_date(f.get("data"))
@@ -6858,7 +6859,30 @@ def add_abatimento_despesa_coop(id):
 @admin_perm_required("coop_despesas", "criar")
 def add_despesa_coop():
     f = request.form
-    ids = f.getlist("cooperado_ids[]")
+    ids_raw = [str(x).strip() for x in f.getlist("cooperado_ids[]") if str(x).strip()]
+
+    ativos_ids = {
+        str(c.id)
+        for c in (
+            Cooperado.query
+            .join(Usuario, Cooperado.usuario_id == Usuario.id)
+            .filter(Usuario.ativo.is_(True))
+            .all()
+        )
+    }
+
+    ids = []
+    seen = set()
+    for raw in ids_raw:
+        if raw.lower() == "all":
+            for cid in sorted(ativos_ids, key=lambda v: int(v)):
+                if cid not in seen:
+                    ids.append(cid)
+                    seen.add(cid)
+            continue
+        if raw in ativos_ids and raw not in seen:
+            ids.append(raw)
+            seen.add(raw)
 
     descricao = (f.get("descricao") or "").strip()
     valor_total = f.get("valor", type=float) or 0.0
@@ -6867,7 +6891,7 @@ def add_despesa_coop():
     competencia_semana = (f.get("competencia_desconto") or f.get("competencia_semana") or "esta_semana").strip().lower()
 
     if not ids:
-        flash("Selecione pelo menos um cooperado.", "warning")
+        flash("Selecione pelo menos um cooperado ativo.", "warning")
         return _admin_redirect_with_filters("coop_despesas")
 
     if not d:
@@ -6904,7 +6928,9 @@ def edit_despesa_coop(id):
     dc = DespesaCooperado.query.get_or_404(id)
     f = request.form
 
-    dc.cooperado_id = f.get("cooperado_id", type=int)
+    cooperado_id = f.get("cooperado_id", type=int)
+    _assert_cooperado_ativo(cooperado_id)
+    dc.cooperado_id = cooperado_id
     dc.descricao = (f.get("descricao") or "").strip()
     dc.valor = f.get("valor", type=float)
     data_edit = _parse_date(f.get("data")) or dc.data or date.today()
