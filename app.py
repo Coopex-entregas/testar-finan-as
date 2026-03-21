@@ -6786,16 +6786,18 @@ def _restaurante_ativo_por_id(rid: int | None) -> Restaurante | None:
 
 def _compute_coop_debt_snapshot(coop_id, di, df):
     """
-    Calcula o status das despesas do cooperado em ordem cronológica real.
-
-    Regras aplicadas:
-    - abatimento automático usa produções líquidas (já tirando INSS/SEST) + receitas do cooperado;
-    - uma despesa só pode ser abatida a partir da data do seu vencimento;
-    - saldo positivo ANTES de um novo vencimento não é carregado para frente;
-      ele só vale como "a receber" até surgir um novo débito;
-    - dívidas antigas continuam sendo abatidas nas semanas seguintes.
+    Regras do abatimento automático no resumo do cooperado:
+    - Produção líquida da semana = produção bruta - INSS - SEST.
+    - Receita entra inteira como crédito da semana.
+    - O crédito da semana abate primeiro ADIANTAMENTOS vencidos/abertos.
+    - Depois abate DESPESAS vencidas/abertas.
+    - Crédito positivo de semanas anteriores NÃO quita dívida de semanas futuras.
+    - Dívida pendente carrega para as semanas seguintes até zerar.
     """
     as_of = df or date.today()
+
+    def _week_start(d):
+        return d - timedelta(days=d.weekday())
 
     q_prod = (
         Lancamento.query
@@ -6820,17 +6822,41 @@ def _compute_coop_debt_snapshot(coop_id, di, df):
     despesas = q_desp.all()
 
     itens_map = {}
+    creditos_por_semana = {}
+    semanas = set()
+
+    for p in prods:
+        if not p.data:
+            continue
+        ws = _week_start(p.data)
+        semanas.add(ws)
+        liquido = round(float(p.valor or 0.0) * (1.0 - INSS_ALIQ - SEST_ALIQ), 2)
+        if liquido > 0:
+            creditos_por_semana[ws] = round(creditos_por_semana.get(ws, 0.0) + liquido, 2)
+
+    for r in recs:
+        if not r.data:
+            continue
+        ws = _week_start(r.data)
+        semanas.add(ws)
+        valor = round(float(r.valor or 0.0), 2)
+        if valor > 0:
+            creditos_por_semana[ws] = round(creditos_por_semana.get(ws, 0.0) + valor, 2)
+
     for dc in despesas:
         valor_total = round(float(dc.valor or 0.0), 2)
         if valor_total <= 0:
             continue
         due_date = _despesa_due_date(dc)
+        due_week = _week_start(due_date)
+        semanas.add(due_week)
         itens_map[dc.id] = {
             'id': dc.id,
             'data': dc.data,
             'data_inicio': dc.data_inicio,
             'data_fim': dc.data_fim,
             'due_date': due_date,
+            'due_week': due_week,
             'descricao': dc.descricao or '',
             'valor': valor_total,
             'eh_adiantamento': bool(getattr(dc, 'eh_adiantamento', False)),
@@ -6842,32 +6868,27 @@ def _compute_coop_debt_snapshot(coop_id, di, df):
             'status': 'a_descontar' if due_date > as_of else 'aberta',
         }
 
-    eventos = []
-    for p in prods:
-        if not p.data:
-            continue
-        liquido = round(float(p.valor or 0.0) * (1.0 - INSS_ALIQ - SEST_ALIQ), 2)
-        if liquido > 0:
-            eventos.append((p.data, 1, getattr(p, 'id', 0), 'credito', liquido))
-    for r in recs:
-        if not r.data:
-            continue
-        valor = round(float(r.valor or 0.0), 2)
-        if valor > 0:
-            eventos.append((r.data, 1, getattr(r, 'id', 0), 'credito', valor))
-    for dc in despesas:
-        item = itens_map.get(dc.id)
-        if item and item['due_date'] <= as_of:
-            eventos.append((item['due_date'], 0, dc.id, 'debito', dc.id))
-
-    eventos.sort(key=lambda x: (x[0], x[1], x[2]))
+    semanas_processadas = sorted(ws for ws in semanas if ws <= _week_start(as_of))
+    if not semanas_processadas and itens_map:
+        semanas_processadas = sorted({_week_start(as_of)})
 
     abertas = []
     livre_sem_divida = 0.0
 
-    def _abater_credito(valor_credito: float):
-        nonlocal livre_sem_divida
-        restante_credito = round(valor_credito, 2)
+    def _ordenar_abertas():
+        abertas.sort(key=lambda item: (0 if item['eh_adiantamento'] else 1, item['due_week'], item['due_date'], item['id']))
+
+    for semana in semanas_processadas:
+        for item in itens_map.values():
+            if item['due_week'] == semana and item['due_date'] <= as_of and item['restante'] > 0:
+                if item not in abertas:
+                    item['status'] = 'aberta'
+                    abertas.append(item)
+        _ordenar_abertas()
+
+        credito_semana = round(creditos_por_semana.get(semana, 0.0), 2)
+        restante_credito = credito_semana
+
         while restante_credito > 0.0001 and abertas:
             item = abertas[0]
             falta = round(item['restante'], 2)
@@ -6881,20 +6902,9 @@ def _compute_coop_debt_snapshot(coop_id, di, df):
                 abertas.pop(0)
             else:
                 item['status'] = 'parcial'
-        if restante_credito > 0.0001 and not abertas:
-            livre_sem_divida = round(livre_sem_divida + restante_credito, 2)
+                _ordenar_abertas()
 
-    for ev_date, _prio, _eid, ev_tipo, payload in eventos:
-        if ev_tipo == 'debito':
-            if not abertas:
-                livre_sem_divida = 0.0
-            item = itens_map.get(payload)
-            if not item:
-                continue
-            item['status'] = 'aberta'
-            abertas.append(item)
-        else:
-            _abater_credito(float(payload or 0.0))
+        livre_sem_divida = round(restante_credito if not abertas else 0.0, 2)
 
     total_vencido_pendente = 0.0
     total_programado = 0.0
@@ -6902,7 +6912,7 @@ def _compute_coop_debt_snapshot(coop_id, di, df):
     total_descontado_adiant = 0.0
     itens = []
 
-    for item in sorted(itens_map.values(), key=lambda x: (x['due_date'], x['id'])):
+    for item in sorted(itens_map.values(), key=lambda x: (x['due_week'], x['due_date'], 0 if x['eh_adiantamento'] else 1, x['id'])):
         due_date = item['due_date']
         restante = round(item['restante'], 2)
         pago_auto = round(item['pago_auto'], 2)
@@ -7038,33 +7048,9 @@ def edit_despesa_coop(id):
     return _admin_redirect_with_filters("coop_despesas")
 
 
-@app.route("/coop/despesas/delete", methods=["POST"], defaults={"id": None})
 @app.route("/coop/despesas/<int:id>/delete", methods=["GET", "POST"])
 @admin_perm_required("coop_despesas", "excluir")
 def delete_despesa_coop(id):
-    if id is None:
-        raw_ids = request.form.getlist("ids[]") or request.form.getlist("despesa_ids[]") or request.form.getlist("ids")
-        ids = []
-        for raw in raw_ids:
-            try:
-                v = int(str(raw).strip())
-            except Exception:
-                continue
-            if v not in ids:
-                ids.append(v)
-
-        if not ids:
-            flash("Nenhuma despesa selecionada.", "warning")
-            return _admin_redirect_with_filters("coop_despesas")
-
-        itens = DespesaCooperado.query.filter(DespesaCooperado.id.in_(ids)).all()
-        qtd = len(itens)
-        for dc in itens:
-            db.session.delete(dc)
-        db.session.commit()
-        flash(f"{qtd} despesa(s) do cooperado excluída(s).", "success")
-        return _admin_redirect_with_filters("coop_despesas")
-
     dc = DespesaCooperado.query.get_or_404(id)
     db.session.delete(dc)
     db.session.commit()
