@@ -706,7 +706,6 @@
 
     <!-- === RESUMO (Dashboard Financeiro Completo) === -->
     <section class="tab-pane fade {{ 'show active' if _tab=='resumo' else '' }}" id="resumo" role="tabpanel">
-{% if _tab=='resumo' %}
       <div class="resumo-shell">
 
         {# ---------- Helpers de data ---------- #}
@@ -1183,7 +1182,7 @@
                 <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
                 <span>Evolução Mensal — Cooperativa</span>
               </h6>
-              
+              <canvas id="chartCoop"></canvas>
             </div>
           </div>
           <div class="col-12 col-lg-6">
@@ -1192,7 +1191,7 @@
                 <span class="resumo-pill-label"><i class="bi bi-graph-up-arrow"></i></span>
                 <span>Evolução Mensal — Cooperados</span>
               </h6>
-              
+              <canvas id="chartCooperados"></canvas>
             </div>
           </div>
         </div>
@@ -1351,10 +1350,7 @@
           }
         }
       </style>
-    {% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
-</section>
+    </section>
 
     <!-- Dados (seguros p/ JS) + Scripts (Chart.js + XLSX) -->
     <script>
@@ -1363,7 +1359,6 @@
       const FILTER = {{ {'ri': ri, 'rf': rf, 'rid': rid, 'cid': cid}|tojson }};
 
       // ---- Bases compactas ----
-      {% if _tab=='resumo' %}
       const PRODUCOES = [
         {% for l in _producoes %}
           {
@@ -1378,7 +1373,6 @@
         {% endfor %}
       ];
 
-      {% if _tab=='resumo' %}
       const REC_COOP = [
         {% for r in receitas_coop %}
           {
@@ -1393,7 +1387,6 @@
       ];
 
       // Adiantamento deve aparecer na coluna própria do resumo e no total do rodapé.
-      {% if _tab=='resumo' %}
       const DESP_COOP = [
         {% for d in despesas_coop %}
           {% set _is_ad_js = 1 if (d.eh_adiantamento if d.eh_adiantamento is defined else (d.adiantamento in [True, 1, '1', 'true', 'True', 'on'])) else 0 %}
@@ -1413,7 +1406,6 @@
       ];
 
       // Receitas e Despesas da COOPERATIVA
-      {% if _tab=='resumo' %}
       const REC_COOP_CORP = [
         {% for r in _rec_coop_corp %}
           {
@@ -1425,7 +1417,6 @@
         {% endfor %}
       ];
 
-      {% if _tab=='resumo' %}
       const DESP_COOP_CORP = [
         {% for d in _desp_coop_corp %}
           {
@@ -1974,7 +1965,6 @@
 
 <!-- LANÇAMENTOS (versão moderna/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='lancamentos' else '' }}" id="lancamentos" role="tabpanel">
-{% if _tab=='lancamentos' %}
   {# ====== TOTAIS DO FILTRO (já vem filtrado do backend) ====== #}
   {% set soma_valor    = (lancamentos|sum(attribute='valor')) if lancamentos else 0 %}
   {% set soma_inss_4   = (soma_valor * 0.04) %}
@@ -2283,9 +2273,6 @@
       </div>
     </div>
   </div>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
 <style>
@@ -2507,7 +2494,6 @@
 
 <!-- RECEITAS COOP (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='receitas' else '' }}" id="receitas" role="tabpanel">
-{% if _tab=='receitas' %}
   {# total defensivo: aceita r.valor OU r.valor_total #}
   {% set ns_total = namespace(v=0) %}
   {% for r in receitas or [] %}
@@ -2656,14 +2642,15 @@
                 {% else %}<span class="badge bg-secondary">Não pago</span>{% endif %}
               </td>
               <td class="taxa-adm-actions-cell">
-                <form method="POST" action="{{ url_for('atualizar_taxa_admin_status', id=tx.id) }}" class="taxa-adm-inline-form taxa-adm-inline-form-autodata" data-autosave-on-date="1">
+                <form method="POST" action="{{ url_for('atualizar_taxa_admin_status', id=tx.id) }}" class="taxa-adm-inline-form">
                   <select name="status_pagamento" class="form-select form-select-sm taxa-adm-status">
                     <option value="nao_pago" {{ 'selected' if tx.status == 'nao_pago' else '' }}>Não pago</option>
                     <option value="parcial" {{ 'selected' if tx.status == 'parcial' else '' }}>Parcial</option>
                     <option value="pago" {{ 'selected' if tx.status == 'pago' else '' }}>Pago</option>
                   </select>
                   <input type="number" step="0.01" name="valor_pago" class="form-control form-control-sm taxa-adm-valor" value="{{ '%.2f'|format(tx.valor_pago) }}" placeholder="Pago">
-                  <input type="date" name="data_pagamento" class="form-control form-control-sm taxa-adm-data js-taxa-adm-date-autosave" value="{{ tx.data_pagamento.strftime('%Y-%m-%d') if tx.data_pagamento else '' }}">
+                  <input type="date" name="data_pagamento" class="form-control form-control-sm taxa-adm-data" value="{{ tx.data_pagamento.strftime('%Y-%m-%d') if tx.data_pagamento else '' }}">
+                  <button class="btn btn-success btn-sm taxa-adm-save" type="submit"><i class="bi bi-save"></i></button>
                 </form>
               </td>
             </tr>
@@ -2736,15 +2723,11 @@
       });
     })();
   </script>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
 
 <!-- DESPESAS COOP (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='despesas' else '' }}" id="despesas" role="tabpanel">
-{% if _tab=='despesas' %}
   {% set total_despesas_coop_table = (despesas|sum(attribute='valor')) if despesas else 0 %}
   {% set qtd_registros = despesas|length if despesas else 0 %}
 
@@ -2871,15 +2854,11 @@
       </div>
     </div>
   </div>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
 
 <!-- RECEITAS COOPERADOS (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_receitas' else '' }}" id="coop_receitas" role="tabpanel">
-{% if _tab=='coop_receitas' %}
   {% set total_receitas_coop_table = (receitas_coop|sum(attribute='valor')) if receitas_coop else 0 %}
   {% set qtd_registros = receitas_coop|length if receitas_coop else 0 %}
 
@@ -3014,7 +2993,7 @@
           </tbody>
           <tfoot>
             <tr class="table-light">
-              <th colspan="3" class="text-end">Total</th>
+              <th colspan="6" class="text-end">Total</th>
               <th class="text-end">R$ {{ '%.2f'|format(total_receitas_coop_table) }}</th>
               <th></th>
             </tr>
@@ -3023,15 +3002,11 @@
       </div>
     </div>
   </div>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
 
 <!-- DESPESAS COOPERADOS (versão profissional/compacta – SEM ADIANTAMENTO + PESQUISA) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_despesas' else '' }}" id="coop_despesas" role="tabpanel">
-{% if _tab=='coop_despesas' %}
   {% set _despesas = (despesas_coop | default([]) | list) %}
 
   {# Totais (tudo entra como despesa) #}
@@ -3300,14 +3275,10 @@
       apply();
     })();
   </script>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
      <!-- BENEFÍCIOS (versão profissional / sem alterar backend) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='beneficios' else '' }}" id="beneficios" role="tabpanel">
-{% if _tab=='beneficios' %}
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
     <h5 class="m-0 d-flex align-items-center gap-2">
       <i class="bi bi-heart-pulse"></i> Benefícios
@@ -3570,9 +3541,6 @@
     </form>
   </div>
 </div>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section> <!-- FECHA A ABA BENEFÍCIOS -->
 
 <!-- ==== BENEFÍCIOS: prévia + total + seleção em massa (escopado) ==== -->
@@ -3693,7 +3661,6 @@
       
 <!-- COOPERADOS (versão profissional / drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='cooperados' else '' }}" id="cooperados" role="tabpanel">
-{% if _tab=='cooperados' %}
   {% set qtd_coops = cooperados|length %}
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
     <h5 class="m-0 d-flex align-items-center gap-2">
@@ -4095,14 +4062,10 @@
       </form>
     </div>
   </div>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
       <!-- RESTAURANTES (versão profissional / drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='restaurantes' else '' }}" id="restaurantes" role="tabpanel">
-{% if _tab=='restaurantes' %}
   {% set rest_list = restaurantes_todos|default(restaurantes) %}
   {% set qtd_rest = rest_list|length %}
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
@@ -4379,14 +4342,10 @@
       });
     })();
   </script>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
      <!-- ESCALAS -->
 <section class="tab-pane fade {{ 'show active' if _tab=='escalas' else '' }}" id="escalas" role="tabpanel">
-{% if _tab=='escalas' %}
   <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 align-items-lg-center mb-3">
     <div>
       <h5 class="mb-0 section-title">Gestão de Escalas</h5>
@@ -5278,14 +5237,10 @@
       </div>
     </div>
   </div>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
     <!-- === CONFIGURAÇÕES === -->
 <section class="tab-pane fade {{ 'show active' if _tab=='config' else '' }}" id="config" role="tabpanel">
-{% if _tab=='config' %}
   <div class="content-shell">
     <div class="page-header">
       <h3><i class="bi bi-gear"></i> Configurações</h3>
@@ -5742,9 +5697,6 @@
     </div>
 
   </div>
-{% else %}
-<div class="card card-modern border-0 shadow-sm"><div class="card-body py-4 text-center text-muted">Carregue esta aba para exibir os dados.</div></div>
-{% endif %}
 </section>
 
 <style>
@@ -6194,17 +6146,24 @@
   buildLineChart('chartLancCoop', dataLancCoop.labels, dataLancCoop.values, 'Lançamentos/Produções');
   buildLineChart('chartLancCooperados', dataLancCooperados.labels, dataLancCooperados.values, 'Lançamentos/Produções');
 
-  // ===== Navegação por aba via servidor (mais leve) =====
+  // ===== Preservar aba ativa via ?tab= =====
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.sidebar [data-bs-toggle="tab"]').forEach(a => {
-      a.addEventListener('click', (e) => {
-        const href = a.getAttribute('href') || '';
-        const id = href.startsWith('#') ? href.slice(1) : '';
+    const params = new URLSearchParams(location.search);
+    const targetTab = params.get('tab');
+
+    if (targetTab) {
+      const link = document.querySelector(`.sidebar .nav-link[href="#${targetTab}"]`);
+      if (link) new bootstrap.Tab(link).show();
+    }
+
+    document.querySelectorAll('.sidebar .nav-link[data-bs-toggle="tab"]').forEach(a => {
+      a.addEventListener('shown.bs.tab', (e) => {
+        const id = e.target.getAttribute('href')?.slice(1) || '';
         if (!id) return;
-        e.preventDefault();
+
         const p = new URLSearchParams(location.search);
         p.set('tab', id);
-        location.href = location.pathname + '?' + p.toString();
+        history.replaceState(null, '', location.pathname + '?' + p.toString() + e.target.getAttribute('href'));
       });
     });
 
@@ -6950,8 +6909,8 @@ document.addEventListener('DOMContentLoaded', function(){
     knownAlertIds = new Set((initial || []).map(a => String(a.id)));
     renderAlertas(initial || []);
   } catch(_) {}
-  {% if _tab=='escalas' %}pollAlertas();
-  setInterval(pollAlertas, 60000);{% endif %}
+  pollAlertas();
+  setInterval(pollAlertas, 60000);
 });
 </script>
 
@@ -6959,21 +6918,6 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="modal fade" id="modalAbatimentoDespesaCoop" tabindex="-1"><div class="modal-dialog"><form method="POST" class="modal-content"><div class="modal-header"><h5 class="modal-title">Registrar abatimento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body row g-2 px-3"><div class="col-12"><label class="form-label">Data</label><input type="date" class="form-control" name="data" required></div><div class="col-12"><label class="form-label">Valor</label><input type="number" step="0.01" class="form-control" name="valor" required></div><div class="col-12"><label class="form-label">Origem</label><select class="form-select" name="origem"><option value="manual">Manual</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="desconto">Desconto</option></select></div><div class="col-12"><label class="form-label">Observação</label><input type="text" class="form-control" name="observacao"></div></div><div class="modal-footer"><button class="btn btn-royal">Salvar</button></div></form></div></div>
 <script>
 document.addEventListener('DOMContentLoaded', function(){ const cAll=document.getElementById('checkAllDespesas'); cAll?.addEventListener('change', ()=> document.querySelectorAll('#tblDespesasCoop tbody input[type="checkbox"]').forEach(ch=> ch.checked=cAll.checked)); const el=document.getElementById('modalAbatimentoDespesaCoop'); el?.addEventListener('show.bs.modal', (ev)=>{ const btn=ev.relatedTarget; const form=el.querySelector('form'); if(form && btn?.dataset?.url) form.action=btn.dataset.url; });});
-</script>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  document.querySelectorAll('.js-taxa-adm-date-autosave').forEach(function(input){
-    input.addEventListener('change', function(){
-      const form = input.closest('form.taxa-adm-inline-form-autodata');
-      if (!form || form.dataset.sending === '1') return;
-      form.dataset.sending = '1';
-      input.setAttribute('readonly', 'readonly');
-      form.submit();
-    });
-  });
-});
 </script>
 
 </body>
