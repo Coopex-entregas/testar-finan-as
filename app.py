@@ -3086,20 +3086,20 @@ PORTAL_SISTEMAS = {
         "descricao": "Financeiro / admin central",
     },
     "sistema1": {
-        "label": "Sistema 1",
+        "label": "Supervisão",
         "url": PORTAL_SISTEMA1_URL,
         "autologin_path": "/autologin",
         "next": "/admin",
         "aud": "sistema-1",
-        "descricao": "Escalas / entregas",
+        "descricao": "Supervisão",
     },
     "sistema2": {
-        "label": "Sistema 2",
+        "label": "Parceria",
         "url": PORTAL_SISTEMA2_URL,
         "autologin_path": "/autologin",
         "next": "/dashboard",
         "aud": "sistema-2",
-        "descricao": "Kratos System",
+        "descricao": "Parceria",
     },
 }
 
