@@ -717,6 +717,42 @@
 <main class="main">
   <div class="tab-content">
 
+    <!-- === SISTEMAS === -->
+    <section class="tab-pane fade {{ 'show active' if _tab=='sistemas' else '' }}" id="sistemas" role="tabpanel">
+      <div class="content-shell">
+        <div class="page-header">
+          <h3><i class="bi bi-boxes"></i> Sistemas</h3>
+          <small>Acesse os outros sistemas sem precisar fazer novo login.</small>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="card h-100">
+              <div class="card-body d-flex flex-column">
+                <h5 class="mb-2"><i class="bi bi-broadcast"></i> Supervisão</h5>
+                <p class="text-muted mb-3">Abrir o sistema de supervisão já autenticado.</p>
+                <div class="mt-auto">
+                  <a class="btn btn-primary" href="{{ url_for('admin_sistemas_abrir', sistema='sistema1') }}">Abrir Supervisão</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="card h-100">
+              <div class="card-body d-flex flex-column">
+                <h5 class="mb-2"><i class="bi bi-diagram-3"></i> Parceria</h5>
+                <p class="text-muted mb-3">Abrir o sistema de parceria já autenticado.</p>
+                <div class="mt-auto">
+                  <a class="btn btn-primary" href="{{ url_for('admin_sistemas_abrir', sistema='sistema2') }}">Abrir Parceria</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- === RESUMO (Dashboard Financeiro Completo) === -->
     <section class="tab-pane fade {{ 'show active' if _tab=='resumo' else '' }}" id="resumo" role="tabpanel">
       <div class="resumo-shell">
