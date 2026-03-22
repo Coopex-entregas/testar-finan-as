@@ -4204,50 +4204,50 @@ def admin_dashboard():
 
 
     # resumo por cooperado calculado no backend para evitar travar no JS
-    if need_resumo:
-        resumo_coop_rows = []
-        resumo_totais = {
+    resumo_coop_rows = []
+    resumo_totais = {
         "prod": 0.0, "inss4": 0.0, "sest05": 0.0, "rec": 0.0,
         "des": 0.0, "adiant": 0.0, "a_receber": 0.0, "saldo_pendente": 0.0,
         "pend_programado": 0.0
     }
-    for coop in cooperados:
-        snap = _compute_coop_debt_snapshot(coop.id, data_inicio, data_fim)
-        prod = sum((l.valor or 0.0) for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
-        rec = sum((r.valor or 0.0) for r in receitas_coop if getattr(r, "cooperado_id", None) == coop.id)
-        inss4 = sum((l.valor or 0.0) * INSS_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
-        sest05 = sum((l.valor or 0.0) * SEST_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
-        des = round(snap.get("descontado_despesa", 0.0), 2)
-        adiant = round(snap.get("descontado_adiant", 0.0), 2)
-        if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"]:
-            _a_receber = round(max(0.0, snap["disponivel_auto_restante"]), 2)
-            _saldo_pendente = round(snap["saldo_devedor"], 2)
-            _pend_programado = round(snap["a_descontar"], 2)
-            resumo_coop_rows.append({
-                "id": coop.id,
-                "nome": coop.nome,
-                "prod": round(prod,2),
-                "inss4": round(inss4,2),
-                "sest05": round(sest05,2),
-                "rec": round(rec,2),
-                "des": round(des,2),
-                "adiant": round(adiant,2),
-                "a_receber": _a_receber,
-                "aReceber": _a_receber,
-                "saldo_pendente": _saldo_pendente,
-                "saldoPendente": _saldo_pendente,
-                "pend_programado": _pend_programado,
-                "pendProgramado": _pend_programado,
-            })
-            resumo_totais["prod"] += prod
-            resumo_totais["inss4"] += inss4
-            resumo_totais["sest05"] += sest05
-            resumo_totais["rec"] += rec
-            resumo_totais["des"] += des
-            resumo_totais["adiant"] += adiant
-            resumo_totais["a_receber"] += max(0.0, snap["disponivel_auto_restante"])
-            resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
-            resumo_totais["pend_programado"] += snap["a_descontar"]
+    if need_resumo:
+        for coop in cooperados:
+            snap = _compute_coop_debt_snapshot(coop.id, data_inicio, data_fim)
+            prod = sum((l.valor or 0.0) for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+            rec = sum((r.valor or 0.0) for r in receitas_coop if getattr(r, "cooperado_id", None) == coop.id)
+            inss4 = sum((l.valor or 0.0) * INSS_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+            sest05 = sum((l.valor or 0.0) * SEST_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+            des = round(snap.get("descontado_despesa", 0.0), 2)
+            adiant = round(snap.get("descontado_adiant", 0.0), 2)
+            if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"]:
+                _a_receber = round(max(0.0, snap["disponivel_auto_restante"]), 2)
+                _saldo_pendente = round(snap["saldo_devedor"], 2)
+                _pend_programado = round(snap["a_descontar"], 2)
+                resumo_coop_rows.append({
+                    "id": coop.id,
+                    "nome": coop.nome,
+                    "prod": round(prod,2),
+                    "inss4": round(inss4,2),
+                    "sest05": round(sest05,2),
+                    "rec": round(rec,2),
+                    "des": round(des,2),
+                    "adiant": round(adiant,2),
+                    "a_receber": _a_receber,
+                    "aReceber": _a_receber,
+                    "saldo_pendente": _saldo_pendente,
+                    "saldoPendente": _saldo_pendente,
+                    "pend_programado": _pend_programado,
+                    "pendProgramado": _pend_programado,
+                })
+                resumo_totais["prod"] += prod
+                resumo_totais["inss4"] += inss4
+                resumo_totais["sest05"] += sest05
+                resumo_totais["rec"] += rec
+                resumo_totais["des"] += des
+                resumo_totais["adiant"] += adiant
+                resumo_totais["a_receber"] += max(0.0, snap["disponivel_auto_restante"])
+                resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
+                resumo_totais["pend_programado"] += snap["a_descontar"]
 
     return render_template(
         "admin_dashboard.html",
