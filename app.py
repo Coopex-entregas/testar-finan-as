@@ -3815,66 +3815,66 @@ def admin_dashboard():
         .all()
     )
 
-    esc_by_int = defaultdict(list)
-    esc_by_str = defaultdict(list)
-
-    for e in escalas_all:
-        k_int = e.cooperado_id if e.cooperado_id is not None else 0
-        esc_item = {
-            "data": e.data,
-            "turno": e.turno,
-            "horario": e.horario,
-            "contrato": e.contrato,
-            "cor": getattr(e, "cor", None),
-            "nome_planilha": getattr(e, "cooperado_nome", None),
-        }
-        esc_by_int[k_int].append(esc_item)
-        esc_by_str[str(k_int)].append(esc_item)
-
-    cont_rows = dict(
-        db.session.query(Escala.cooperado_id, func.count(Escala.id))
-        .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
-        .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
-        .filter(
-            or_(
-                Escala.cooperado_id.is_(None),
-                Usuario.ativo.is_(True)
+        esc_by_int = defaultdict(list)
+        esc_by_str = defaultdict(list)
+    
+        for e in escalas_all:
+            k_int = e.cooperado_id if e.cooperado_id is not None else 0
+            esc_item = {
+                "data": e.data,
+                "turno": e.turno,
+                "horario": e.horario,
+                "contrato": e.contrato,
+                "cor": getattr(e, "cor", None),
+                "nome_planilha": getattr(e, "cooperado_nome", None),
+            }
+            esc_by_int[k_int].append(esc_item)
+            esc_by_str[str(k_int)].append(esc_item)
+    
+        cont_rows = dict(
+            db.session.query(Escala.cooperado_id, func.count(Escala.id))
+            .outerjoin(Cooperado, Escala.cooperado_id == Cooperado.id)
+            .outerjoin(Usuario, Cooperado.usuario_id == Usuario.id)
+            .filter(
+                or_(
+                    Escala.cooperado_id.is_(None),
+                    Usuario.ativo.is_(True)
+                )
             )
+            .group_by(Escala.cooperado_id)
+            .all()
         )
-        .group_by(Escala.cooperado_id)
-        .all()
-    )
-
-    qtd_escalas_map = {c.id: int(cont_rows.get(c.id, 0)) for c in cooperados}
-    qtd_sem_cadastro = int(cont_rows.get(None, 0))
-
-    contratos_set = {((e.contrato or "").strip()) for e in escalas_all if (e.contrato or "").strip()}
-    contratos_set.update({((r.nome or "").strip()) for r in restaurantes if (r.nome or "").strip()})
-    contratos_escala_opcoes = sorted(contratos_set, key=lambda s: s.lower())
-
-    escala_editor_rows = []
-    for e in sorted(escalas_all, key=_escala_sort_key):
-        coop_obj = None
-        if e.cooperado_id:
-            coop_obj = cooperados_map.get(e.cooperado_id)
-
-        nome_atual = (coop_obj.nome if coop_obj else (e.cooperado_nome or "").strip())
-        escala_editor_rows.append({
-            "id": e.id,
-            "data": e.data or "",
-            "weekday_num": _escala_weekday_num(e.data),
-            "weekday_label": _escala_weekday_label(e.data),
-            "turno": e.turno or "",
-            "horario": e.horario or "",
-            "contrato": e.contrato or "",
-            "cooperado_id": e.cooperado_id,
-            "cooperado_nome": nome_atual or "",
-            "cooperado_nome_livre": (e.cooperado_nome or "") if not coop_obj else "",
-            "restaurante_id": e.restaurante_id,
-            "cor": getattr(e, "cor", None),
-        })
-
-    escala_alertas_1h = _build_escala_alertas_1h(escalas_all, cooperados_map)
+    
+        qtd_escalas_map = {c.id: int(cont_rows.get(c.id, 0)) for c in cooperados}
+        qtd_sem_cadastro = int(cont_rows.get(None, 0))
+    
+        contratos_set = {((e.contrato or "").strip()) for e in escalas_all if (e.contrato or "").strip()}
+        contratos_set.update({((r.nome or "").strip()) for r in restaurantes if (r.nome or "").strip()})
+        contratos_escala_opcoes = sorted(contratos_set, key=lambda s: s.lower())
+    
+        escala_editor_rows = []
+        for e in sorted(escalas_all, key=_escala_sort_key):
+            coop_obj = None
+            if e.cooperado_id:
+                coop_obj = cooperados_map.get(e.cooperado_id)
+    
+            nome_atual = (coop_obj.nome if coop_obj else (e.cooperado_nome or "").strip())
+            escala_editor_rows.append({
+                "id": e.id,
+                "data": e.data or "",
+                "weekday_num": _escala_weekday_num(e.data),
+                "weekday_label": _escala_weekday_label(e.data),
+                "turno": e.turno or "",
+                "horario": e.horario or "",
+                "contrato": e.contrato or "",
+                "cooperado_id": e.cooperado_id,
+                "cooperado_nome": nome_atual or "",
+                "cooperado_nome_livre": (e.cooperado_nome or "") if not coop_obj else "",
+                "restaurante_id": e.restaurante_id,
+                "cor": getattr(e, "cor", None),
+            })
+    
+        escala_alertas_1h = _build_escala_alertas_1h(escalas_all, cooperados_map)
     # =========================
     # Gráficos
     # =========================
