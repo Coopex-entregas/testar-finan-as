@@ -1,4 +1,4 @@
-{% extends "admin/base_admin.html" %}
+{% extends "base_admin.html" %}
 {% block title %}Coopex-RH • Documentos do Sistema{% endblock %}
 {% block header_title %}Estatuto / Regimento{% endblock %}
 {% block header_sub %}Envie PDF/DOCX para indexar e pesquisar{% endblock %}
@@ -41,9 +41,14 @@
 
       <div style="grid-column:span 12;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-royal" type="submit">Enviar e Indexar</button>
-        <button class="btn btn-soft" type="submit" formaction="{{ url_for('admin_docs_reindex') }}" formmethod="post" formenctype="application/x-www-form-urlencoded">
-          Reindexar todos (reler texto dos PDFs/DOCX)
-        </button>
+
+        {# Botão para reindexar todos os documentos já enviados #}
+        <form method="post" action="{{ url_for('admin_docs_reindex') }}"
+              style="display:inline;">
+          <button class="btn btn-soft" type="submit">
+            Reindexar todos (reler texto dos PDFs/DOCX)
+          </button>
+        </form>
 
         <span class="muted" style="font-size:12px;">
           Obs.: PDFs escaneados (somente imagem) podem ficar sem texto extraído. Nesses casos,
