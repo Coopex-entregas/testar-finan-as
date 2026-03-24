@@ -2,7 +2,8 @@ from __future__ import annotations
 
 # ============ Stdlib ============
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-import os, io, csv, re, json, time, difflib, unicodedata
+import os, io, csv, re, json, time, difflib, unicodedata, zipfile, html as html_lib
+from pathlib import Path
 from datetime import datetime, date, timedelta, time as dtime
 from collections import defaultdict, namedtuple
 import uuid
@@ -21,7 +22,7 @@ mimetypes.add_type("application/vnd.ms-powerpoint", ".ppt")
 # ============ Terceiros ============
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
-    flash, send_file, abort, jsonify, current_app
+    flash, send_file, abort, jsonify, current_app, render_template_string
 )
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -172,32 +173,65 @@ app.config.update(
 db = SQLAlchemy(app)
 
 def _sso_serializer():
-    secret = os.environ.get("SSO_SHARED_SECRET", "COOPEX_SSO_SHARED_CHANGE_ME_2026")
-    # "salt" separa o token SSO de outros usos do secret
+    secret = os.environ.get("SSO_SHARED_SECRET") or "COOPEX_SSO_SHARED_2026_FIXED"
     return URLSafeTimedSerializer(secret_key=secret, salt="coopex-sso-v1")
 
 def sso_load(token: str, max_age_seconds: int = 45) -> dict:
-    s = _sso_serializer()
-    return s.loads(token, max_age=max_age_seconds)
+    return _sso_serializer().loads(token, max_age=max_age_seconds)
 
 def sso_dump(payload: dict) -> str:
-    s = _sso_serializer()
-    return s.dumps(payload)
+    return _sso_serializer().dumps(payload)
 
-def _get_or_create_sso_user(tipo: str = "admin") -> Usuario:
-    """
-    Garante um usuário técnico para sessão SSO, evitando quebrar rotas que consultam Usuario.
-    """
-    username = f"sso_{tipo}"
-    u = Usuario.query.filter_by(usuario=username).first()
-    if u:
-        return u
+PORTAL_PRINCIPAL_URL = os.environ.get("PORTAL_PRINCIPAL_URL", "https://financas-dxsu.onrender.com")
+PORTAL_SISTEMA1_URL = os.environ.get("PORTAL_SISTEMA1_URL", "https://escalas-2-1.onrender.com")
+PORTAL_SISTEMA2_URL = os.environ.get("PORTAL_SISTEMA2_URL", "https://kratossystem.onrender.com")
 
-    # cria user técnico sem senha (não loga pelo /login)
-    u = Usuario(usuario=username, tipo=tipo, senha_hash="!")
-    db.session.add(u)
-    db.session.commit()
+def _find_admin_usuario(*candidates: str, must_be_master: bool | None = None):
+    cleaned = [str(c).strip() for c in candidates if str(c).strip()]
+    for cand in cleaned:
+        u = Usuario.query.filter(func.lower(Usuario.usuario) == cand.lower(), Usuario.tipo == "admin").first()
+        if u and (must_be_master is None or bool(getattr(u, "is_master", False)) == bool(must_be_master)):
+            return u
+    q = Usuario.query.filter_by(tipo="admin")
+    if must_be_master is True:
+        q = q.filter_by(is_master=True)
+    elif must_be_master is False:
+        q = q.filter_by(is_master=False)
+    return q.order_by(Usuario.id.asc()).first()
+
+def _ensure_admin_perm_rows(usuario_id: int):
+    for aba in ADMIN_ABAS.keys():
+        perm = AdminPermissao.query.filter_by(usuario_id=usuario_id, aba=aba).first()
+        if not perm:
+            db.session.add(AdminPermissao(usuario_id=usuario_id, aba=aba, pode_ver=False, pode_criar=False, pode_editar=False, pode_excluir=False))
+    db.session.flush()
+
+def _get_or_create_supervisao_admin() -> Usuario:
+    u = _find_admin_usuario("SUPERVISAO", must_be_master=False)
+    if not u:
+        u = Usuario(nome="SUPERVISAO", usuario="SUPERVISAO", tipo="admin", senha_hash="", is_master=False, ativo=True)
+        u.set_password(os.environ.get("SUPERVISAO_PASSWORD", "84253700"))
+        db.session.add(u)
+        db.session.flush()
+        _ensure_admin_perm_rows(u.id)
+        for aba in ADMIN_ABAS.keys():
+            perm = AdminPermissao.query.filter_by(usuario_id=u.id, aba=aba).first()
+            if perm:
+                allow = (aba == "escalas")
+                perm.pode_ver = allow
+                perm.pode_criar = allow
+                perm.pode_editar = allow
+                perm.pode_excluir = False
+        db.session.commit()
+    else:
+        _ensure_admin_perm_rows(u.id)
+        db.session.commit()
     return u
+
+def _build_remote_sso_url(base_url: str, aud: str, role: str, next_path: str):
+    payload = {"aud": aud, "orig": "principal", "role": role, "next": next_path, "iat": int(datetime.utcnow().timestamp())}
+    token = sso_dump(payload)
+    return (f"{base_url.rstrip('/')}" + "/autologin?token=" + token)
     
 
 def ajustar_banco():
@@ -358,7 +392,7 @@ class Cooperado(db.Model):
     # 1 usuário -> 1 cooperado
     usuario_ref = db.relationship("Usuario", backref=db.backref("coop_account", uselist=False))
 
-    # NOVO
+    # Compat legado do sistema atual
     telefone = db.Column(db.String(30))
 
     # Foto no banco
@@ -374,6 +408,111 @@ class Cooperado(db.Model):
     placa_validade = db.Column(db.Date)
 
     ultima_atualizacao = db.Column(db.DateTime)
+
+    # ===== Campos do módulo Recursos Humanos =====
+    matricula = db.Column(db.String(30), unique=True, nullable=True, index=True)
+    cpf = db.Column(db.String(14), unique=True, nullable=True, index=True)
+    data_nascimento = db.Column(db.Date, nullable=True)
+    nacionalidade = db.Column(db.String(60), nullable=True)
+    grau_escolaridade = db.Column(db.String(60), nullable=True)
+    sexo = db.Column(db.String(20), nullable=True)
+    estado_civil = db.Column(db.String(40), nullable=True)
+
+    telefone1 = db.Column(db.String(30), nullable=True, index=True)
+    telefone2 = db.Column(db.String(30), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+
+    rg = db.Column(db.String(40), nullable=True)
+    rg_orgao = db.Column(db.String(40), nullable=True)
+    rg_emissao = db.Column(db.Date, nullable=True)
+
+    pis = db.Column(db.String(30), nullable=True)
+    ctps_numero = db.Column(db.String(30), nullable=True)
+    ctps_serie = db.Column(db.String(30), nullable=True)
+    ctps_uf = db.Column(db.String(2), nullable=True)
+
+    titulo_numero = db.Column(db.String(40), nullable=True)
+    titulo_zona = db.Column(db.String(10), nullable=True)
+    titulo_secao = db.Column(db.String(10), nullable=True)
+
+    cnh_categoria = db.Column(db.String(10), nullable=True)
+    renavam = db.Column(db.String(40), nullable=True)
+    renavam_validade = db.Column(db.Date, nullable=True)
+
+    pai_nome = db.Column(db.String(160), nullable=True)
+    sem_pai = db.Column(db.Boolean, nullable=False, default=False, server_default=text("false"))
+    mae_nome = db.Column(db.String(160), nullable=True)
+
+    cep = db.Column(db.String(12), nullable=True)
+    rua = db.Column(db.String(160), nullable=True)
+    numero = db.Column(db.String(20), nullable=True)
+    bairro = db.Column(db.String(80), nullable=True)
+    cidade = db.Column(db.String(80), nullable=True)
+    uf = db.Column(db.String(2), nullable=True)
+    complemento = db.Column(db.String(120), nullable=True)
+
+    pix = db.Column(db.String(120), nullable=True)
+    banco = db.Column(db.String(60), nullable=True)
+    agencia = db.Column(db.String(20), nullable=True)
+    operacao = db.Column(db.String(20), nullable=True)
+    conta = db.Column(db.String(30), nullable=True)
+
+    foto_path = db.Column(db.String(300), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+
+    filhos = db.relationship("Filho", backref="cooperado", cascade="all, delete-orphan", lazy=True)
+    anexos = db.relationship("Anexo", backref="cooperado", cascade="all, delete-orphan", lazy=True)
+    notificacoes_rh = db.relationship("NotificacaoRH", backref="cooperado", cascade="all, delete-orphan", lazy=True)
+
+
+class Filho(db.Model):
+    __tablename__ = "filhos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=False, index=True)
+    nome = db.Column(db.String(160), nullable=False)
+    nascimento = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+class Anexo(db.Model):
+    __tablename__ = "anexos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=False, index=True)
+    tipo = db.Column(db.String(40), nullable=True)
+    titulo = db.Column(db.String(120), nullable=False, default="Documento")
+    filename = db.Column(db.String(200), nullable=False)
+    path = db.Column(db.String(350), nullable=False)
+    mime = db.Column(db.String(80), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+class DocumentoSistema(db.Model):
+    __tablename__ = "documentos_sistema"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo = db.Column(db.String(30), nullable=False)
+    titulo = db.Column(db.String(120), nullable=False)
+    filename = db.Column(db.String(200), nullable=False)
+    path = db.Column(db.String(350), nullable=False)
+    mime = db.Column(db.String(80), nullable=True)
+    extracted_text = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+class NotificacaoRH(db.Model):
+    __tablename__ = "notificacoes_rh"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("cooperados.id"), nullable=False, index=True)
+    data_ocorrido = db.Column(db.Date, nullable=False)
+    relato = db.Column(db.Text, nullable=False)
+    enquadramento = db.Column(db.Text, nullable=True)
+    prazos = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 
 class Restaurante(db.Model):
@@ -983,11 +1122,11 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text("""
-                ALTER TABLE IF NOT EXISTS public.despesas_cooperado
+                ALTER TABLE IF EXISTS public.despesas_cooperado
                 ADD COLUMN IF NOT EXISTS data_inicio DATE
             """))
             db.session.execute(sa_text("""
-                ALTER TABLE IF NOT EXISTS public.despesas_cooperado
+                ALTER TABLE IF EXISTS public.despesas_cooperado
                 ADD COLUMN IF NOT EXISTS data_fim DATE
             """))
             db.session.commit()
@@ -1117,7 +1256,7 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS escalas "
+                "ALTER TABLE IF EXISTS escalas "
                 "ADD COLUMN IF NOT EXISTS cooperado_nome VARCHAR(120)"
             ))
             db.session.commit()
@@ -1134,7 +1273,7 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS escalas "
+                "ALTER TABLE IF EXISTS escalas "
                 "ADD COLUMN IF NOT EXISTS restaurante_id INTEGER"
             ))
             db.session.commit()
@@ -1157,13 +1296,13 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
+                "ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
+                "ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
+                "ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
+                "ALTER TABLE IF EXISTS cooperados ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
             db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1178,7 +1317,7 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS cooperados "
+                "ALTER TABLE IF EXISTS cooperados "
                 "ADD COLUMN IF NOT EXISTS telefone VARCHAR(30)"
             ))
             db.session.commit()
@@ -1190,11 +1329,11 @@ def init_db():
         if _is_sqlite():
             db.session.execute(sa_text("""
                 CREATE TABLE IF NOT EXISTS avaliacoes_restaurante (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 restaurante_id INTEGER NOT NULL,
                 cooperado_id INTEGER NOT NULL,
                 lancamento_id INTEGER UNIQUE,
-                estrelas_geral DOUBLE PRECISION,
+                estrelas_geral INTEGER,
                 estrelas_ambiente INTEGER,
                 estrelas_tratamento INTEGER,
                 estrelas_suporte INTEGER,
@@ -1204,7 +1343,7 @@ def init_db():
                 temas VARCHAR(255),
                 alerta_crise BOOLEAN DEFAULT FALSE,
                 criado_em TIMESTAMP
-              );
+              )
            """))
             db.session.execute(sa_text(
                 "CREATE INDEX IF NOT EXISTS ix_av_rest_rest ON avaliacoes_restaurante(restaurante_id, criado_em)"))
@@ -1219,16 +1358,16 @@ def init_db():
                   cooperado_id   INTEGER NOT NULL,
                   lancamento_id  INTEGER UNIQUE,
                   estrelas_geral INTEGER,
-                  estrelas_ambiente   = db.Column(db.Integer)
-                  estrelas_tratamento = db.Column(db.Integer)
-                  estrelas_suporte    = db.Column(db.Integer)
+                  estrelas_ambiente INTEGER,
+                  estrelas_tratamento INTEGER,
+                  estrelas_suporte INTEGER,
                   comentario TEXT,
                   media_ponderada DOUBLE PRECISION,
                   sentimento VARCHAR(12),
                   temas VARCHAR(255),
                   alerta_crise BOOLEAN DEFAULT FALSE,
                   criado_em TIMESTAMP
-                );
+                )
             """))
             db.session.execute(sa_text(
                 "CREATE INDEX IF NOT EXISTS ix_av_rest_rest ON avaliacoes_restaurante(restaurante_id, criado_em)"))
@@ -1254,13 +1393,13 @@ def init_db():
             db.session.commit()
         else:
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
+                "ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_bytes BYTEA"))
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
+                "ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(100)"))
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
+                "ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_filename VARCHAR(255)"))
             db.session.execute(sa_text(
-                "ALTER TABLE IF NOT EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
+                "ALTER TABLE IF EXISTS restaurantes ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255)"))
             db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1331,6 +1470,128 @@ def init_db():
             db.session.commit()
         except Exception:
             db.session.rollback()
+    except Exception:
+        db.session.rollback()
+
+    # 4.6) Recursos Humanos: colunas/tabelas auxiliares
+    try:
+        if _is_sqlite():
+            cols = db.session.execute(sa_text("PRAGMA table_info(cooperados);")) .fetchall()
+            colnames = {row[1] for row in cols}
+            adds = {
+                "matricula": "VARCHAR(30)",
+                "cpf": "VARCHAR(14)",
+                "data_nascimento": "DATE",
+                "nacionalidade": "VARCHAR(60)",
+                "grau_escolaridade": "VARCHAR(60)",
+                "sexo": "VARCHAR(20)",
+                "estado_civil": "VARCHAR(40)",
+                "telefone1": "VARCHAR(30)",
+                "telefone2": "VARCHAR(30)",
+                "email": "VARCHAR(120)",
+                "rg": "VARCHAR(40)",
+                "rg_orgao": "VARCHAR(40)",
+                "rg_emissao": "DATE",
+                "pis": "VARCHAR(30)",
+                "ctps_numero": "VARCHAR(30)",
+                "ctps_serie": "VARCHAR(30)",
+                "ctps_uf": "VARCHAR(2)",
+                "titulo_numero": "VARCHAR(40)",
+                "titulo_zona": "VARCHAR(10)",
+                "titulo_secao": "VARCHAR(10)",
+                "cnh_categoria": "VARCHAR(10)",
+                "renavam": "VARCHAR(40)",
+                "renavam_validade": "DATE",
+                "pai_nome": "VARCHAR(160)",
+                "sem_pai": "BOOLEAN DEFAULT 0",
+                "mae_nome": "VARCHAR(160)",
+                "cep": "VARCHAR(12)",
+                "rua": "VARCHAR(160)",
+                "numero": "VARCHAR(20)",
+                "bairro": "VARCHAR(80)",
+                "cidade": "VARCHAR(80)",
+                "uf": "VARCHAR(2)",
+                "complemento": "VARCHAR(120)",
+                "pix": "VARCHAR(120)",
+                "banco": "VARCHAR(60)",
+                "agencia": "VARCHAR(20)",
+                "operacao": "VARCHAR(20)",
+                "conta": "VARCHAR(30)",
+                "foto_path": "VARCHAR(300)",
+                "created_at": "TIMESTAMP",
+                "updated_at": "TIMESTAMP",
+                "deleted_at": "TIMESTAMP",
+            }
+            for col, ddl in adds.items():
+                if col not in colnames:
+                    db.session.execute(sa_text(f"ALTER TABLE cooperados ADD COLUMN {col} {ddl}"))
+            db.session.execute(sa_text("CREATE TABLE IF NOT EXISTS filhos (id INTEGER PRIMARY KEY AUTOINCREMENT, cooperado_id INTEGER NOT NULL, nome VARCHAR(160) NOT NULL, nascimento DATE, created_at TIMESTAMP)"))
+            db.session.execute(sa_text("CREATE TABLE IF NOT EXISTS anexos (id INTEGER PRIMARY KEY AUTOINCREMENT, cooperado_id INTEGER NOT NULL, tipo VARCHAR(40), titulo VARCHAR(120) NOT NULL DEFAULT 'Documento', filename VARCHAR(200) NOT NULL, path VARCHAR(350) NOT NULL, mime VARCHAR(80), created_at TIMESTAMP)"))
+            db.session.execute(sa_text("CREATE TABLE IF NOT EXISTS documentos_sistema (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo VARCHAR(30) NOT NULL, titulo VARCHAR(120) NOT NULL, filename VARCHAR(200) NOT NULL, path VARCHAR(350) NOT NULL, mime VARCHAR(80), extracted_text TEXT, created_at TIMESTAMP)"))
+            db.session.execute(sa_text("CREATE TABLE IF NOT EXISTS notificacoes_rh (id INTEGER PRIMARY KEY AUTOINCREMENT, cooperado_id INTEGER NOT NULL, data_ocorrido DATE NOT NULL, relato TEXT NOT NULL, enquadramento TEXT, prazos TEXT, created_at TIMESTAMP)"))
+            db.session.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_cooperados_matricula ON cooperados(matricula)"))
+            db.session.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_cooperados_cpf ON cooperados(cpf)"))
+            db.session.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_cooperados_deleted_at ON cooperados(deleted_at)"))
+            db.session.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_filhos_cooperado_id ON filhos(cooperado_id)"))
+            db.session.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_anexos_cooperado_id ON anexos(cooperado_id)"))
+            db.session.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_notificacoes_rh_cooperado_id ON notificacoes_rh(cooperado_id)"))
+            db.session.commit()
+        else:
+            db.session.execute(sa_text("""
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS matricula VARCHAR(30);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS data_nascimento DATE;
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS nacionalidade VARCHAR(60);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS grau_escolaridade VARCHAR(60);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS sexo VARCHAR(20);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS estado_civil VARCHAR(40);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS telefone1 VARCHAR(30);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS telefone2 VARCHAR(30);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS email VARCHAR(120);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS rg VARCHAR(40);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS rg_orgao VARCHAR(40);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS rg_emissao DATE;
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS pis VARCHAR(30);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS ctps_numero VARCHAR(30);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS ctps_serie VARCHAR(30);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS ctps_uf VARCHAR(2);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS titulo_numero VARCHAR(40);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS titulo_zona VARCHAR(10);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS titulo_secao VARCHAR(10);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS cnh_categoria VARCHAR(10);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS renavam VARCHAR(40);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS renavam_validade DATE;
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS pai_nome VARCHAR(160);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS sem_pai BOOLEAN DEFAULT FALSE;
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS mae_nome VARCHAR(160);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS cep VARCHAR(12);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS rua VARCHAR(160);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS numero VARCHAR(20);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS bairro VARCHAR(80);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS cidade VARCHAR(80);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS uf VARCHAR(2);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS complemento VARCHAR(120);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS pix VARCHAR(120);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS banco VARCHAR(60);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS agencia VARCHAR(20);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS operacao VARCHAR(20);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS conta VARCHAR(30);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS foto_path VARCHAR(300);
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+                ALTER TABLE IF EXISTS public.cooperados ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+                CREATE TABLE IF NOT EXISTS public.filhos (id SERIAL PRIMARY KEY, cooperado_id INTEGER NOT NULL, nome VARCHAR(160) NOT NULL, nascimento DATE, created_at TIMESTAMP DEFAULT NOW());
+                CREATE TABLE IF NOT EXISTS public.anexos (id SERIAL PRIMARY KEY, cooperado_id INTEGER NOT NULL, tipo VARCHAR(40), titulo VARCHAR(120) NOT NULL DEFAULT 'Documento', filename VARCHAR(200) NOT NULL, path VARCHAR(350) NOT NULL, mime VARCHAR(80), created_at TIMESTAMP DEFAULT NOW());
+                CREATE TABLE IF NOT EXISTS public.documentos_sistema (id SERIAL PRIMARY KEY, tipo VARCHAR(30) NOT NULL, titulo VARCHAR(120) NOT NULL, filename VARCHAR(200) NOT NULL, path VARCHAR(350) NOT NULL, mime VARCHAR(80), extracted_text TEXT, created_at TIMESTAMP DEFAULT NOW());
+                CREATE TABLE IF NOT EXISTS public.notificacoes_rh (id SERIAL PRIMARY KEY, cooperado_id INTEGER NOT NULL, data_ocorrido DATE NOT NULL, relato TEXT NOT NULL, enquadramento TEXT, prazos TEXT, created_at TIMESTAMP DEFAULT NOW());
+                CREATE INDEX IF NOT EXISTS ix_cooperados_matricula ON public.cooperados(matricula);
+                CREATE INDEX IF NOT EXISTS ix_cooperados_cpf ON public.cooperados(cpf);
+                CREATE INDEX IF NOT EXISTS ix_cooperados_deleted_at ON public.cooperados(deleted_at);
+                CREATE INDEX IF NOT EXISTS ix_filhos_cooperado_id ON public.filhos(cooperado_id);
+                CREATE INDEX IF NOT EXISTS ix_anexos_cooperado_id ON public.anexos(cooperado_id);
+                CREATE INDEX IF NOT EXISTS ix_notificacoes_rh_cooperado_id ON public.notificacoes_rh(cooperado_id);
+            """))
+            db.session.commit()
     except Exception:
         db.session.rollback()
 
@@ -1521,6 +1782,13 @@ ADMIN_ABAS = {
     "avaliacoes": "Avaliações",
     "config": "Configurações",
     "folha": "Folha",
+    "sistemas": "Sistemas",
+    "rh_dashboard": "RH • Dashboard",
+    "rh_cooperados": "RH • Cooperados",
+    "rh_documentos": "RH • Documentos",
+    "rh_pesquisa": "RH • Pesquisa",
+    "rh_notificacoes": "RH • Notificações",
+    "rh_vencimentos": "RH • Vencimentos",
 }
 
 
@@ -3071,63 +3339,6 @@ def index():
 # =========================
 # Auth
 # =========================
-
-PORTAL_PRINCIPAL_URL = os.environ.get("PORTAL_PRINCIPAL_URL", "https://financas-dxsu.onrender.com")
-PORTAL_SISTEMA1_URL = os.environ.get("PORTAL_SISTEMA1_URL", "https://escalas-2-1.onrender.com")
-PORTAL_SISTEMA2_URL = os.environ.get("PORTAL_SISTEMA2_URL", "https://kratossystem.onrender.com")
-
-PORTAL_SISTEMAS = {
-    "principal": {
-        "label": "Sistema Principal",
-        "url": PORTAL_PRINCIPAL_URL,
-        "autologin_path": None,
-        "next": "/admin",
-        "aud": "painel-destino",
-        "descricao": "Financeiro / admin central",
-    },
-    "sistema1": {
-        "label": "Supervisão",
-        "url": PORTAL_SISTEMA1_URL,
-        "autologin_path": "/autologin",
-        "next": "/admin",
-        "aud": "sistema-1",
-        "descricao": "Supervisão",
-    },
-    "sistema2": {
-        "label": "Parceria",
-        "url": PORTAL_SISTEMA2_URL,
-        "autologin_path": "/autologin",
-        "next": "/dashboard",
-        "aud": "sistema-2",
-        "descricao": "Parceria",
-    },
-}
-
-@app.get("/admin/sistemas")
-@admin_required
-def admin_sistemas():
-    return redirect(url_for("admin_dashboard", tab="sistemas"))
-
-@app.get("/admin/sistemas/abrir/<sistema>")
-@admin_required
-def admin_sistemas_abrir(sistema: str):
-    cfg = PORTAL_SISTEMAS.get((sistema or "").strip().lower())
-    if not cfg:
-        flash("Sistema inválido.", "danger")
-        return redirect(url_for("admin_dashboard", tab="sistemas"))
-
-    if sistema == "principal":
-        return redirect(url_for("admin_dashboard", tab="sistemas"))
-
-    token = sso_dump({
-        "aud": cfg["aud"],
-        "orig": "principal",
-        "tipo": "admin",
-        "next": cfg["next"],
-        "iat": int(datetime.utcnow().timestamp()),
-    })
-    return redirect(f"{cfg['url']}{cfg['autologin_path']}?token={token}")
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     erro_login = None
@@ -3202,32 +3413,32 @@ def sso_entrar():
     token = (request.args.get("token") or "").strip()
     if not token:
         return redirect(url_for("login"))
-
     try:
-        data = sso_load(token, max_age_seconds=45)
+        data = sso_load(token, max_age_seconds=60)
     except SignatureExpired:
         flash("Link expirou. Clique novamente no botão.", "danger")
         return redirect(url_for("login"))
     except BadSignature:
         flash("Link inválido.", "danger")
         return redirect(url_for("login"))
-
     if data.get("aud") != "painel-destino":
         flash("Token com destino inválido.", "danger")
         return redirect(url_for("login"))
-
     tipo = (data.get("tipo") or "admin").strip().lower()
-    if tipo not in ("admin", "supervisao"):
-        tipo = "admin"
-
-    u = _get_or_create_sso_user(tipo=tipo)
-
+    principal_user = (data.get("principal_user") or "").strip()
+    if tipo == "supervisao":
+        u = _find_admin_usuario(principal_user, "SUPERVISAO", must_be_master=False) or _get_or_create_supervisao_admin()
+        next_url = "/admin?tab=escalas"
+    else:
+        u = _find_admin_usuario(principal_user, "COOPEX", "coopex", must_be_master=True)
+        if not u:
+            flash("Administrador master do principal não encontrado.", "danger")
+            return redirect(url_for("login"))
+        next_url = data.get("next") or url_for("admin_dashboard", tab="sistemas")
     session.clear()
     session.permanent = True
     session["user_id"] = u.id
-    session["user_tipo"] = u.tipo
-
-    next_url = data.get("next") or url_for("admin_dashboard")
+    session["user_tipo"] = "admin"
     return redirect(next_url)
     
 def _safe_float(v, default=0.0):
@@ -3527,6 +3738,17 @@ def admin_delete_admin(usuario_id):
     flash("Administrador excluído com sucesso.", "success")
     return redirect(url_for("admin_dashboard", tab="config"))
     
+
+@app.get("/admin/sistemas/abrir/<sistema>")
+@admin_perm_required("sistemas", "ver")
+def admin_sistemas_abrir(sistema):
+    sistema = (sistema or "").strip().lower()
+    if sistema == "sistema1":
+        return redirect(_build_remote_sso_url(PORTAL_SISTEMA1_URL, aud="sistema1", role="master", next_path="/admin"))
+    if sistema == "sistema2":
+        return redirect(_build_remote_sso_url(PORTAL_SISTEMA2_URL, aud="sistema2", role="admin", next_path="/dashboard"))
+    flash("Sistema inválido.", "warning")
+    return redirect(url_for("admin_dashboard", tab="sistemas"))
 
 @app.route("/admin", methods=["GET"])
 @admin_required
@@ -4093,6 +4315,115 @@ def admin_dashboard():
                 "recebedores": recs,
             })
 
+    ajax_partial = (request.args.get("ajax_partial") or "").strip().lower()
+    ajax_financeiros = {"resumo", "lancamentos", "receitas", "despesas", "coop_receitas", "coop_despesas", "beneficios"}
+    if ajax_partial in ajax_financeiros:
+        resumo_coop_rows = []
+        resumo_totais = {
+            "prod": 0.0, "inss4": 0.0, "sest05": 0.0, "rec": 0.0,
+            "des": 0.0, "adiant": 0.0, "a_receber": 0.0, "saldo_pendente": 0.0,
+            "pend_programado": 0.0
+        }
+        chart_data_lancamentos_coop = {"labels": [], "values": []}
+        chart_data_lancamentos_cooperados = {"labels": [], "values": []}
+
+        if ajax_partial == "resumo":
+            sums = {}
+            for l in lancamentos:
+                if not l.data:
+                    continue
+                key = l.data.strftime("%Y-%m")
+                sums[key] = sums.get(key, 0.0) + (l.valor or 0.0)
+
+            labels_ord = sorted(sums.keys())
+            labels_fmt = []
+            for k in labels_ord:
+                parts = k.split("-")
+                if len(parts) == 2 and parts[0] and parts[1]:
+                    year, month = parts[0], parts[1]
+                    labels_fmt.append(f"{month}/{year[-2:]}")
+                else:
+                    labels_fmt.append(k)
+            values = [round(sums[k], 2) for k in labels_ord]
+            chart_data_lancamentos_coop = {"labels": labels_fmt, "values": values}
+            chart_data_lancamentos_cooperados = {"labels": labels_fmt, "values": values}
+
+            for coop in cooperados:
+                snap = _compute_coop_debt_snapshot(coop.id, data_inicio, data_fim)
+                prod = sum((l.valor or 0.0) for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+                rec = sum((r.valor or 0.0) for r in receitas_coop if getattr(r, "cooperado_id", None) == coop.id)
+                inss4 = sum((l.valor or 0.0) * INSS_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+                sest05 = sum((l.valor or 0.0) * SEST_ALIQ for l in lancamentos if getattr(l, "cooperado_id", None) == coop.id)
+                des = round(snap.get("descontado_despesa", 0.0), 2)
+                adiant = round(snap.get("descontado_adiant", 0.0), 2)
+                if prod or rec or des or adiant or snap["saldo_devedor"] or snap["a_descontar"]:
+                    a_receber = round(max(0.0, snap["disponivel_auto_restante"]), 2)
+                    saldo_pendente = round(snap["saldo_devedor"], 2)
+                    pend_programado = round(snap["a_descontar"], 2)
+                    resumo_coop_rows.append({
+                        "id": coop.id,
+                        "nome": coop.nome,
+                        "prod": round(prod,2),
+                        "inss4": round(inss4,2),
+                        "sest05": round(sest05,2),
+                        "rec": round(rec,2),
+                        "des": round(des,2),
+                        "adiant": round(adiant,2),
+                        "a_receber": a_receber,
+                        "aReceber": a_receber,
+                        "saldo_pendente": saldo_pendente,
+                        "saldoPendente": saldo_pendente,
+                        "pend_programado": pend_programado,
+                        "pendProgramado": pend_programado,
+                    })
+                    resumo_totais["prod"] += prod
+                    resumo_totais["inss4"] += inss4
+                    resumo_totais["sest05"] += sest05
+                    resumo_totais["rec"] += rec
+                    resumo_totais["des"] += des
+                    resumo_totais["adiant"] += adiant
+                    resumo_totais["a_receber"] += max(0.0, snap["disponivel_auto_restante"])
+                    resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
+                    resumo_totais["pend_programado"] += snap["a_descontar"]
+
+        partial_context = dict(
+            tab=ajax_partial,
+            fast_mode=False,
+            total_producoes=total_producoes,
+            total_inss=total_inss,
+            total_sest=total_sest,
+            total_encargos=total_encargos,
+            total_receitas=total_receitas,
+            total_despesas=total_despesas,
+            total_receitas_coop=total_receitas_coop,
+            total_despesas_coop=total_despesas_coop,
+            total_adiantamentos_coop=total_adiantamentos_coop,
+            salario_minimo=(cfg.salario_minimo or 0.0) if cfg else 0.0,
+            lancamentos=lancamentos,
+            receitas=receitas,
+            despesas=despesas,
+            receitas_coop=receitas_coop,
+            despesas_coop=despesas_coop,
+            cooperados=cooperados,
+            restaurantes=restaurantes,
+            beneficios_view=beneficios_view,
+            historico_beneficios=historico_beneficios,
+            admin_perms=admin_perms,
+            admin_is_master=is_admin_master(),
+            taxa_admin_rows=taxa_admin_rows,
+            taxa_admin_totais=taxa_admin_totais,
+            juros_arrecadados_total=juros_arrecadados_total,
+            resumo_coop_rows=resumo_coop_rows,
+            resumo_totais=resumo_totais,
+            chart_data_lancamentos_coop=chart_data_lancamentos_coop,
+            chart_data_lancamentos_cooperados=chart_data_lancamentos_cooperados,
+            despesa_snapshot_map=despesa_snapshot_map if 'despesa_snapshot_map' in locals() else {},
+            current_date=date.today(),
+            data_limite=date(date.today().year, 12, 31),
+            filtro_periodo_aplicado=filtro_periodo_aplicado,
+        )
+        return _render_admin_dashboard_partial(ajax_partial, **partial_context)
+
     # =========================
     # Trocas
     # =========================
@@ -4361,7 +4692,7 @@ def admin_dashboard():
             resumo_totais["saldo_pendente"] += snap["saldo_devedor"]
             resumo_totais["pend_programado"] += snap["a_descontar"]
 
-    return render_template(
+    _rendered_html = render_template(
         "admin_dashboard.html",
         tab=active_tab,
         total_producoes=total_producoes,
@@ -4426,6 +4757,24 @@ def admin_dashboard():
         taxa_admin_totais=taxa_admin_totais,
         juros_arrecadados_total=juros_arrecadados_total,
     )
+
+    ajax_partial = (request.args.get("ajax_partial") or "").strip().lower()
+    if ajax_partial:
+        marker_map = {
+            "resumo": "RESUMO",
+            "lancamentos": "LANC",
+            "receitas": "RECEITAS",
+            "despesas": "DESPESAS",
+            "coop_receitas": "COOP_RECEITAS",
+            "coop_despesas": "COOP_DESPESAS",
+            "beneficios": "BENEFICIOS",
+        }
+        marker = marker_map.get(ajax_partial)
+        if marker:
+            m = re.search(rf"<!--AJAX_{marker}_START-->(.*?)<!--AJAX_{marker}_END-->", _rendered_html, flags=re.DOTALL)
+            if m:
+                return m.group(1)
+    return _rendered_html
     
 # =========================
 # Navegação/Export util
@@ -4440,6 +4789,16 @@ def filtrar_lancamentos():
 
 
 from datetime import datetime, date
+
+
+
+def _render_admin_dashboard_partial(partial_name: str, **context):
+    template_src, _, _ = current_app.jinja_loader.get_source(current_app.jinja_env, "admin_dashboard.html")
+    marker = (partial_name or "").strip().upper()
+    m = re.search(rf"<!--AJAX_{marker}_START-->(.*?)<!--AJAX_{marker}_END-->", template_src, flags=re.DOTALL)
+    if not m:
+        return "", 404
+    return render_template_string(m.group(1), **context)
 
 def _parse_date(value: str | None) -> date | None:
     if not value:
@@ -4895,8 +5254,8 @@ def admin_add_lancamento():
 
     db.session.add(l)
     db.session.commit()
-    flash("Lançamento inserido.", "success")
-    return redirect(url_for("admin_dashboard", tab="lancamentos"))
+    payload = {"id": l.id}
+    return _json_or_redirect_success("Lançamento inserido.", "lancamentos", payload)
 
 
 @app.route("/admin/lancamentos/<int:id>/edit", methods=["POST"])
@@ -4915,8 +5274,8 @@ def admin_edit_lancamento(id):
     l.qtd_entregas = f.get("qtd_entregas", type=int)
 
     db.session.commit()
-    flash("Lançamento atualizado.", "success")
-    return redirect(url_for("admin_dashboard", tab="lancamentos"))
+    payload = {"id": l.id}
+    return _json_or_redirect_success("Lançamento atualizado.", "lancamentos", payload)
 
 
 @app.route("/admin/lancamentos/<int:id>/delete", methods=["GET", "POST"])
@@ -4933,8 +5292,7 @@ def admin_delete_lancamento(id):
 
     db.session.delete(l)
     db.session.commit()
-    flash("Lançamento excluído.", "success")
-    return redirect(url_for("admin_dashboard", tab="lancamentos"))
+    return _json_or_redirect_success("Lançamento excluído.", "lancamentos", {"deleted_id": id})
 
 
 # =========================
@@ -5367,8 +5725,7 @@ def edit_receita(id):
     r.data = _parse_date(f.get("data"))
 
     db.session.commit()
-    flash("Receita atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="receitas"))
+    return _json_or_redirect_success("Receita atualizada.", "receitas", {"id": r.id})
 
 
 @app.route("/receitas/<int:id>/delete", methods=["GET", "POST"])
@@ -5377,8 +5734,7 @@ def delete_receita(id):
     r = ReceitaCooperativa.query.get_or_404(id)
     db.session.delete(r)
     db.session.commit()
-    flash("Receita excluída.", "success")
-    return redirect(url_for("admin_dashboard", tab="receitas"))
+    return _json_or_redirect_success("Receita excluída.", "receitas", {"deleted_id": id})
 
 
 @app.route("/receitas/taxas-admin/<int:id>/status", methods=["POST"])
@@ -5501,8 +5857,7 @@ def edit_despesa(id):
     d.data = _parse_date(f.get("data"))
 
     db.session.commit()
-    flash("Despesa atualizada.", "success")
-    return redirect(url_for("admin_dashboard", tab="despesas"))
+    return _json_or_redirect_success("Despesa atualizada.", "despesas", {"id": d.id})
 
 
 @app.route("/despesas/<int:id>/delete", methods=["GET", "POST"])
@@ -5511,8 +5866,7 @@ def delete_despesa(id):
     d = DespesaCooperativa.query.get_or_404(id)
     db.session.delete(d)
     db.session.commit()
-    flash("Despesa excluída.", "success")
-    return redirect(url_for("admin_dashboard", tab="despesas"))
+    return _json_or_redirect_success("Despesa excluída.", "despesas", {"deleted_id": id})
 
 
 # =========================
@@ -6728,6 +7082,15 @@ def _despesa_due_date(dc):
 
 
 
+def _wants_json_response() -> bool:
+    return (
+        request.headers.get("X-Requested-With") in ("XMLHttpRequest", "fetch")
+        or request.form.get("ajax") == "1"
+        or request.args.get("ajax") == "1"
+        or (request.accept_mimetypes.best == "application/json" and request.accept_mimetypes["application/json"] >= request.accept_mimetypes["text/html"])
+    )
+
+
 def _admin_redirect_with_filters(default_tab="coop_despesas"):
     args = {
         "tab": request.form.get("tab") or request.args.get("tab") or default_tab,
@@ -6738,7 +7101,19 @@ def _admin_redirect_with_filters(default_tab="coop_despesas"):
     }
     if request.form.get("somente_pendentes") or request.args.get("somente_pendentes"):
         args["somente_pendentes"] = "1"
+    if request.args.get("fast_mode") or request.form.get("fast_mode"):
+        args["fast_mode"] = "1"
     return redirect(url_for("admin_dashboard", **args))
+
+
+def _json_or_redirect_success(message: str, default_tab: str, payload: dict | None = None):
+    if _wants_json_response():
+        body = {"ok": True, "message": message, "tab": default_tab}
+        if payload:
+            body.update(payload)
+        return jsonify(body)
+    flash(message, "success")
+    return _admin_redirect_with_filters(default_tab)
 
 
 def _compute_coop_debt_snapshot(coop_id, di, df):
@@ -7098,8 +7473,7 @@ def edit_despesa_coop(id):
     dc.competencia_desconto = competencia_semana
 
     db.session.commit()
-    flash("Despesa do cooperado atualizada.", "success")
-    return _admin_redirect_with_filters("coop_despesas")
+    return _json_or_redirect_success("Despesa do cooperado atualizada.", "coop_despesas", {"id": dc.id})
 
 
 @app.route("/coop/despesas/delete", methods=["POST"])
@@ -7123,8 +7497,7 @@ def delete_despesa_coop(id=None):
 
     DespesaCooperado.query.filter(DespesaCooperado.id.in_(ids)).delete(synchronize_session=False)
     db.session.commit()
-    flash(f"{len(ids)} despesa(s) do cooperado excluída(s).", "success")
-    return _admin_redirect_with_filters("coop_despesas")
+    return _json_or_redirect_success(f"{len(ids)} despesa(s) do cooperado excluída(s).", "coop_despesas", {"deleted_ids": ids})
 
 # =========================
 # Benefícios — Editar / Excluir (Admin)
