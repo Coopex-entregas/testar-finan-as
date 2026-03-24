@@ -10986,6 +10986,475 @@ def avisos_unread_count():
             pass
         return _nocache_json({"ok": False, "unread": 0, "count": 0, "error": str(e)}, 500)
 
+
+
+# =========================
+# Recursos Humanos / Compatibilidade de rotas dos novos HTMLs
+# =========================
+try:
+    Usuario.username
+except Exception:
+    Usuario.username = property(lambda self: getattr(self, 'usuario', '') or '')
+
+
+def _rh_upload_abs(*parts: str) -> str:
+    base = Path(UPLOAD_DIR)
+    path = base.joinpath(*[str(p).strip('/\\') for p in parts if p is not None])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
+def _rh_public_url_from_abs(abs_path: str) -> str:
+    try:
+        rel = Path(abs_path).resolve().relative_to(Path(UPLOAD_DIR).resolve())
+        return '/static/uploads/' + str(rel).replace('\\', '/')
+    except Exception:
+        return '/static/uploads/' + Path(abs_path).name
+
+
+def _rh_extract_text(abs_path: str, mime: str | None = None) -> str:
+    p = Path(abs_path)
+    ext = p.suffix.lower()
+    try:
+        if ext in {'.txt', '.csv', '.md', '.html', '.htm'}:
+            return p.read_text(encoding='utf-8', errors='ignore')[:200000]
+        if ext == '.pdf':
+            try:
+                from pypdf import PdfReader
+                reader = PdfReader(str(p))
+                chunks = []
+                for page in reader.pages[:50]:
+                    try:
+                        chunks.append(page.extract_text() or '')
+                    except Exception:
+                        pass
+                return '\n'.join(chunks)[:200000]
+            except Exception:
+                return ''
+        if ext == '.docx':
+            try:
+                from docx import Document
+                doc = Document(str(p))
+                return '\n'.join([para.text for para in doc.paragraphs if para.text]).strip()[:200000]
+            except Exception:
+                try:
+                    import zipfile
+                    from xml.etree import ElementTree as ET
+                    with zipfile.ZipFile(str(p)) as zf:
+                        xml = zf.read('word/document.xml')
+                    root = ET.fromstring(xml)
+                    texts = [t.text for t in root.iter() if t.tag.endswith('}t') and t.text]
+                    return ' '.join(texts)[:200000]
+                except Exception:
+                    return ''
+    except Exception:
+        return ''
+    return ''
+
+
+def _rh_save_form_into_cooperado(c, form):
+    c.matricula = (form.get('matricula') or '').strip() or None
+    c.nome = (form.get('nome') or '').strip() or c.nome
+    c.cpf = (form.get('cpf') or '').strip() or c.cpf
+    c.data_nascimento = _parse_date(form.get('data_nascimento'))
+    c.nacionalidade = (form.get('nacionalidade') or '').strip() or None
+    c.grau_escolaridade = (form.get('grau_escolaridade') or '').strip() or None
+    if hasattr(c, 'sexo'):
+        c.sexo = (form.get('sexo') or '').strip() or None
+    if hasattr(c, 'estado_civil'):
+        c.estado_civil = (form.get('estado_civil') or '').strip() or None
+    c.telefone1 = (form.get('telefone1') or '').strip() or None
+    c.telefone2 = (form.get('telefone2') or '').strip() or None
+    c.email = (form.get('email') or '').strip() or None
+    c.rg = (form.get('rg') or '').strip() or None
+    c.rg_orgao = (form.get('rg_orgao') or '').strip() or None
+    c.rg_emissao = _parse_date(form.get('rg_emissao'))
+    c.pis = (form.get('pis') or '').strip() or None
+    c.ctps_numero = (form.get('ctps_numero') or '').strip() or None
+    c.ctps_serie = (form.get('ctps_serie') or '').strip() or None
+    c.ctps_uf = (form.get('ctps_uf') or '').strip() or None
+    c.titulo_numero = (form.get('titulo_numero') or '').strip() or None
+    c.titulo_zona = (form.get('titulo_zona') or '').strip() or None
+    c.titulo_secao = (form.get('titulo_secao') or '').strip() or None
+    c.cnh_numero = (form.get('cnh_numero') or '').strip() or None
+    c.cnh_categoria = (form.get('cnh_categoria') or '').strip() or None
+    c.cnh_validade = _parse_date(form.get('cnh_validade'))
+    c.renavam = (form.get('renavam') or '').strip() or None
+    c.renavam_validade = _parse_date(form.get('renavam_validade'))
+    c.pai_nome = (form.get('pai_nome') or '').strip() or None
+    c.sem_pai = bool(form.get('sem_pai'))
+    if c.sem_pai:
+        c.pai_nome = None
+    c.mae_nome = (form.get('mae_nome') or '').strip() or None
+    c.cep = (form.get('cep') or '').strip() or None
+    c.rua = (form.get('rua') or '').strip() or None
+    c.numero = (form.get('numero') or '').strip() or None
+    c.bairro = (form.get('bairro') or '').strip() or None
+    c.cidade = (form.get('cidade') or '').strip() or None
+    c.uf = (form.get('uf') or '').strip() or None
+    c.complemento = (form.get('complemento') or '').strip() or None
+    c.pix = (form.get('pix') or '').strip() or None
+    c.banco = (form.get('banco') or '').strip() or None
+    c.agencia = (form.get('agencia') or '').strip() or None
+    c.operacao = (form.get('operacao') or '').strip() or None
+    c.conta = (form.get('conta') or '').strip() or None
+    c.ultima_atualizacao = datetime.now()
+
+
+def _rh_sync_filhos(c):
+    try:
+        Filho.query.filter_by(cooperado_id=c.id).delete()
+    except Exception:
+        db.session.rollback()
+        return
+    nomes = request.form.getlist('filho_nome[]')
+    nascs = request.form.getlist('filho_nasc[]')
+    for i in range(max(len(nomes), len(nascs))):
+        nm = (nomes[i] if i < len(nomes) else '') or ''
+        nm = nm.strip()
+        if not nm:
+            continue
+        nasc = _parse_date(nascs[i] if i < len(nascs) else None)
+        db.session.add(Filho(cooperado_id=c.id, nome=nm, nascimento=nasc))
+
+
+def _rh_save_anexos(c):
+    anexos = request.files.getlist('anexos')
+    tipo_anexo = (request.form.get('tipo_anexo') or '').strip() or None
+    for f in anexos:
+        if not f or not f.filename:
+            continue
+        raw = secure_filename(f.filename)
+        stamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+        abs_path = _rh_upload_abs('docs', str(c.id), f'{stamp}_{raw}')
+        f.save(abs_path)
+        db.session.add(Anexo(
+            cooperado_id=c.id,
+            tipo=tipo_anexo,
+            titulo='Documento',
+            filename=raw,
+            path=_rh_public_url_from_abs(abs_path),
+            mime=getattr(f, 'mimetype', None),
+        ))
+
+
+@app.get('/uploads/<path:filename>')
+def serve_upload(filename):
+    rel = filename or ''
+    if not rel.startswith('/'):
+        rel = '/' + rel
+    return _serve_uploaded(rel, force_download=False)
+
+
+@app.route('/minha-conta', methods=['GET', 'POST'])
+@login_required
+def minha_conta():
+    u = _usuario_logado()
+    if not u:
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        current_password = request.form.get('current_password') or ''
+        new_username = (request.form.get('new_username') or '').strip()
+        new_password = request.form.get('new_password') or ''
+        new_password2 = request.form.get('new_password2') or ''
+        if not u.check_password(current_password):
+            flash('Senha atual inválida.', 'danger')
+            return redirect(url_for('minha_conta'))
+        if new_username:
+            exists = Usuario.query.filter(Usuario.usuario == new_username, Usuario.id != u.id).first()
+            if exists:
+                flash('Esse usuário já existe.', 'warning')
+                return redirect(url_for('minha_conta'))
+            u.usuario = new_username
+        if new_password or new_password2:
+            if len(new_password) < 8:
+                flash('A nova senha deve ter pelo menos 8 caracteres.', 'warning')
+                return redirect(url_for('minha_conta'))
+            if new_password != new_password2:
+                flash('A confirmação da nova senha não confere.', 'warning')
+                return redirect(url_for('minha_conta'))
+            u.set_password(new_password)
+        db.session.commit()
+        flash('Minha conta atualizada com sucesso.', 'success')
+        return redirect(url_for('minha_conta'))
+    return render_template('admin/minha_conta.html')
+
+
+@app.route('/admin/rh', methods=['GET'])
+@admin_perm_required('rh_dashboard', 'ver')
+def admin_rh_dashboard():
+    hoje = date.today()
+    limite = hoje + timedelta(days=30)
+    base = Cooperado.query.filter(Cooperado.deleted_at.is_(None))
+    docs_vencendo = base.filter(db.or_(
+        db.and_(Cooperado.cnh_validade.isnot(None), Cooperado.cnh_validade >= hoje, Cooperado.cnh_validade <= limite),
+        db.and_(Cooperado.renavam_validade.isnot(None), Cooperado.renavam_validade >= hoje, Cooperado.renavam_validade <= limite),
+    )).count()
+    return render_template('admin/dashboard.html', docs_vencendo=docs_vencendo)
+
+
+@app.get('/admin/cooperados')
+@admin_perm_required('rh_cooperados', 'ver')
+def admin_cooperados_list():
+    q = (request.args.get('q') or '').strip()
+    cpf = (request.args.get('cpf') or '').strip()
+    tel = (request.args.get('tel') or '').strip()
+    mat = (request.args.get('mat') or '').strip()
+    hoje = date.today()
+    query = Cooperado.query.filter(Cooperado.deleted_at.is_(None))
+    if q:
+        query = query.filter(Cooperado.nome.ilike(f'%{q}%'))
+    if cpf:
+        query = query.filter(Cooperado.cpf.ilike(f'%{cpf}%'))
+    if tel:
+        like = f'%{tel}%'
+        query = query.filter(db.or_(Cooperado.telefone1.ilike(like), Cooperado.telefone2.ilike(like), Cooperado.telefone.ilike(like)))
+    if mat:
+        query = query.filter(Cooperado.matricula.ilike(f'%{mat}%'))
+    cooperados = query.order_by(Cooperado.nome.asc()).limit(500).all()
+    return render_template('admin/cooperados_list.html', cooperados=cooperados, q=q, cpf=cpf, tel=tel, mat=mat, hoje=hoje)
+
+
+@app.route('/admin/cooperados/novo', methods=['GET', 'POST'])
+@admin_perm_required('rh_cooperados', 'criar')
+def admin_cooperados_new():
+    if request.method == 'POST':
+        nome = (request.form.get('nome') or '').strip()
+        cpf = (request.form.get('cpf') or '').strip()
+        matricula = (request.form.get('matricula') or '').strip() or None
+        if not nome or not cpf:
+            flash('Nome e CPF são obrigatórios.', 'danger')
+            return redirect(url_for('admin_cooperados_new'))
+        if Cooperado.query.filter(Cooperado.deleted_at.is_(None), Cooperado.cpf == cpf).first():
+            flash('Já existe um cooperado com esse CPF.', 'warning')
+            return redirect(url_for('admin_cooperados_new'))
+        if matricula and Cooperado.query.filter(Cooperado.deleted_at.is_(None), Cooperado.matricula == matricula).first():
+            flash('Já existe um cooperado com essa matrícula.', 'warning')
+            return redirect(url_for('admin_cooperados_new'))
+        base_login = matricula or ''.join(ch for ch in cpf if ch.isdigit())[-6:] or re.sub(r'[^a-z0-9]+', '', nome.lower())[:12] or 'coop'
+        login = f'rh_{base_login}'
+        idx = 1
+        while Usuario.query.filter_by(usuario=login).first():
+            idx += 1
+            login = f'rh_{base_login}_{idx}'
+        u = Usuario(usuario=login, tipo='cooperado', senha_hash='')
+        u.set_password('05289')
+        db.session.add(u)
+        db.session.flush()
+        c = Cooperado(nome=nome, usuario_id=u.id)
+        _rh_save_form_into_cooperado(c, request.form)
+        db.session.add(c)
+        db.session.flush()
+        foto = request.files.get('foto')
+        if foto and foto.filename:
+            try:
+                _save_foto_to_db(c, foto, is_cooperado=True)
+            except Exception:
+                raw = secure_filename(foto.filename)
+                stamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+                abs_path = _rh_upload_abs('fotos', 'cooperados', f'{stamp}_{raw}')
+                foto.save(abs_path)
+                c.foto_url = _rh_public_url_from_abs(abs_path)
+                c.foto_path = c.foto_url
+                c.foto_filename = raw
+        _rh_sync_filhos(c)
+        _rh_save_anexos(c)
+        db.session.commit()
+        flash('Cooperado cadastrado com sucesso.', 'success')
+        return redirect(url_for('admin_cooperado_detalhe', cooperado_id=c.id))
+    return render_template('admin/cooperados_form.html', cooperado=None)
+
+
+@app.get('/admin/cooperados/<int:cooperado_id>')
+@admin_perm_required('rh_cooperados', 'ver')
+def admin_cooperado_detalhe(cooperado_id):
+    c = Cooperado.query.filter_by(id=cooperado_id, deleted_at=None).first_or_404()
+    return render_template('admin/cooperado_detalhe.html', cooperado=c)
+
+
+@app.get('/admin/cooperados/<int:cooperado_id>/ficha')
+@admin_perm_required('rh_cooperados', 'ver')
+def admin_cooperado_ficha(cooperado_id):
+    c = Cooperado.query.filter_by(id=cooperado_id, deleted_at=None).first_or_404()
+    return render_template('admin/cooperado_ficha.html', cooperado=c, hoje=date.today())
+
+
+@app.route('/admin/cooperados/<int:cooperado_id>/editar', methods=['GET', 'POST'])
+@admin_perm_required('rh_cooperados', 'editar')
+def admin_cooperados_edit(cooperado_id):
+    c = Cooperado.query.filter_by(id=cooperado_id, deleted_at=None).first_or_404()
+    if request.method == 'POST':
+        novo_cpf = (request.form.get('cpf') or '').strip() or None
+        nova_matricula = (request.form.get('matricula') or '').strip() or None
+        if novo_cpf and Cooperado.query.filter(Cooperado.deleted_at.is_(None), Cooperado.cpf == novo_cpf, Cooperado.id != c.id).first():
+            flash('CPF já usado por outro cooperado.', 'warning')
+            return redirect(url_for('admin_cooperados_edit', cooperado_id=c.id))
+        if nova_matricula and Cooperado.query.filter(Cooperado.deleted_at.is_(None), Cooperado.matricula == nova_matricula, Cooperado.id != c.id).first():
+            flash('Matrícula já usada por outro cooperado.', 'warning')
+            return redirect(url_for('admin_cooperados_edit', cooperado_id=c.id))
+        _rh_save_form_into_cooperado(c, request.form)
+        foto = request.files.get('foto')
+        if foto and foto.filename:
+            try:
+                _save_foto_to_db(c, foto, is_cooperado=True)
+            except Exception:
+                raw = secure_filename(foto.filename)
+                stamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+                abs_path = _rh_upload_abs('fotos', 'cooperados', f'{stamp}_{raw}')
+                foto.save(abs_path)
+                c.foto_url = _rh_public_url_from_abs(abs_path)
+                c.foto_path = c.foto_url
+                c.foto_filename = raw
+        _rh_sync_filhos(c)
+        _rh_save_anexos(c)
+        db.session.commit()
+        flash('Cooperado atualizado com sucesso.', 'success')
+        return redirect(url_for('admin_cooperado_detalhe', cooperado_id=c.id))
+    return render_template('admin/cooperados_form.html', cooperado=c)
+
+
+@app.post('/admin/cooperados/<int:cooperado_id>/excluir')
+@admin_perm_required('rh_cooperados', 'excluir')
+def admin_cooperados_delete(cooperado_id):
+    c = Cooperado.query.filter_by(id=cooperado_id, deleted_at=None).first_or_404()
+    c.deleted_at = datetime.utcnow()
+    c.ultima_atualizacao = datetime.now()
+    db.session.commit()
+    flash('Cooperado arquivado com sucesso.', 'success')
+    return redirect(url_for('admin_cooperados_list'))
+
+
+@app.get('/admin/cooperados/vencimentos')
+@admin_perm_required('rh_vencimentos', 'ver')
+def admin_cooperados_vencimentos():
+    hoje = date.today()
+    limite = hoje + timedelta(days=30)
+    base = Cooperado.query.filter(Cooperado.deleted_at.is_(None))
+    cnh_vencidos = base.filter(Cooperado.cnh_validade.isnot(None), Cooperado.cnh_validade < hoje).order_by(Cooperado.cnh_validade.asc()).all()
+    cnh_30 = base.filter(Cooperado.cnh_validade.isnot(None), Cooperado.cnh_validade >= hoje, Cooperado.cnh_validade <= limite).order_by(Cooperado.cnh_validade.asc()).all()
+    ren_vencidos = base.filter(Cooperado.renavam_validade.isnot(None), Cooperado.renavam_validade < hoje).order_by(Cooperado.renavam_validade.asc()).all()
+    ren_30 = base.filter(Cooperado.renavam_validade.isnot(None), Cooperado.renavam_validade >= hoje, Cooperado.renavam_validade <= limite).order_by(Cooperado.renavam_validade.asc()).all()
+    sem_docs = base.filter(db.or_(Cooperado.cnh_validade.is_(None), Cooperado.renavam_validade.is_(None))).order_by(Cooperado.nome.asc()).all()
+    return render_template('admin/cooperados_vencimentos.html', hoje=hoje, limite=limite, cnh_vencidos=cnh_vencidos, cnh_30=cnh_30, ren_vencidos=ren_vencidos, ren_30=ren_30, sem_docs=sem_docs)
+
+
+@app.route('/admin/documentos/sistema', methods=['GET', 'POST'])
+@admin_perm_required('rh_documentos', 'ver')
+def admin_documentos_sistema():
+    if request.method == 'POST':
+        if not has_admin_permission('rh_documentos', 'editar') and not has_admin_permission('rh_documentos', 'criar'):
+            flash('Você não tem permissão para enviar documentos do sistema.', 'danger')
+            return redirect(url_for('admin_documentos_sistema'))
+        files = request.files.getlist('arquivos') or []
+        tipo = (request.form.get('tipo') or '').strip() or 'documento'
+        titulo = (request.form.get('titulo') or '').strip() or tipo.title()
+        enviados = 0
+        for f in files:
+            if not f or not f.filename:
+                continue
+            raw = secure_filename(f.filename)
+            stamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+            abs_path = _rh_upload_abs('docs_sistema', f'{stamp}_{raw}')
+            f.save(abs_path)
+            text = _rh_extract_text(abs_path, getattr(f, 'mimetype', None))
+            db.session.add(DocumentoSistema(tipo=tipo, titulo=titulo, filename=raw, path=_rh_public_url_from_abs(abs_path), mime=getattr(f, 'mimetype', None), extracted_text=text))
+            enviados += 1
+        db.session.commit()
+        flash(f'{enviados} documento(s) enviado(s) com sucesso.', 'success')
+        return redirect(url_for('admin_documentos_sistema'))
+    docs = DocumentoSistema.query.order_by(DocumentoSistema.created_at.desc(), DocumentoSistema.id.desc()).all()
+    return render_template('admin/sistema_docs.html', docs=docs)
+
+
+@app.post('/admin/documentos/reindex')
+@admin_perm_required('rh_documentos', 'editar')
+def admin_docs_reindex():
+    total = 0
+    docs = DocumentoSistema.query.order_by(DocumentoSistema.id.asc()).all()
+    for d in docs:
+        try:
+            abs_path = _abs_path_from_url(d.path)
+            if abs_path and os.path.exists(abs_path):
+                d.extracted_text = _rh_extract_text(abs_path, d.mime)
+                total += 1
+        except Exception:
+            pass
+    db.session.commit()
+    flash(f'Indexação atualizada em {total} documento(s).', 'success')
+    return redirect(url_for('admin_documentos_sistema'))
+
+
+@app.get('/admin/pesquisa')
+@admin_perm_required('rh_pesquisa', 'ver')
+def admin_pesquisa():
+    termo = (request.args.get('termo') or '').strip()
+    resultados = []
+    if termo:
+        termo_low = termo.lower()
+        for d in DocumentoSistema.query.order_by(DocumentoSistema.created_at.desc(), DocumentoSistema.id.desc()).all():
+            texto = (d.extracted_text or '')
+            if not texto:
+                continue
+            texto_low = texto.lower()
+            if termo_low not in texto_low:
+                continue
+            pos = texto_low.find(termo_low)
+            ini = max(0, pos - 140)
+            fim = min(len(texto), pos + len(termo) + 160)
+            snippet = texto[ini:fim].replace('\n', ' ').strip()
+            score = texto_low.count(termo_low)
+            resultados.append({'titulo': d.titulo, 'tipo': d.tipo, 'score': score, 'snippet': snippet})
+        resultados.sort(key=lambda x: (-x['score'], x['titulo']))
+    return render_template('admin/pesquisa.html', termo=termo, resultados=resultados[:100])
+
+
+@app.route('/admin/notificacoes', methods=['GET', 'POST'])
+@admin_perm_required('rh_notificacoes', 'ver')
+def admin_notificacoes():
+    gerada = ''
+    if request.method == 'POST':
+        if not has_admin_permission('rh_notificacoes', 'criar') and not has_admin_permission('rh_notificacoes', 'editar'):
+            flash('Você não tem permissão para gerar notificações.', 'danger')
+            return redirect(url_for('admin_notificacoes'))
+        cooperado_id = request.form.get('cooperado_id', type=int)
+        data_ocorrido = _parse_date(request.form.get('data_ocorrido')) or date.today()
+        relato = (request.form.get('relato') or '').strip()
+        c = Cooperado.query.get_or_404(cooperado_id)
+        relato_low = relato.lower()
+        enquadramento = 'Apuração interna e advertência orientativa.'
+        prazo = 'Apresentar defesa escrita em até 48 horas.'
+        if any(k in relato_low for k in ['falta', 'ausência', 'nao compareceu', 'não compareceu']):
+            enquadramento = 'Ausência/falta operacional registrada.'
+            prazo = 'Manifestação em até 24 horas.'
+        elif any(k in relato_low for k in ['atraso', 'demora']):
+            enquadramento = 'Atraso operacional registrado.'
+            prazo = 'Manifestação em até 24 horas.'
+        elif any(k in relato_low for k in ['desrespeito', 'agress', 'ofensa']):
+            enquadramento = 'Conduta inadequada com necessidade de apuração formal.'
+            prazo = 'Manifestação em até 48 horas.'
+        gerada = (
+            f'NOTIFICAÇÃO\n\n'
+            f'Cooperado: {c.nome}\n'
+            f'Matrícula: {c.matricula or "—"}\n'
+            f'Data do ocorrido: {data_ocorrido.strftime("%d/%m/%Y")}\n\n'
+            f'Relato: {relato}\n\n'
+            f'Enquadramento preliminar: {enquadramento}\n'
+            f'Prazo: {prazo}\n\n'
+            f'Coopex - Recursos Humanos'
+        )
+        db.session.add(NotificacaoRH(cooperado_id=c.id, data_ocorrido=data_ocorrido, relato=relato, enquadramento=enquadramento, prazos=prazo))
+        db.session.commit()
+        flash('Notificação gerada e registrada.', 'success')
+    cooperados = Cooperado.query.filter(Cooperado.deleted_at.is_(None)).order_by(Cooperado.nome.asc()).all()
+    ultimas = NotificacaoRH.query.order_by(NotificacaoRH.created_at.desc(), NotificacaoRH.id.desc()).limit(20).all()
+    return render_template('admin/notificacoes.html', cooperados=cooperados, gerada=gerada, ultimas=ultimas)
+
+
+@app.get('/admin/atas')
+@admin_perm_required('rh_documentos', 'ver')
+def admin_atas():
+    return redirect(url_for('admin_avisos'))
+
 import click
 
 @app.cli.command("init-db")
