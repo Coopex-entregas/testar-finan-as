@@ -450,6 +450,7 @@
 {% set can_documentos_ver = admin_is_master or _perms.get('documentos', {}).get('ver', False) %}
 {% set can_tabelas_ver = admin_is_master or _perms.get('tabelas', {}).get('ver', False) %}
 {% set can_avaliacoes_ver = admin_is_master or _perms.get('avaliacoes', {}).get('ver', False) %}
+{% set can_sistemas_ver = admin_is_master or _perms.get('sistemas', {}).get('ver', False) %}
 {% set can_config_ver = admin_is_master or _perms.get('config', {}).get('ver', False) %}
 {% set can_config_criar = admin_is_master or _perms.get('config', {}).get('criar', False) %}
 {% set can_config_editar = admin_is_master or _perms.get('config', {}).get('editar', False) %}
@@ -671,22 +672,67 @@
         </a>{% endif %}
       </div>
 
+      <button class="nav-link-group-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#menuIntegrados"
+              aria-expanded="true">
+        <div class="nav-link-left">
+          <span class="nav-link-icon"><i class="bi bi-briefcase"></i></span>
+          <span class="nav-link-label">Recursos Humanos</span>
+        </div>
+        <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
+      </button>
+
+      <div id="menuIntegrados" class="collapse show nav-sublinks">
+        <a class="nav-sublink {% if request.endpoint == 'admin_cooperados_new' %}active{% endif %}"
+           href="{{ url_for('admin_cooperados_new') }}">
+          <i class="bi bi-person-plus"></i>
+          <span class="nav-link-label">Cadastro / Ficha</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_cooperados_list' %}active{% endif %}"
+           href="{{ url_for('admin_cooperados_list') }}">
+          <i class="bi bi-search"></i>
+          <span class="nav-link-label">Lista / Pesquisa</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_cooperados_vencimentos' %}active{% endif %}"
+           href="{{ url_for('admin_cooperados_vencimentos') }}">
+          <i class="bi bi-calendar2-check"></i>
+          <span class="nav-link-label">Vencimentos</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_documentos_sistema' %}active{% endif %}"
+           href="{{ url_for('admin_documentos_sistema') }}">
+          <i class="bi bi-file-earmark-text"></i>
+          <span class="nav-link-label">Estatuto / Regimento</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_notificacoes' %}active{% endif %}"
+           href="{{ url_for('admin_notificacoes') }}">
+          <i class="bi bi-bell"></i>
+          <span class="nav-link-label">Notificações</span>
+        </a>
+        <a class="nav-sublink {% if request.endpoint == 'admin_pesquisa' %}active{% endif %}"
+           href="{{ url_for('admin_pesquisa') }}">
+          <i class="bi bi-binoculars"></i>
+          <span class="nav-link-label">Pesquisa</span>
+        </a>
+      </div>
+
       <hr class="sidebar-divider">
 
       <!-- Config (TAB) e Sair (rota) ---------------------------------------->
       <div class="sidebar-footer">
-
-      <div class="nav-section-label">Integrações</div>
-      <a class="nav-link-main {{ 'active' if _tab=='sistemas' else '' }}"
-         data-bs-toggle="tab"
-         href="#sistemas"
-         data-admin-tab="sistemas"
-         role="tab">
-        <div class="nav-link-left">
-          <span class="nav-link-icon"><i class="bi bi-boxes"></i></span>
-          <span class="nav-link-label">Sistemas</span>
-        </div>
-      </a>
+        {% if can_sistemas_ver %}<a class="nav-link-main {{ 'active' if _tab=='sistemas' else '' }}"
+           data-bs-toggle="tab"
+           data-bs-target="#sistemas"
+           href="#sistemas"
+           role="tab"
+           aria-controls="sistemas"
+           aria-selected="{{ 'true' if _tab=='sistemas' else 'false' }}">
+          <div class="nav-link-left">
+            <span class="nav-link-icon"><i class="bi bi-diagram-3"></i></span>
+            <span class="nav-link-label">Sistemas</span>
+          </div>
+        </a>{% endif %}
 
         {% if can_config_ver %}<a class="nav-link-main {{ 'active' if _tab=='config' else '' }}"
            data-bs-toggle="tab"
@@ -717,44 +763,9 @@
 <main class="main">
   <div class="tab-content">
 
-    <!-- === SISTEMAS === -->
-    <section class="tab-pane fade {{ 'show active' if _tab=='sistemas' else '' }}" id="sistemas" role="tabpanel">
-      <div class="content-shell">
-        <div class="page-header">
-          <h3><i class="bi bi-boxes"></i> Sistemas</h3>
-          <small>Acesse os outros sistemas sem precisar fazer novo login.</small>
-        </div>
-
-        <div class="row g-3">
-          <div class="col-12 col-lg-6">
-            <div class="card h-100">
-              <div class="card-body d-flex flex-column">
-                <h5 class="mb-2"><i class="bi bi-broadcast"></i> Supervisão</h5>
-                <p class="text-muted mb-3">Abrir o sistema de supervisão já autenticado.</p>
-                <div class="mt-auto">
-                  <a class="btn btn-primary" href="{{ url_for('admin_sistemas_abrir', sistema='sistema1') }}">Abrir Supervisão</a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-lg-6">
-            <div class="card h-100">
-              <div class="card-body d-flex flex-column">
-                <h5 class="mb-2"><i class="bi bi-diagram-3"></i> Parceria</h5>
-                <p class="text-muted mb-3">Abrir o sistema de parceria já autenticado.</p>
-                <div class="mt-auto">
-                  <a class="btn btn-primary" href="{{ url_for('admin_sistemas_abrir', sistema='sistema2') }}">Abrir Parceria</a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- === RESUMO (Dashboard Financeiro Completo) === -->
-    <section class="tab-pane fade {{ 'show active' if _tab=='resumo' else '' }}" id="resumo" role="tabpanel">
+    
+      <!--AJAX_RESUMO_START--><section class="tab-pane fade {{ 'show active' if _tab=='resumo' else '' }}" id="resumo" role="tabpanel">
       <div class="resumo-shell">
 
         {# ---------- Helpers de data ---------- #}
@@ -2010,12 +2021,13 @@
       document.getElementById('btnExportXLSX')?.addEventListener('click', exportXLSX);
     })();
     </script>
-</section>
+</section><!--AJAX_RESUMO_END-->
 
 <!-- LANÇAMENTOS (versão moderna/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='lancamentos' else '' }}" id="lancamentos" role="tabpanel">
   {# ====== TOTAIS DO FILTRO (já vem filtrado do backend) ====== #}
   {% set soma_valor    = (lancamentos|sum(attribute='valor')) if lancamentos else 0 %}
+<!--AJAX_LANC_START--><div id="lancamentosAjaxWrap">
   {% set soma_inss_4   = (soma_valor * 0.04) %}
   {% set soma_sest_05  = (soma_valor * 0.005) %}
   {% set soma_liq      = (soma_valor - soma_inss_4 - soma_sest_05) %}
@@ -2081,7 +2093,7 @@
         </button>
       </div>
 
-      <form method="GET" action="{{ url_for('filtrar_lancamentos') }}" class="row g-2 align-items-end">
+      <form id="formFiltroLancamentos" method="GET" action="{{ url_for('filtrar_lancamentos') }}" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="lancamentos">
 
         <div class="col-md-3">
@@ -2156,9 +2168,7 @@
             <i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV
           </a>
 
-          <button type="reset" class="btn btn-light btn-sm rounded-pill">
-            Limpar
-          </button>
+          <a href="{{ url_for('admin_dashboard', tab='lancamentos') }}" class="btn btn-light btn-sm rounded-pill">Limpar</a>
         </div>
       </form>
     </div>
@@ -2258,12 +2268,12 @@
               <th class="text-center">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="lancamentosTableBody">
             {% for l in lancamentos %}
               {% set inss_4  = (l.valor or 0) * 0.04 %}
               {% set sest_05 = (l.valor or 0) * 0.005 %}
               {% set liq     = (l.valor or 0) - inss_4 - sest_05 %}
-              <tr>
+              <tr data-row-id="{{ l.id }}">
                 <td class="lanc-col-rest"><span class="table-main-text">{{ l.restaurante.nome }}</span></td>
                 <td class="lanc-col-coop">{{ l.cooperado.nome }}</td>
                 <td class="lanc-col-desc">{{ l.descricao or "—" }}</td>
@@ -2292,8 +2302,8 @@
                           data-url="{{ url_for('admin_edit_lancamento', id=l.id) }}">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  {% if can_lanc_excluir %}<a class="btn btn-danger btn-sm rounded-pill btn-del"
-                     href="{{ url_for('admin_delete_lancamento', id=l.id) }}">
+                  {% if can_lanc_excluir %}<a class="btn btn-danger btn-sm rounded-pill btn-del btn-del-ajax"
+                     href="{{ url_for('admin_delete_lancamento', id=l.id) }}" data-row-id="{{ l.id }}">
                     <i class="bi bi-trash"></i>
                   </a>{% endif %}
                   {% endif %}
@@ -2322,6 +2332,7 @@
       </div>
     </div>
   </div>
+</div><!--AJAX_LANC_END-->
 </section>
 
 <style>
@@ -2543,6 +2554,7 @@
 
 <!-- RECEITAS COOP (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='receitas' else '' }}" id="receitas" role="tabpanel">
+<!--AJAX_RECEITAS_START--><div id="receitasAjaxWrap">
   {# total defensivo: aceita r.valor OU r.valor_total #}
   {% set ns_total = namespace(v=0) %}
   {% for r in receitas or [] %}
@@ -2567,7 +2579,7 @@
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="m-0"><i class="bi bi-funnel"></i> Filtrar</h6>
       </div>
-      <form method="GET" class="row g-2 align-items-end">
+      <form id="formFiltroReceitas" method="GET" action="{{ url_for('admin_dashboard') }}" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="receitas">
         <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
         <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
@@ -2772,11 +2784,13 @@
       });
     })();
   </script>
-</section>
+
+</div><!--AJAX_RECEITAS_END--></section>
 
 
 <!-- DESPESAS COOP (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='despesas' else '' }}" id="despesas" role="tabpanel">
+<!--AJAX_DESPESAS_START--><div id="despesasAjaxWrap">
   {% set total_despesas_coop_table = (despesas|sum(attribute='valor')) if despesas else 0 %}
   {% set qtd_registros = despesas|length if despesas else 0 %}
 
@@ -2795,7 +2809,7 @@
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="m-0"><i class="bi bi-funnel"></i> Filtrar</h6>
       </div>
-      <form method="GET" class="row g-2 align-items-end">
+      <form id="formFiltroDespesas" method="GET" action="{{ url_for('admin_dashboard') }}" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="despesas">
         <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
         <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
@@ -2903,11 +2917,13 @@
       </div>
     </div>
   </div>
-</section>
+
+</div><!--AJAX_DESPESAS_END--></section>
 
 
 <!-- RECEITAS COOPERADOS (versão profissional/compacta – drop-in) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_receitas' else '' }}" id="coop_receitas" role="tabpanel">
+<!--AJAX_COOP_RECEITAS_START--><div id="coopReceitasAjaxWrap">
   {% set total_receitas_coop_table = (receitas_coop|sum(attribute='valor')) if receitas_coop else 0 %}
   {% set qtd_registros = receitas_coop|length if receitas_coop else 0 %}
 
@@ -2926,7 +2942,7 @@
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="m-0"><i class="bi bi-funnel"></i> Filtrar</h6>
       </div>
-      <form method="GET" class="row g-2 align-items-end">
+      <form id="formFiltroCoopReceitas" method="GET" action="{{ url_for('admin_dashboard') }}" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="coop_receitas">
         <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
         <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
@@ -3051,11 +3067,13 @@
       </div>
     </div>
   </div>
-</section>
+
+</div><!--AJAX_COOP_RECEITAS_END--></section>
 
 
 <!-- DESPESAS COOPERADOS (versão profissional/compacta – SEM ADIANTAMENTO + PESQUISA) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='coop_despesas' else '' }}" id="coop_despesas" role="tabpanel">
+<!--AJAX_COOP_DESPESAS_START--><div id="coopDespesasAjaxWrap">
   {% set _despesas = (despesas_coop | default([]) | list) %}
 
   {# Totais (tudo entra como despesa) #}
@@ -3089,7 +3107,7 @@
         <h6 class="m-0"><i class="bi bi-funnel"></i> Filtrar</h6>
       </div>
 
-      <form method="GET" class="row g-2 align-items-end">
+      <form id="formFiltroCoopDespesas" method="GET" action="{{ url_for('admin_dashboard') }}" class="row g-2 align-items-end">
         <input type="hidden" name="tab" value="coop_despesas">
         <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id','') }}">
         <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id','') }}">
@@ -3226,7 +3244,7 @@
             {% for dc in despesas_coop %}
               {% set coop_nome = (dc.cooperado.nome if dc.cooperado else 'Todos') %}
               {% set snap = despesa_snapshot_map.get(dc.id) if despesa_snapshot_map is defined else None %}{% set _abat_auto = (snap.pago_auto if snap else 0) %}{% set _restante = (snap.restante if snap else (dc.valor or 0)) %}
-              <tr data-coop="{{ coop_nome|lower }}" data-desc="{{ (dc.descricao or '')|lower }}">
+              <tr data-row-id="{{ dc.id }}" data-coop="{{ coop_nome|lower }}" data-desc="{{ (dc.descricao or '')|lower }}">
                 <td class="text-center"><input type="checkbox" name="ids[]" form="bulkDeleteDespesasForm" value="{{ dc.id }}"></td>
                 <td>{{ dc.data.strftime('%d/%m/%Y') if dc.data else '-' }}</td>
                 <td class="text-break">{{ coop_nome }}</td>
@@ -3260,7 +3278,7 @@
                   <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
                     {# Se você usa Flask-WTF/CSRF, descomente a linha abaixo #}
                     {# {{ csrf_token() }} #}
-                    <button type="submit" class="btn btn-danger btn-sm btn-del" onclick="return confirm('Excluir esta despesa?');">
+                    <button type="submit" class="btn btn-danger btn-sm btn-del btn-del-ajax" onclick="return confirm('Excluir esta despesa?');">
                       <i class="bi bi-trash"></i>
                     </button>
                   </form>{% endif %}
@@ -3324,10 +3342,12 @@
       apply();
     })();
   </script>
-</section>
+
+</div><!--AJAX_COOP_DESPESAS_END--></section>
 
      <!-- BENEFÍCIOS (versão profissional / sem alterar backend) -->
 <section class="tab-pane fade {{ 'show active' if _tab=='beneficios' else '' }}" id="beneficios" role="tabpanel">
+<!--AJAX_BENEFICIOS_START--><div id="beneficiosAjaxWrap">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
     <h5 class="m-0 d-flex align-items-center gap-2">
       <i class="bi bi-heart-pulse"></i> Benefícios
@@ -3457,7 +3477,7 @@
         <h6 class="m-0 d-flex align-items-center gap-2">
           <i class="bi bi-journal-medical"></i> Registros de Benefícios Recebidos
         </h6>
-        <form method="GET" class="row g-2 align-items-end">
+        <form id="formFiltroBeneficios" method="GET" action="{{ url_for('admin_dashboard') }}" class="row g-2 align-items-end">
           <input type="hidden" name="tab" value="beneficios">
           <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
           <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim','') }}">
@@ -3590,7 +3610,8 @@
     </form>
   </div>
 </div>
-</section> <!-- FECHA A ABA BENEFÍCIOS -->
+
+</div><!--AJAX_BENEFICIOS_END--></section> <!-- FECHA A ABA BENEFÍCIOS -->
 
 <!-- ==== BENEFÍCIOS: prévia + total + seleção em massa (escopado) ==== -->
 <script>
@@ -5289,6 +5310,46 @@
 </section>
 
     <!-- === CONFIGURAÇÕES === -->
+
+<section class="tab-pane fade {{ 'show active' if _tab=='sistemas' else '' }}" id="sistemas" role="tabpanel">
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <h4 class="mb-1">Sistemas</h4>
+          <div class="text-secondary small">Acesso rápido entre os sistemas sem novo login.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="mb-0">Supervisão</h5>
+            <i class="bi bi-broadcast-pin fs-4"></i>
+          </div>
+          <p class="text-secondary mb-3">Abrir o painel de Supervisão com acesso integrado.</p>
+          <a class="btn btn-royal" href="{{ url_for('admin_sistemas_abrir', sistema='sistema1') }}">Abrir Supervisão</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="mb-0">Parceria</h5>
+            <i class="bi bi-people fs-4"></i>
+          </div>
+          <p class="text-secondary mb-3">Abrir o painel de Parceria com acesso integrado.</p>
+          <a class="btn btn-royal" href="{{ url_for('admin_sistemas_abrir', sistema='sistema2') }}">Abrir Parceria</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="tab-pane fade {{ 'show active' if _tab=='config' else '' }}" id="config" role="tabpanel">
   <div class="content-shell">
     <div class="page-header">
@@ -5878,11 +5939,12 @@
   <div class="modal fade" id="modalEditLancamento" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <form method="POST" class="modal-content">
-          <input type="hidden" name="tab" value="coop_despesas">
+        <input type="hidden" name="ajax" value="1">
+          <input type="hidden" name="tab" value="lancamentos">
           <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', request.args.get('resumo_inicio','')) }}">
           <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', request.args.get('resumo_fim','')) }}">
-          <input type="hidden" name="restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
-          <input type="hidden" name="cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
+          <input type="hidden" name="filtro_restaurante_id" value="{{ request.args.get('restaurante_id', request.args.get('resumo_restaurante_id','')) }}">
+          <input type="hidden" name="filtro_cooperado_id" value="{{ request.args.get('cooperado_id', request.args.get('resumo_cooperado_id','')) }}">
           {% if request.args.get('somente_pendentes') %}<input type="hidden" name="somente_pendentes" value="1">{% endif %}
         <div class="modal-header"><h5 class="modal-title">Editar Lançamento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body row g-2 px-3">
@@ -5911,6 +5973,10 @@
             <label class="form-label">Data</label>
             <input type="date" class="form-control" name="data" required>
           </div>
+          <div class="col-md-3">
+            <label class="form-label">Qtd. entregas</label>
+            <input type="number" class="form-control" name="qtd_entregas" min="0">
+          </div>
           <div class="col-md-6">
             <label class="form-label">Horário</label>
             <div class="input-group">
@@ -5928,6 +5994,7 @@
   <div class="modal fade" id="modalEditReceita" tabindex="-1">
     <div class="modal-dialog">
       <form method="POST" class="modal-content">
+        <input type="hidden" name="ajax" value="1">
         <div class="modal-header"><h5 class="modal-title">Editar Receita (Cooperativa)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body row g-2 px-3">
           <input type="hidden" name="id">
@@ -5943,6 +6010,7 @@
   <div class="modal fade" id="modalEditDespesa" tabindex="-1">
     <div class="modal-dialog">
       <form method="POST" class="modal-content">
+        <input type="hidden" name="ajax" value="1">
         <div class="modal-header"><h5 class="modal-title">Editar Despesa (Cooperativa)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body row g-2 px-3">
           <input type="hidden" name="id">
@@ -5978,6 +6046,7 @@
   <div class="modal fade" id="modalEditDespesaCoop" tabindex="-1">
     <div class="modal-dialog">
       <form method="POST" class="modal-content">
+        <input type="hidden" name="ajax" value="1">
         <div class="modal-header"><h5 class="modal-title">Editar Despesa (Cooperado)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body row g-2 px-3">
           <input type="hidden" name="id">
@@ -6119,7 +6188,7 @@
     });
   }
 
-  bindModal('modalEditLancamento',   { id:'id', restaurante:'restaurante_id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data', hora_inicio:'hora_inicio', hora_fim:'hora_fim' });
+  bindModal('modalEditLancamento',   { id:'id', restaurante:'restaurante_id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data', hora_inicio:'hora_inicio', hora_fim:'hora_fim', qtd_entregas:'qtd_entregas' });
   bindModal('modalEditReceita',      { id:'id', descricao:'descricao', valor:'valor', data:'data' });
   bindModal('modalEditDespesa',      { id:'id', descricao:'descricao', valor:'valor', data:'data' });
   bindModal('modalEditReceitaCoop',  { id:'id', cooperado:'cooperado_id', descricao:'descricao', valor:'valor', data:'data' });
@@ -6139,6 +6208,236 @@
       if (chk) chk.checked = String(btn?.dataset?.eh_adiantamento || '0') === '1';
     });
   })();
+
+
+  async function submitAdminAjaxForm(form){
+    const fd = new FormData(form);
+    fd.set('ajax', '1');
+    const resp = await fetch(form.action, {
+      method: form.method || 'POST',
+      headers: { 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' },
+      body: fd
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.ok === false) throw new Error(data.message || 'Falha ao salvar.');
+    return data;
+  }
+
+  function brMoney(v){ return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
+  function brDate(yyyy_mm_dd){
+    if (!yyyy_mm_dd) return '-';
+    const [y,m,d] = String(yyyy_mm_dd).split('-');
+    return [d,m,y].filter(Boolean).join('/');
+  }
+
+
+  function initAjaxFilters(){
+    async function fetchPartial(form, partial, wrapId, tabName){
+      const wrap = document.getElementById(wrapId);
+      if (!form || !wrap) return;
+      const params = new URLSearchParams(new FormData(form));
+      params.set('tab', tabName);
+      params.set('ajax_partial', partial);
+      const baseAction = form.getAttribute('action') || window.location.pathname;
+      const url = `${baseAction}?${params.toString()}`;
+      wrap.style.opacity = '.65';
+      wrap.style.pointerEvents = 'none';
+      try{
+        const resp = await fetch(url, { headers:{ 'X-Requested-With':'XMLHttpRequest' }});
+        const html = await resp.text();
+        if (!resp.ok || !html.trim()) throw new Error('Falha ao filtrar.');
+
+        const holder = document.createElement('div');
+        holder.innerHTML = html;
+        const nodes = Array.from(holder.childNodes);
+        const execScripts = (root) => {
+          if (!root) return;
+          root.querySelectorAll?.('script').forEach(oldScript => {
+            const s = document.createElement('script');
+            if (oldScript.src) s.src = oldScript.src;
+            if (oldScript.type) s.type = oldScript.type;
+            s.textContent = oldScript.textContent;
+            oldScript.replaceWith(s);
+          });
+        };
+        const firstEl = nodes.find(n => n.nodeType === 1);
+        wrap.replaceWith(...nodes);
+        execScripts(firstEl);
+
+        if (window.history && window.history.replaceState){
+          const cleanUrl = `${window.location.pathname}?${params.toString()}`;
+          window.history.replaceState({}, '', cleanUrl);
+        }
+        initAjaxFilters();
+      }catch(err){
+        alert(err.message || 'Falha ao filtrar.');
+        wrap.style.opacity = '1';
+        wrap.style.pointerEvents = '';
+      }
+    }
+
+    const bindings = [
+      ['formFiltroResumo', 'resumo', 'resumo', 'resumo'],
+      ['formFiltroLancamentos', 'lancamentos', 'lancamentosAjaxWrap', 'lancamentos'],
+      ['formFiltroReceitas', 'receitas', 'receitasAjaxWrap', 'receitas'],
+      ['formFiltroDespesas', 'despesas', 'despesasAjaxWrap', 'despesas'],
+      ['formFiltroCoopReceitas', 'coop_receitas', 'coopReceitasAjaxWrap', 'coop_receitas'],
+      ['formFiltroCoopDespesas', 'coop_despesas', 'coopDespesasAjaxWrap', 'coop_despesas'],
+      ['formFiltroBeneficios', 'beneficios', 'beneficiosAjaxWrap', 'beneficios'],
+    ];
+
+    bindings.forEach(([formId, partial, wrapId, tabName]) => {
+      const form = document.getElementById(formId);
+      if (!form || form.dataset.ajaxBound) return;
+      form.dataset.ajaxBound = '1';
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        fetchPartial(form, partial, wrapId, tabName);
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', initAjaxFilters);
+  function updateLancamentoRow(form){
+    const id = form.querySelector('[name="id"]')?.value;
+    const row = document.querySelector(`#lancamentosTableBody tr[data-row-id="${id}"]`);
+    if (!row) return false;
+    const restaurante = form.querySelector('[name="restaurante_id"]');
+    const cooperado = form.querySelector('[name="cooperado_id"]');
+    const descricao = form.querySelector('[name="descricao"]')?.value || '';
+    const valor = parseFloat(form.querySelector('[name="valor"]')?.value || '0') || 0;
+    const qtd = form.querySelector('[name="qtd_entregas"]')?.value || '—';
+    const data = form.querySelector('[name="data"]')?.value || '';
+    const hi = form.querySelector('[name="hora_inicio"]')?.value || '';
+    const hf = form.querySelector('[name="hora_fim"]')?.value || '';
+    const inss = valor * 0.04;
+    const sest = valor * 0.005;
+    const liq = valor - inss - sest;
+    const tds = row.querySelectorAll('td');
+    if (tds.length < 11) return false;
+    const restTxt = restaurante?.selectedOptions?.[0]?.textContent || '—';
+    const coopTxt = cooperado?.selectedOptions?.[0]?.textContent || '—';
+    const restSpan = tds[0].querySelector('.table-main-text');
+    if (restSpan) restSpan.textContent = restTxt; else tds[0].textContent = restTxt;
+    tds[1].textContent = coopTxt;
+    tds[2].textContent = descricao;
+    tds[3].textContent = brMoney(valor);
+    const badge = tds[4].querySelector('.badge');
+    if (badge) badge.textContent = qtd;
+    else tds[4].textContent = qtd;
+    tds[5].textContent = brDate(data);
+    tds[6].textContent = hi ? (hf ? `${hi} às ${hf}` : hi) : '—';
+    tds[7].textContent = brMoney(inss);
+    tds[8].textContent = brMoney(sest);
+    tds[9].textContent = brMoney(liq);
+    const editBtn = row.querySelector('[data-bs-target="#modalEditLancamento"]');
+    if (editBtn){
+      editBtn.dataset.restaurante = restaurante?.value || '';
+      editBtn.dataset.cooperado = cooperado?.value || '';
+      editBtn.dataset.descricao = descricao;
+      editBtn.dataset.valor = String(valor);
+      editBtn.dataset.data = data;
+      editBtn.dataset.hora_inicio = hi;
+      editBtn.dataset.hora_fim = hf;
+      editBtn.dataset.qtd_entregas = form.querySelector('[name="qtd_entregas"]')?.value || '';
+    }
+    return true;
+  }
+  function updateDespesaCoopRow(form){
+    const id = form.querySelector('[name="id"]')?.value;
+    const row = document.querySelector(`#coop_despesas tr[data-row-id="${id}"]`);
+    if (!row) return false;
+    const cooperado = form.querySelector('[name="cooperado_id"]');
+    const descricao = form.querySelector('[name="descricao"]')?.value || '';
+    const valor = parseFloat(form.querySelector('[name="valor"]')?.value || '0') || 0;
+    const data = form.querySelector('[name="data"]')?.value || '';
+    const competencia = form.querySelector('[name="competencia_desconto"]')?.value || 'esta_semana';
+    const ehAd = !!form.querySelector('[name="eh_adiantamento"]')?.checked;
+    const tds = row.querySelectorAll('td');
+    if (tds.length < 11) return false;
+    tds[1].textContent = brDate(data);
+    tds[2].textContent = cooperado?.selectedOptions?.[0]?.textContent || 'Todos';
+    tds[3].textContent = descricao;
+    tds[4].innerHTML = ehAd ? '<span class="badge bg-warning text-dark">Adiantamento</span>' : '<span class="badge bg-light text-dark border">Despesa</span>';
+    tds[5].textContent = competencia === 'semana_passada' ? 'Semana passada' : (competencia === 'proxima_semana' ? 'Próxima semana' : (competencia === 'semana_da_data' ? 'Semana da data escolhida' : 'Esta semana'));
+    tds[6].textContent = brMoney(valor);
+    tds[7].textContent = brMoney(0);
+    tds[8].textContent = brMoney(valor);
+    tds[9].innerHTML = '<span class="badge bg-secondary">Aberta</span>';
+    row.dataset.coop = (cooperado?.selectedOptions?.[0]?.textContent || 'todos').toLowerCase();
+    row.dataset.desc = descricao.toLowerCase();
+    const editBtn = row.querySelector('[data-bs-target="#modalEditDespesaCoop"]');
+    if (editBtn){
+      editBtn.dataset.cooperado = cooperado?.value || '';
+      editBtn.dataset.descricao = descricao;
+      editBtn.dataset.valor = String(valor);
+      editBtn.dataset.data = data;
+      editBtn.dataset.competencia = competencia;
+      editBtn.dataset.eh_adiantamento = ehAd ? '1' : '0';
+    }
+    return true;
+  }
+
+  document.querySelectorAll('#modalEditLancamento form, #modalEditReceita form, #modalEditDespesa form, #modalEditDespesaCoop form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await submitAdminAjaxForm(form);
+        const modalEl = form.closest('.modal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modalEl?.id === 'modalEditLancamento') {
+          if (!updateLancamentoRow(form)) window.location.reload();
+        } else if (modalEl?.id === 'modalEditDespesaCoop') {
+          if (!updateDespesaCoopRow(form)) window.location.reload();
+        } else {
+          window.location.reload();
+        }
+        if (modal) modal.hide();
+      } catch (err) {
+        alert(err.message || 'Erro ao salvar.');
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-del-ajax').forEach((btn) => {
+    const form = btn.closest('form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const fd = new FormData(form);
+          fd.set('ajax', '1');
+          const resp = await fetch(form.action, {
+            method: form.method || 'POST',
+            headers: { 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' },
+            body: fd
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || data.ok === false) throw new Error(data.message || 'Falha ao excluir.');
+          const row = form.closest('tr');
+          if (row) row.remove(); else window.location.reload();
+        } catch (err) {
+          alert(err.message || 'Erro ao excluir.');
+        }
+      });
+    } else if (btn.tagName === 'A') {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+          const resp = await fetch(btn.href, {
+            method: 'POST',
+            headers: { 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' }
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || data.ok === false) throw new Error(data.message || 'Falha ao excluir.');
+          const row = btn.closest('tr');
+          if (row) row.remove(); else window.location.reload();
+        } catch (err) {
+          alert(err.message || 'Erro ao excluir.');
+        }
+      });
+    }
+  });
 
   // ===== Gráficos =====
   const rawLancCoop   = {{ (chart_data_lancamentos_coop or {'labels':[], 'values':[]}) | tojson }};
