@@ -11177,7 +11177,7 @@ def minha_conta():
         db.session.commit()
         flash('Minha conta atualizada com sucesso.', 'success')
         return redirect(url_for('minha_conta'))
-    return render_template('admin/minha_conta.html')
+    return render_template('minha_conta.html')
 
 
 @app.route('/admin/rh', methods=['GET'])
@@ -11190,7 +11190,7 @@ def admin_rh_dashboard():
         db.and_(Cooperado.cnh_validade.isnot(None), Cooperado.cnh_validade >= hoje, Cooperado.cnh_validade <= limite),
         db.and_(Cooperado.renavam_validade.isnot(None), Cooperado.renavam_validade >= hoje, Cooperado.renavam_validade <= limite),
     )).count()
-    return render_template('admin/dashboard.html', docs_vencendo=docs_vencendo)
+    return render_template('dashboard.html', docs_vencendo=docs_vencendo)
 
 
 @app.get('/admin/cooperados')
@@ -11212,7 +11212,7 @@ def admin_cooperados_list():
     if mat:
         query = query.filter(Cooperado.matricula.ilike(f'%{mat}%'))
     cooperados = query.order_by(Cooperado.nome.asc()).limit(500).all()
-    return render_template('admin/cooperados_list.html', cooperados=cooperados, q=q, cpf=cpf, tel=tel, mat=mat, hoje=hoje)
+    return render_template('cooperados_list.html', cooperados=cooperados, q=q, cpf=cpf, tel=tel, mat=mat, hoje=hoje)
 
 
 @app.route('/admin/cooperados/novo', methods=['GET', 'POST'])
@@ -11262,21 +11262,21 @@ def admin_cooperados_new():
         db.session.commit()
         flash('Cooperado cadastrado com sucesso.', 'success')
         return redirect(url_for('admin_cooperado_detalhe', cooperado_id=c.id))
-    return render_template('admin/cooperados_form.html', cooperado=None)
+    return render_template('cooperados_form.html', cooperado=None)
 
 
 @app.get('/admin/cooperados/<int:cooperado_id>')
 @admin_perm_required('rh_cooperados', 'ver')
 def admin_cooperado_detalhe(cooperado_id):
     c = Cooperado.query.filter_by(id=cooperado_id, deleted_at=None).first_or_404()
-    return render_template('admin/cooperado_detalhe.html', cooperado=c)
+    return render_template('cooperado_detalhe.html', cooperado=c)
 
 
 @app.get('/admin/cooperados/<int:cooperado_id>/ficha')
 @admin_perm_required('rh_cooperados', 'ver')
 def admin_cooperado_ficha(cooperado_id):
     c = Cooperado.query.filter_by(id=cooperado_id, deleted_at=None).first_or_404()
-    return render_template('admin/cooperado_ficha.html', cooperado=c, hoje=date.today())
+    return render_template('cooperado_ficha.html', cooperado=c, hoje=date.today())
 
 
 @app.route('/admin/cooperados/<int:cooperado_id>/editar', methods=['GET', 'POST'])
@@ -11310,7 +11310,7 @@ def admin_cooperados_edit(cooperado_id):
         db.session.commit()
         flash('Cooperado atualizado com sucesso.', 'success')
         return redirect(url_for('admin_cooperado_detalhe', cooperado_id=c.id))
-    return render_template('admin/cooperados_form.html', cooperado=c)
+    return render_template('cooperados_form.html', cooperado=c)
 
 
 @app.post('/admin/cooperados/<int:cooperado_id>/excluir')
@@ -11335,7 +11335,7 @@ def admin_cooperados_vencimentos():
     ren_vencidos = base.filter(Cooperado.renavam_validade.isnot(None), Cooperado.renavam_validade < hoje).order_by(Cooperado.renavam_validade.asc()).all()
     ren_30 = base.filter(Cooperado.renavam_validade.isnot(None), Cooperado.renavam_validade >= hoje, Cooperado.renavam_validade <= limite).order_by(Cooperado.renavam_validade.asc()).all()
     sem_docs = base.filter(db.or_(Cooperado.cnh_validade.is_(None), Cooperado.renavam_validade.is_(None))).order_by(Cooperado.nome.asc()).all()
-    return render_template('admin/cooperados_vencimentos.html', hoje=hoje, limite=limite, cnh_vencidos=cnh_vencidos, cnh_30=cnh_30, ren_vencidos=ren_vencidos, ren_30=ren_30, sem_docs=sem_docs)
+    return render_template('cooperados_vencimentos.html', hoje=hoje, limite=limite, cnh_vencidos=cnh_vencidos, cnh_30=cnh_30, ren_vencidos=ren_vencidos, ren_30=ren_30, sem_docs=sem_docs)
 
 
 @app.route('/admin/documentos/sistema', methods=['GET', 'POST'])
@@ -11363,7 +11363,7 @@ def admin_documentos_sistema():
         flash(f'{enviados} documento(s) enviado(s) com sucesso.', 'success')
         return redirect(url_for('admin_documentos_sistema'))
     docs = DocumentoSistema.query.order_by(DocumentoSistema.created_at.desc(), DocumentoSistema.id.desc()).all()
-    return render_template('admin/sistema_docs.html', docs=docs)
+    return render_template('sistema_docs.html', docs=docs)
 
 
 @app.post('/admin/documentos/reindex')
@@ -11405,7 +11405,7 @@ def admin_pesquisa():
             score = texto_low.count(termo_low)
             resultados.append({'titulo': d.titulo, 'tipo': d.tipo, 'score': score, 'snippet': snippet})
         resultados.sort(key=lambda x: (-x['score'], x['titulo']))
-    return render_template('admin/pesquisa.html', termo=termo, resultados=resultados[:100])
+    return render_template('pesquisa.html', termo=termo, resultados=resultados[:100])
 
 
 @app.route('/admin/notificacoes', methods=['GET', 'POST'])
@@ -11447,7 +11447,7 @@ def admin_notificacoes():
         flash('Notificação gerada e registrada.', 'success')
     cooperados = Cooperado.query.filter(Cooperado.deleted_at.is_(None)).order_by(Cooperado.nome.asc()).all()
     ultimas = NotificacaoRH.query.order_by(NotificacaoRH.created_at.desc(), NotificacaoRH.id.desc()).limit(20).all()
-    return render_template('admin/notificacoes.html', cooperados=cooperados, gerada=gerada, ultimas=ultimas)
+    return render_template('notificacoes.html', cooperados=cooperados, gerada=gerada, ultimas=ultimas)
 
 
 @app.get('/admin/atas')
