@@ -10,6 +10,12 @@
 </head>
 
 <body class="app">
+  {% set nome_admin = (
+    current_user.username
+    if current_user is defined and current_user and current_user.username is defined
+    else session.get('admin_nome', session.get('username', session.get('user_nome', 'Administrador')))
+  ) %}
+
   <a class="skip" href="#conteudo">Pular para conteúdo</a>
 
   <aside class="sidebar" id="sidebar" aria-label="Menu lateral">
@@ -36,7 +42,6 @@
         <span class="nav-txt">Resumo</span>
       </a>
 
-      <!-- Grupo: Cooperados -->
       <button class="nav-group" type="button" data-group="cooperados" aria-expanded="true">
         <span class="nav-ico" aria-hidden="true">👤</span>
         <span class="nav-txt">Cooperados</span>
@@ -48,7 +53,6 @@
         <a class="nav-subitem" href="{{ url_for('admin_cooperados_vencimentos') }}">Vencimentos</a>
       </div>
 
-      <!-- Grupo: Documentos -->
       <button class="nav-group" type="button" data-group="documentos" aria-expanded="true">
         <span class="nav-ico" aria-hidden="true">📄</span>
         <span class="nav-txt">Documentos</span>
@@ -68,7 +72,6 @@
 
       <div class="nav-sep"></div>
 
-      <!-- Grupo: Conta / Config -->
       <button class="nav-group" type="button" data-group="config" aria-expanded="true">
         <span class="nav-ico" aria-hidden="true">⚙️</span>
         <span class="nav-txt">Configurações</span>
@@ -84,7 +87,7 @@
       <div class="mini-card">
         <div class="mini-row">
           <span class="pill">Online</span>
-          <small class="muted">Usuário: {{ current_user.username }}</small>
+          <small class="muted">Usuário: {{ nome_admin }}</small>
         </div>
         <small class="muted">Tema: Azul Royal + Branco</small>
       </div>
@@ -103,7 +106,6 @@
       </div>
 
       <div class="topbar-right">
-        <!-- BUSCA GLOBAL REAL (vai para /admin/pesquisa) -->
         <form class="search" action="{{ url_for('admin_pesquisa') }}" method="get" title="Pesquisar no Estatuto/Regimento">
           <span class="search-ico" aria-hidden="true">🔎</span>
           <input
@@ -116,8 +118,8 @@
           <span class="kbd">Enter</span>
         </form>
 
-        <div class="avatar" title="{{ current_user.username }}">
-          {{ (current_user.username[:1] if current_user.username else 'A')|upper }}
+        <div class="avatar" title="{{ nome_admin }}">
+          {{ (nome_admin[:1] if nome_admin else 'A')|upper }}
         </div>
       </div>
     </header>
