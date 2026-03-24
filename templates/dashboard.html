@@ -1,0 +1,89 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Coopex-RH • Dashboard{% endblock %}
+
+{% block header_title %}Admin Principal{% endblock %}
+{% block header_sub %}Acesso rápido aos módulos e alertas{% endblock %}
+
+{% block content %}
+
+<section class="grid">
+  <article class="card span-6">
+    <div class="card-head">
+      <h3>Cadastro de Cooperados</h3>
+      <span class="badge badge-royal">Ficha padrão</span>
+    </div>
+    <p>Cadastro completo, edição, exclusão, foto e anexos (PDF/IMG/DOCX). Pesquisa por nome, telefone e CPF.</p>
+    <div class="card-actions">
+      <a class="btn btn-royal" href="{{ url_for('admin_cooperados_new') }}">Abrir Cadastro</a>
+      <a class="btn btn-soft" href="{{ url_for('admin_cooperados_list') }}">Pesquisar</a>
+      <a class="btn" href="{{ url_for('admin_cooperados_vencimentos') }}">Ver Vencimentos</a>
+    </div>
+  </article>
+
+  <article class="card span-6">
+    <div class="card-head">
+      <h3>Documentos Oficiais</h3>
+      <span class="badge">Padronizado</span>
+    </div>
+    <p>Atas, avisos e notificações com cabeçalho padrão. Exportação PDF e registro com histórico.</p>
+    <div class="card-actions">
+      <a class="btn btn-soft" href="{{ url_for('admin_atas') }}">Atas</a>
+      <a class="btn btn-soft" href="{{ url_for('admin_avisos') }}">Avisos</a>
+      <a class="btn btn-soft" href="{{ url_for('admin_notificacoes') }}">Notificações</a>
+    </div>
+  </article>
+
+  <article class="card span-4">
+    <div class="card-head">
+      <h3>Status do Sistema</h3>
+      <span class="badge badge-ok">Online</span>
+    </div>
+    <p>Login real com banco e senha criptografada (hash) já ativo.</p>
+    <div class="card-actions">
+      <a class="btn" href="{{ url_for('minha_conta') }}">Minha Conta</a>
+      <a class="btn" href="{{ url_for('logout') }}">Sair</a>
+    </div>
+  </article>
+
+  <article class="card span-8">
+    <div class="card-head">
+      <h3>Alertas de Vencimento</h3>
+      <span class="badge badge-warn">CNH / documentos</span>
+    </div>
+    <p>Esta área vai mostrar automaticamente: vencidos e a vencer. (Vamos ligar quando entrarmos no módulo Cooperados.)</p>
+
+    <table class="table" aria-label="Alertas">
+      <thead>
+        <tr>
+          <th>Cooperado</th>
+          <th>Documento</th>
+          <th>Validade</th>
+          <th>Status</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td><span class="badge badge-warn">Aguardando dados</span></td>
+          <td><a class="btn btn-soft" href="{{ url_for('admin_cooperados_new') }}">Ir para Cooperados</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card span-12">
+    <div class="card-head">
+      <h3>Pesquisa</h3>
+      <span class="badge">Estatuto/Regimento</span>
+    </div>
+    <p>Busca por palavras no estatuto e regimento e encaixe do “ocorrido” (OCR + indexação). Próxima etapa do sistema.</p>
+    <div class="card-actions">
+      <a class="btn btn-soft" href="{{ url_for('admin_pesquisa') }}">Abrir Pesquisa</a>
+    </div>
+  </article>
+</section>
+
+{% endblock %}

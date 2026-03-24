@@ -1,0 +1,17 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Coopex-RH • {{ titulo }}{% endblock %}
+{% block header_title %}{{ titulo }}{% endblock %}
+{% block header_sub %}{{ msg }}{% endblock %}
+
+{% block content %}
+  <div class="card span-12" style="max-width:860px;">
+    <div class="card-head">
+      <h3>{{ titulo }}</h3>
+      <span class="badge badge-royal">Em implantação</span>
+    </div>
+    <p>{{ msg }}</p>
+    <div class="card-actions">
+      <a class="btn btn-royal" href="{{ url_for('admin_dashboard') }}">Voltar ao Dashboard</a>
+    </div>
+  </div>
+{% endblock %}

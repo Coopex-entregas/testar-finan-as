@@ -1,0 +1,95 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Coopex-RH • Cooperado{% endblock %}
+{% block header_title %}{{ cooperado.nome }}{% endblock %}
+{% block header_sub %}Matrícula: {{ cooperado.matricula or '—' }} • CPF: {{ cooperado.cpf }}{% endblock %}
+
+{% block content %}
+<section class="grid">
+  <article class="card span-12">
+    <div class="card-head">
+      <h3>Ficha do Cooperado</h3>
+      <span class="badge badge-royal">Detalhes</span>
+    </div>
+
+    <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        {% if cooperado.foto_path %}
+          <img src="{{ url_for('serve_upload', filename=cooperado.foto_path) }}" alt="Foto"
+               style="width:120px;height:120px;border-radius:18px;object-fit:cover;border:1px solid rgba(15,23,42,.12);">
+        {% else %}
+          <div style="width:120px;height:120px;border-radius:18px;background:rgba(31,75,216,.08);border:1px solid rgba(31,75,216,.16);
+                      display:grid;place-items:center;font-weight:900;color:rgba(31,75,216,.9);">
+            SEM FOTO
+          </div>
+        {% endif %}
+      </div>
+
+      <div style="flex:1;min-width:280px;">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:10px;">
+          <div style="grid-column:span 4;"><span class="muted">Nascimento</span><div><strong>{{ cooperado.data_nascimento.strftime("%d/%m/%Y") if cooperado.data_nascimento else "—" }}</strong></div></div>
+          <div style="grid-column:span 4;"><span class="muted">Nacionalidade</span><div><strong>{{ cooperado.nacionalidade or "—" }}</strong></div></div>
+          <div style="grid-column:span 4;"><span class="muted">Escolaridade</span><div><strong>{{ cooperado.grau_escolaridade or "—" }}</strong></div></div>
+
+          <div style="grid-column:span 4;"><span class="muted">Telefone</span><div><strong>{{ cooperado.telefone1 or "—" }}</strong></div></div>
+          <div style="grid-column:span 4;"><span class="muted">Telefone 2</span><div><strong>{{ cooperado.telefone2 or "—" }}</strong></div></div>
+          <div style="grid-column:span 4;"><span class="muted">E-mail</span><div><strong>{{ cooperado.email or "—" }}</strong></div></div>
+
+          <div style="grid-column:span 6;"><span class="muted">Endereço</span>
+            <div><strong>
+              {{ cooperado.rua or "—" }}, {{ cooperado.numero or "s/n" }} • {{ cooperado.bairro or "—" }} • {{ cooperado.cidade or "—" }}/{{ cooperado.uf or "—" }}
+            </strong></div>
+          </div>
+          <div style="grid-column:span 3;"><span class="muted">CEP</span><div><strong>{{ cooperado.cep or "—" }}</strong></div></div>
+          <div style="grid-column:span 3;"><span class="muted">Complemento</span><div><strong>{{ cooperado.complemento or "—" }}</strong></div></div>
+        </div>
+
+        <div class="card-actions" style="margin-top:14px;">
+          <a class="btn btn-royal" href="{{ url_for('admin_cooperado_ficha', cooperado_id=cooperado.id) }}">Imprimir ficha</a>
+          <a class="btn btn-soft" href="{{ url_for('admin_cooperados_edit', cooperado_id=cooperado.id) }}">Editar</a>
+          <a class="btn" href="{{ url_for('admin_cooperados_list') }}">Voltar</a>
+          <form method="post" action="{{ url_for('admin_cooperados_delete', cooperado_id=cooperado.id) }}" style="display:inline;">
+            <button class="btn" type="submit" onclick="return confirm('Arquivar este cooperado?')">Excluir</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article class="card span-6">
+    <div class="card-head"><h3>Documentos</h3><span class="badge">CNH / RENAVAM</span></div>
+    <table class="table">
+      <tbody>
+        <tr><th>CNH Nº</th><td>{{ cooperado.cnh_numero or "—" }}</td></tr>
+        <tr><th>CNH Validade</th><td>{{ cooperado.cnh_validade.strftime("%d/%m/%Y") if cooperado.cnh_validade else "—" }}</td></tr>
+        <tr><th>RENAVAM</th><td>{{ cooperado.renavam or "—" }}</td></tr>
+        <tr><th>RENAVAM Validade</th><td>{{ cooperado.renavam_validade.strftime("%d/%m/%Y") if cooperado.renavam_validade else "—" }}</td></tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card span-6">
+    <div class="card-head"><h3>Trabalho / Eleitor</h3><span class="badge">PIS / CTPS / Título</span></div>
+    <table class="table">
+      <tbody>
+        <tr><th>PIS</th><td>{{ cooperado.pis or "—" }}</td></tr>
+        <tr><th>CTPS</th><td>{{ (cooperado.ctps_numero or "—") ~ " / " ~ (cooperado.ctps_serie or "—") ~ " / " ~ (cooperado.ctps_uf or "—") }}</td></tr>
+        <tr><th>Título</th><td>{{ cooperado.titulo_numero or "—" }}</td></tr>
+        <tr><th>Zona/Seção</th><td>{{ (cooperado.titulo_zona or "—") ~ " / " ~ (cooperado.titulo_secao or "—") }}</td></tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card span-12">
+    <div class="card-head"><h3>Anexos enviados</h3><span class="badge">{{ cooperado.anexos|length }}</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      {% for a in cooperado.anexos %}
+        <a class="btn btn-soft" href="{{ url_for('serve_upload', filename=a.path) }}" target="_blank">
+          📎 {{ a.tipo or "DOC" }} • {{ a.filename }}
+        </a>
+      {% else %}
+        <span class="muted">Nenhum anexo enviado ainda.</span>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}

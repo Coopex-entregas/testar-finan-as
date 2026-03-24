@@ -1,0 +1,51 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Coopex-RH • Minha Conta{% endblock %}
+
+{% block content %}
+  <h2 style="margin:0 0 12px;">Minha Conta</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div style="display:grid;gap:8px;margin:10px 0 14px;">
+        {% for category, msg in messages %}
+          <div style="padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.12);background:#fff">
+            <strong style="text-transform:uppercase;font-size:11px;opacity:.7">{{ category }}</strong>
+            <div>{{ msg }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" style="background:#fff;border:1px solid rgba(15,23,42,.10);border-radius:16px;padding:14px;max-width:520px;">
+    <div style="display:grid;gap:6px;margin-bottom:10px;">
+      <label style="font-weight:700;font-size:13px;">Senha atual (obrigatório)</label>
+      <input name="current_password" type="password" required
+             style="padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.15);">
+    </div>
+
+    <div style="display:grid;gap:6px;margin-bottom:10px;">
+      <label style="font-weight:700;font-size:13px;">Novo usuário (opcional)</label>
+      <input name="new_username" type="text" placeholder="ex: coopex"
+             style="padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.15);">
+    </div>
+
+    <div style="display:grid;gap:6px;margin-bottom:10px;">
+      <label style="font-weight:700;font-size:13px;">Nova senha (opcional)</label>
+      <input name="new_password" type="password" placeholder="mínimo 8 caracteres"
+             style="padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.15);">
+    </div>
+
+    <div style="display:grid;gap:6px;margin-bottom:14px;">
+      <label style="font-weight:700;font-size:13px;">Confirmar nova senha</label>
+      <input name="new_password2" type="password"
+             style="padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.15);">
+    </div>
+
+    <button type="submit"
+            style="padding:10px 14px;border-radius:14px;border:1px solid rgba(31,75,216,.35);
+                   background:linear-gradient(180deg,#2c5cff,#1f4bd8);color:#fff;font-weight:800;cursor:pointer;">
+      Salvar
+    </button>
+  </form>
+{% endblock %}
