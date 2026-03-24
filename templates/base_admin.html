@@ -3,238 +3,132 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{% block title %}Coopex{% endblock %}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <style>
-    :root{
-      --royal-blue:#2747d9;
-      --royal-blue-2:#3358f0;
-      --royal-dark:#16258a;
-      --royal-soft:#eef3ff;
-      --bg:#f4f7fc;
-      --card:#ffffff;
-      --text:#182033;
-      --muted:#6f7b94;
-      --border:#e6ebf5;
-      --success:#12b76a;
-      --warning:#f59e0b;
-      --danger:#ef4444;
-      --shadow:0 10px 30px rgba(17,24,39,.08);
-      --sidebar-w:278px;
-      --radius:20px;
-    }
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
-    body{
-      margin:0;
-      font-family:'Inter',sans-serif;
-      background:
-        radial-gradient(circle at top right, rgba(39,71,217,.10), transparent 28%),
-        linear-gradient(180deg, #f7f9fe 0%, #f2f5fb 100%);
-      color:var(--text);
-      overflow-x:hidden;
-    }
-    a{color:inherit}
-    .layout{display:flex;min-height:100vh}
-    .sidebar{
-      position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;
-      padding:18px 14px;
-      background:linear-gradient(180deg, rgba(51,88,240,1) 0%, rgba(39,71,217,1) 38%, rgba(22,37,138,1) 100%);
-      color:#fff;box-shadow:0 0 26px rgba(0,0,0,.22);z-index:1020;overflow-y:auto;display:flex;flex-direction:column;
-    }
-    .sidebar::-webkit-scrollbar{width:8px}
-    .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
-    .brand{position:relative;padding:16px;margin-bottom:14px;border-radius:18px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}
-    .brand-title{margin:0;font-family:'Orbitron',sans-serif;font-size:1.08rem;letter-spacing:.9px;text-transform:uppercase;line-height:1.28}
-    .brand-sub{display:block;margin-top:6px;font-size:.74rem;opacity:.82}
-    .sidebar-nav{padding:0;margin:0}
-    .nav-section-label{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.60);margin:14px 8px 8px}
-    .sidebar-divider{border:0;border-top:1px solid rgba(255,255,255,.08);margin:12px 0 8px}
-    .nav-link-main,.nav-link-group-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-radius:14px;padding:10px 12px;margin:4px 0;background:transparent;color:#fff;text-decoration:none;font-size:.92rem;cursor:pointer;transition:all .18s ease}
-    .nav-link-main:hover,.nav-link-group-toggle:hover,.nav-sublink:hover{background:rgba(255,255,255,.10);transform:translateY(-1px);color:#fff}
-    .nav-link-main.active,.nav-sublink.active{background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.18);box-shadow:0 8px 18px rgba(0,0,0,.10);color:#fff!important}
-    .nav-link-left{display:flex;align-items:center;gap:10px}
-    .nav-link-icon{width:22px;display:flex;justify-content:center;align-items:center;font-size:1rem;flex-shrink:0}
-    .nav-caret{font-size:.82rem;opacity:.72;transition:transform .18s ease}
-    .nav-link-group-toggle[aria-expanded="true"] .nav-caret{transform:rotate(180deg)}
-    .nav-sublinks{padding-left:16px;margin-bottom:6px}
-    .nav-sublinks[hidden]{display:none}
-    .nav-sublink{display:flex;align-items:center;gap:8px;padding:8px 10px;margin:4px 0;border-radius:12px;color:rgba(255,255,255,.84);text-decoration:none;font-size:.84rem;transition:all .18s ease}
-    .sidebar-footer{margin-top:auto;padding-top:10px}
-    .main{flex:1;margin-left:var(--sidebar-w);padding:20px 20px 30px;width:calc(100% - var(--sidebar-w))}
-    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 20px;border-radius:28px;background:linear-gradient(135deg, rgba(39,71,217,1) 0%, rgba(51,88,240,1) 52%, rgba(22,37,138,1) 100%);color:#fff;box-shadow:0 14px 30px rgba(39,71,217,.22);margin-bottom:18px}
-    .panel-title{margin:0;font-size:1.32rem;font-weight:800;letter-spacing:.01em}
-    .panel-subtitle{margin-top:6px;font-size:.92rem;color:rgba(255,255,255,.82)}
-    .panel-badge{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);font-weight:700;font-size:.86rem;white-space:nowrap}
-    .content-shell{max-width:none!important;width:100%;margin:0 auto 26px}
-    .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}
-    .span-12{grid-column:span 12}.span-10{grid-column:span 10}.span-9{grid-column:span 9}.span-8{grid-column:span 8}.span-7{grid-column:span 7}.span-6{grid-column:span 6}.span-5{grid-column:span 5}.span-4{grid-column:span 4}.span-3{grid-column:span 3}.span-2{grid-column:span 2}
-    .card{background:var(--card);border:1px solid rgba(20,33,61,.06);border-radius:22px;box-shadow:var(--shadow);padding:18px}
-    .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .card-head h3{margin:0;font-size:1.03rem}
-    .card-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    .muted{color:var(--muted)}
-    .badge{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:999px;padding:6px 10px;font-size:.74rem;font-weight:800;background:#eef2ff;color:#3552d8;border:1px solid #dbe5ff}
-    .badge-royal{background:#eaf0ff;color:#2347d8;border-color:#d8e2ff}.badge-ok{background:#eaf8f0;color:#127c4d;border-color:#ccefdc}.badge-warn,.badge-warning{background:#fff6e8;color:#b96b00;border-color:#ffe0ad}.badge-error{background:#fff1f1;color:#c13232;border-color:#ffd1d1}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:#fff;color:#1b2b5f;font-weight:700;text-decoration:none;cursor:pointer;transition:.18s ease;box-shadow:none}
-    .btn:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(17,24,39,.08)}
-    .btn-royal{background:linear-gradient(135deg,var(--royal-blue),var(--royal-blue-2));color:#fff;border-color:transparent}
-    .btn-soft{background:#eef3ff;color:#2347d8;border-color:#dce6ff}
-    input,select,textarea{font:inherit}
-    input[type="text"],input[type="search"],input[type="date"],input[type="month"],input[type="number"],input[type="email"],input[type="password"],input[type="file"],select,textarea{
-      width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.15);background:#fff;color:var(--text)
-    }
-    textarea{min-height:110px;resize:vertical}
-    .table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden}
-    .table thead th{background:#f6f8fe;color:#2a3d79;font-size:.82rem;text-align:left;padding:12px;border-bottom:1px solid var(--border)}
-    .table tbody td{padding:12px;border-bottom:1px solid #eef2fa;vertical-align:top}
-    .table tbody tr:last-child td{border-bottom:0}
-    .search-top{display:flex;align-items:center;gap:10px;min-width:320px;max-width:520px;padding:10px 14px;border-radius:999px;background:#fff;border:1px solid rgba(255,255,255,.18);box-shadow:0 10px 20px rgba(17,24,39,.10)}
-    .search-top input{border:0;outline:0;padding:0;background:transparent;min-width:0}
-    .search-top .bi{color:#5a6ea9}
-    .kbd{margin-left:auto;font-size:.72rem;color:#6b7280;border:1px solid #e5e7eb;border-bottom-width:2px;border-radius:8px;padding:2px 7px;background:#fff}
-    .only-mobile{display:none}
-    @media (max-width:1100px){
-      .span-8,.span-7,.span-6,.span-5,.span-4,.span-3,.span-2{grid-column:span 12}
-    }
-    @media (max-width:980px){
-      .sidebar{transform:translateX(-100%);transition:transform .2s ease}
-      body.menu-open .sidebar{transform:translateX(0)}
-      .main{margin-left:0;width:100%;padding:16px}
-      .only-mobile{display:inline-flex}
-      .panel-head{padding:16px;flex-wrap:wrap}
-      .search-top{min-width:0;width:100%}
-    }
-  </style>
-  {% block extra_head %}{% endblock %}
+  <title>{% block title %}Coopex-RH{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <script defer src="{{ url_for('static', filename='js/admin.js') }}"></script>
 </head>
-<body>
-  {% set _tab = request.args.get('tab','resumo') %}
-  <div class="layout">
-    <aside class="sidebar">
+
+<body class="app">
+  <a class="skip" href="#conteudo">Pular para conteúdo</a>
+
+  <aside class="sidebar" id="sidebar" aria-label="Menu lateral">
+    <div class="side-top">
       <div class="brand">
-        <h1 class="brand-title">PAINEL COOPEX</h1>
-        <span class="brand-sub">Administração Central</span>
+        <span class="brand-mark" aria-hidden="true"></span>
+
+        <div class="brand-txt">
+          <strong class="brand-title">PAINEL<br>COOPEX</strong>
+          <small class="brand-sub">Administração Central</small>
+        </div>
       </div>
 
-      <nav class="sidebar-nav nav flex-column">
-        <div class="nav-section-label">Visão Geral</div>
+      <button class="icon-btn" id="btnCollapse" type="button" aria-label="Recolher menu">
+        <span class="icon" aria-hidden="true">⟪</span>
+      </button>
+    </div>
 
-        <a class="nav-link-main {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='resumo' else '' }}" href="{{ url_for('admin_dashboard', tab='resumo') }}">
-          <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-graph-up"></i></span><span class="nav-link-label">Resumo</span></div>
-        </a>
+    <nav class="nav" role="navigation">
+      <div class="nav-section">VISÃO GERAL</div>
 
-        {% if request.endpoint == 'admin_avaliacoes' or can_avaliacoes_ver is not defined or can_avaliacoes_ver %}
-        <a class="nav-link-main {% if request.endpoint == 'admin_avaliacoes' %}active{% endif %}" href="{{ url_for('admin_avaliacoes') }}">
-          <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-stars"></i></span><span class="nav-link-label">Avaliações</span></div>
-        </a>
-        {% endif %}
+      <a class="nav-item" href="{{ url_for('admin_dashboard') }}">
+        <span class="nav-ico" aria-hidden="true">▣</span>
+        <span class="nav-txt">Resumo</span>
+      </a>
 
-        <hr class="sidebar-divider">
-
-        <button class="nav-link-group-toggle" type="button" data-nav-target="menuFinanceiro" aria-expanded="true">
-          <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-currency-exchange"></i></span><span class="nav-link-label">Financeiro</span></div>
-          <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div id="menuFinanceiro" class="nav-sublinks">
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='lancamentos' else '' }}" href="{{ url_for('admin_dashboard', tab='lancamentos') }}"><i class="bi bi-journal-text"></i><span>Lançamentos</span></a>
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='receitas' else '' }}" href="{{ url_for('admin_dashboard', tab='receitas') }}"><i class="bi bi-credit-card"></i><span>Receitas Coop</span></a>
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='despesas' else '' }}" href="{{ url_for('admin_dashboard', tab='despesas') }}"><i class="bi bi-cart-dash"></i><span>Despesas Coop</span></a>
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='coop_receitas' else '' }}" href="{{ url_for('admin_dashboard', tab='coop_receitas') }}"><i class="bi bi-wallet2"></i><span>Receitas Cooperados</span></a>
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='coop_despesas' else '' }}" href="{{ url_for('admin_dashboard', tab='coop_despesas') }}"><i class="bi bi-bag-dash"></i><span>Despesas Cooperados</span></a>
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='beneficios' else '' }}" href="{{ url_for('admin_dashboard', tab='beneficios') }}"><i class="bi bi-heart-pulse"></i><span>Benefícios</span></a>
-        </div>
-
-        <button class="nav-link-group-toggle" type="button" data-nav-target="menuCadastros" aria-expanded="true">
-          <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-people"></i></span><span class="nav-link-label">Cadastros</span></div>
-          <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div id="menuCadastros" class="nav-sublinks">
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='cooperados' else '' }}" href="{{ url_for('admin_dashboard', tab='cooperados') }}"><i class="bi bi-person-badge"></i><span>Cooperados</span></a>
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='restaurantes' else '' }}" href="{{ url_for('admin_dashboard', tab='restaurantes') }}"><i class="bi bi-shop-window"></i><span>Estabelecimentos</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_documentos' %}active{% endif %}" href="{{ url_for('admin_documentos') }}"><i class="bi bi-folder2"></i><span>Documentos</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_tabelas' %}active{% endif %}" href="{{ url_for('admin_tabelas') }}"><i class="bi bi-table"></i><span>Tabelas</span></a>
-        </div>
-
-        <button class="nav-link-group-toggle" type="button" data-nav-target="menuOperacao" aria-expanded="true">
-          <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-broadcast-pin"></i></span><span class="nav-link-label">Operação</span></div>
-          <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div id="menuOperacao" class="nav-sublinks">
-          <a class="nav-sublink {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='escalas' else '' }}" href="{{ url_for('admin_dashboard', tab='escalas') }}"><i class="bi bi-calendar-week"></i><span>Escalas</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_avisos' %}active{% endif %}" href="{{ url_for('admin_avisos') }}"><i class="bi bi-megaphone"></i><span>Avisos</span></a>
-        </div>
-
-        <button class="nav-link-group-toggle" type="button" data-nav-target="menuInterno" aria-expanded="true">
-          <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-briefcase"></i></span><span class="nav-link-label">Recursos Humanos</span></div>
-          <span class="nav-caret"><i class="bi bi-chevron-down"></i></span>
-        </button>
-        <div id="menuInterno" class="nav-sublinks">
-          <a class="nav-sublink {% if request.endpoint == 'admin_dashboard_rh' %}active{% endif %}" href="{{ url_for('admin_dashboard') }}"><i class="bi bi-grid-1x2"></i><span>Dashboard RH</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_cooperados_new' %}active{% endif %}" href="{{ url_for('admin_cooperados_new') }}"><i class="bi bi-person-plus"></i><span>Cadastro / Ficha</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_cooperados_list' %}active{% endif %}" href="{{ url_for('admin_cooperados_list') }}"><i class="bi bi-search"></i><span>Lista / Pesquisa</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_cooperados_vencimentos' %}active{% endif %}" href="{{ url_for('admin_cooperados_vencimentos') }}"><i class="bi bi-calendar2-check"></i><span>Vencimentos</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_documentos_sistema' %}active{% endif %}" href="{{ url_for('admin_documentos_sistema') }}"><i class="bi bi-file-earmark-text"></i><span>Estatuto / Regimento</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_notificacoes' %}active{% endif %}" href="{{ url_for('admin_notificacoes') }}"><i class="bi bi-bell"></i><span>Notificações</span></a>
-          <a class="nav-sublink {% if request.endpoint == 'admin_pesquisa' %}active{% endif %}" href="{{ url_for('admin_pesquisa') }}"><i class="bi bi-binoculars"></i><span>Pesquisa</span></a>
-        </div>
-
-        <hr class="sidebar-divider">
-
-        <div class="sidebar-footer">
-          <a class="nav-link-main {{ 'active' if request.endpoint=='admin_dashboard' and _tab=='sistemas' else '' }}" href="{{ url_for('admin_dashboard', tab='sistemas') }}">
-            <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-diagram-3"></i></span><span class="nav-link-label">Sistemas</span></div>
-          </a>
-          <a class="nav-link-main {{ 'active' if (request.endpoint=='admin_dashboard' and _tab=='config') or request.endpoint=='minha_conta' else '' }}" href="{{ url_for('minha_conta') }}">
-            <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-gear"></i></span><span class="nav-link-label">Configurações</span></div>
-          </a>
-          <a class="nav-link-main" href="{{ url_for('logout') }}">
-            <div class="nav-link-left"><span class="nav-link-icon"><i class="bi bi-box-arrow-right"></i></span><span class="nav-link-label">Sair</span></div>
-          </a>
-        </div>
-      </nav>
-    </aside>
-
-    <main class="main">
-      <section class="panel-head">
-        <div>
-          <h2 class="panel-title">{% block header_title %}Painel{% endblock %}</h2>
-          <div class="panel-subtitle">{% block header_sub %}Gestão interna Coopex{% endblock %}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <button class="btn only-mobile" id="btnOpenMenu" type="button"><i class="bi bi-list"></i> Menu</button>
-          <form class="search-top" action="{{ url_for('admin_pesquisa') }}" method="get" title="Pesquisar no Estatuto/Regimento">
-            <i class="bi bi-search"></i>
-            <input id="globalSearch" name="termo" type="search" placeholder="Pesquisar no Estatuto/Regimento…" autocomplete="off" />
-            <span class="kbd">Enter</span>
-          </form>
-          <span class="panel-badge"><i class="bi bi-person-circle"></i> {{ current_user.username if current_user is defined and current_user.username else 'Admin' }}</span>
-        </div>
-      </section>
-
-      <div class="content-shell" id="conteudo">
-        {% block content %}{% endblock %}
+      <!-- Grupo: Cooperados -->
+      <button class="nav-group" type="button" data-group="cooperados" aria-expanded="true">
+        <span class="nav-ico" aria-hidden="true">👤</span>
+        <span class="nav-txt">Cooperados</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="nav-sub" data-sub="cooperados">
+        <a class="nav-subitem" href="{{ url_for('admin_cooperados_new') }}">Cadastro / Ficha</a>
+        <a class="nav-subitem" href="{{ url_for('admin_cooperados_list') }}">Lista / Pesquisa</a>
+        <a class="nav-subitem" href="{{ url_for('admin_cooperados_vencimentos') }}">Vencimentos</a>
       </div>
+
+      <!-- Grupo: Documentos -->
+      <button class="nav-group" type="button" data-group="documentos" aria-expanded="true">
+        <span class="nav-ico" aria-hidden="true">📄</span>
+        <span class="nav-txt">Documentos</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="nav-sub" data-sub="documentos">
+        <a class="nav-subitem" href="{{ url_for('admin_documentos_sistema') }}">Estatuto / Regimento</a>
+        <a class="nav-subitem" href="{{ url_for('admin_atas') }}">Atas</a>
+        <a class="nav-subitem" href="{{ url_for('admin_avisos') }}">Avisos</a>
+        <a class="nav-subitem" href="{{ url_for('admin_notificacoes') }}">Notificações</a>
+      </div>
+
+      <a class="nav-item" href="{{ url_for('admin_pesquisa') }}">
+        <span class="nav-ico" aria-hidden="true">🔎</span>
+        <span class="nav-txt">Pesquisa</span>
+      </a>
+
+      <div class="nav-sep"></div>
+
+      <!-- Grupo: Conta / Config -->
+      <button class="nav-group" type="button" data-group="config" aria-expanded="true">
+        <span class="nav-ico" aria-hidden="true">⚙️</span>
+        <span class="nav-txt">Configurações</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="nav-sub" data-sub="config">
+        <a class="nav-subitem" href="{{ url_for('minha_conta') }}">Minha Conta</a>
+        <a class="nav-subitem" href="{{ url_for('logout') }}">Sair</a>
+      </div>
+    </nav>
+
+    <div class="side-bottom">
+      <div class="mini-card">
+        <div class="mini-row">
+          <span class="pill">Online</span>
+          <small class="muted">Usuário: {{ current_user.username }}</small>
+        </div>
+        <small class="muted">Tema: Azul Royal + Branco</small>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn only-mobile" id="btnMobile" type="button" aria-label="Abrir menu">
+        <span class="icon" aria-hidden="true">☰</span>
+      </button>
+
+      <div class="topbar-left">
+        <h2 class="topbar-title">{% block header_title %}Painel{% endblock %}</h2>
+        <span class="topbar-sub muted">{% block header_sub %}Gestão interna Coopex{% endblock %}</span>
+      </div>
+
+      <div class="topbar-right">
+        <!-- BUSCA GLOBAL REAL (vai para /admin/pesquisa) -->
+        <form class="search" action="{{ url_for('admin_pesquisa') }}" method="get" title="Pesquisar no Estatuto/Regimento">
+          <span class="search-ico" aria-hidden="true">🔎</span>
+          <input
+            id="globalSearch"
+            name="termo"
+            type="search"
+            placeholder="Pesquisar no Estatuto/Regimento…"
+            autocomplete="off"
+          />
+          <span class="kbd">Enter</span>
+        </form>
+
+        <div class="avatar" title="{{ current_user.username }}">
+          {{ (current_user.username[:1] if current_user.username else 'A')|upper }}
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="conteudo">
+      {% block content %}{% endblock %}
     </main>
-  </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      document.querySelectorAll('[data-nav-target]').forEach(function(btn){
-        btn.addEventListener('click', function(){
-          const target = document.getElementById(btn.getAttribute('data-nav-target'));
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-          if (target) target.hidden = expanded;
-        });
-      });
-      const mobile = document.getElementById('btnOpenMenu');
-      if (mobile){
-        mobile.addEventListener('click', function(){ document.body.classList.toggle('menu-open'); });
-      }
-    });
-  </script>
-  {% block extra_js %}{% endblock %}
+    <footer class="footer">
+      <small class="muted">Coopex-RH • 2025</small>
+    </footer>
+  </div>
 </body>
 </html>
